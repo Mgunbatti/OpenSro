@@ -135,6 +135,23 @@ DOWNLOAD_FW_DEFS = /DSERVER_MODULE_NAME=\"DownloadServer\" \
 DOWNLOAD_SYSLIBS = kernel32.lib advapi32.lib iphlpapi.lib user32.lib ws2_32.lib ole32.lib \
                    gdi32.lib comctl32.lib
 
+# MachineManager application (JMX_CommonServers\MachineManager), built by "nmake machine". Like
+# DownloadServer it gets its own build of the framework files that name the module; MachineManager
+# also reaches the certification server through a keep-alive target.
+MACHINE_OBJS = \
+	$(OBJ)\MachineManager\MachineManager.obj \
+	$(OBJ)\MachineManager\MachineManagerMainProcess.obj \
+	$(OBJ)\MachineManager\PerfCounter.obj
+MACHINE_FW_OBJS = \
+	$(OBJ)\MachineManager\fw\CertArch.obj \
+	$(OBJ)\MachineManager\fw\ServerApp.obj \
+	$(OBJ)\MachineManager\fw\ServerConfig.obj
+MACHINE_FW_DEFS = /DSERVER_MODULE_NAME=\"MachineManager\" \
+                  /DSERVER_CONFIG_MODULE_NAME=\"MachineManager\" \
+                  /DSERVER_CERTIFICATION_KEEP_ALIVE=1
+MACHINE_SYSLIBS = kernel32.lib advapi32.lib iphlpapi.lib user32.lib ws2_32.lib ole32.lib \
+                  gdi32.lib comctl32.lib pdh.lib
+
 TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
@@ -142,12 +159,12 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ServerDataTest.exe $(BIN)\ServerUtilTest.exe \
         $(BIN)\ServerUiTest.exe $(BIN)\ServerAppTest.exe \
         $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe \
-        $(BIN)\DownloadTest.exe
+        $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe
 
 all: $(LIBS) $(TESTS)
 
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
-$(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw:
+$(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw:
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
@@ -182,6 +199,12 @@ $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw:
 
 {JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\DownloadServer\fw}.obj:
 	cl $(CFLAGS) $(DOWNLOAD_FW_DEFS) /Fo$@ /Fd$(OBJ)\DownloadServer\fw\ $<
+
+{JMX_CommonServers\MachineManager}.cpp{$(OBJ)\MachineManager}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\MachineManager\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\MachineManager\fw}.obj:
+	cl $(CFLAGS) $(MACHINE_FW_DEFS) /Fo$@ /Fd$(OBJ)\MachineManager\fw\ $<
 
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
@@ -234,6 +257,17 @@ $(BIN)\DownloadTest.exe: $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw \
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\DownloadTest.obj $(DOWNLOAD_OBJS) \
 	    $(DOWNLOAD_FW_OBJS) $(LIBS) $(SYSLIBS)
 
+# The MachineManager variants of the framework files come before the libraries. The test starts
+# and stops copies of MachineTestChild.exe.
+$(BIN)\MachineTest.exe: $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
+                        $(OBJ)\test\MachineTest.obj $(MACHINE_OBJS) $(MACHINE_FW_OBJS) \
+                        $(BIN)\MachineTestChild.exe
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTest.obj $(MACHINE_OBJS) \
+	    $(MACHINE_FW_OBJS) $(LIBS) $(SYSLIBS) pdh.lib
+
+$(BIN)\MachineTestChild.exe: $(OBJ)\test $(BIN) $(OBJ)\test\MachineTestChild.obj
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTestChild.obj user32.lib
+
 download: $(BIN)\DownloadServer.exe
 
 # Like the original the exe keeps the framework's NT service code (the advapi32 import), although
@@ -242,6 +276,15 @@ $(BIN)\DownloadServer.exe: $(BIN) $(LIBS) $(OBJ)\DownloadServer $(OBJ)\DownloadS
                            $(DOWNLOAD_OBJS) $(OBJ)\DownloadServer\WinMain.obj $(DOWNLOAD_FW_OBJS)
 	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
 	    /out:$@ $(OBJ)\DownloadServer\WinMain.obj $(DOWNLOAD_OBJS) $(DOWNLOAD_FW_OBJS) $(LIBS) $(DOWNLOAD_SYSLIBS)
+
+machine: $(BIN)\MachineManager.exe
+
+# GUI exe like the original; it keeps the framework's NT service code as well.
+$(BIN)\MachineManager.exe: $(BIN) $(LIBS) $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
+                           $(MACHINE_OBJS) $(OBJ)\MachineManager\WinMain.obj $(MACHINE_FW_OBJS)
+	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
+	    /out:$@ $(OBJ)\MachineManager\WinMain.obj $(MACHINE_OBJS) $(MACHINE_FW_OBJS) $(LIBS) \
+	    $(MACHINE_SYSLIBS)
 
 gateway: $(BIN)\GatewayServer.exe
 
@@ -271,6 +314,7 @@ test: all
 	$(BIN)\GatewayTest.exe
 	$(BIN)\GatewayCertTest.exe
 	$(BIN)\DownloadTest.exe
+	$(BIN)\MachineTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
