@@ -8,7 +8,7 @@
 # ("invalid vector<T> subscript") instead of calling _invalid_parameter.
 CFLAGS  = /nologo /c /O2 /MT /EHsc /GS /W3 /Zi /DWIN32 /DNDEBUG /D_WINDOWS \
           /D_WIN32_WINNT=0x0500 /DWIN32_LEAN_AND_MEAN /D_SECURE_SCL_THROWS=1 \
-          /IJMX_Library /IJMX_ServerFramework
+          /IJMX_Library /IJMX_ServerFramework /IJMX_CommonServers
 LIBFLAGS = /nologo
 SYSLIBS = ws2_32.lib user32.lib ole32.lib iphlpapi.lib gdi32.lib comctl32.lib advapi32.lib \
           odbc32.lib
@@ -95,17 +95,29 @@ SRVFW_OBJS = \
 	$(OBJ)\ServerFramework\NTService.obj
 
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
+
+# GatewayServer application (JMX_CommonServers\GatewayServer). GatewayServer.exe also needs the
+# certification part (GATEWAY_CERT_OBJS) and the BSLib database layer; it is built by
+# "nmake gateway", not by "all".
+GATEWAY_OBJS = \
+	$(OBJ)\GatewayServer\GatewayServer.obj \
+	$(OBJ)\GatewayServer\GatewayMainProcess.obj \
+	$(OBJ)\GatewayServer\ShardConditionManager.obj \
+	$(OBJ)\GatewayServer\ArticleManager.obj
+GATEWAY_CERT_OBJS =
+GATEWAY_SYSLIBS = kernel32.lib wininet.lib advapi32.lib iphlpapi.lib user32.lib odbc32.lib \
+                  ws2_32.lib shlwapi.lib ole32.lib gdi32.lib comctl32.lib
 TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
         $(BIN)\SocketTest.exe $(BIN)\NetEngineTest.exe \
         $(BIN)\ServerDataTest.exe $(BIN)\ServerUtilTest.exe \
         $(BIN)\ServerUiTest.exe $(BIN)\ServerAppTest.exe \
-        $(BIN)\DatabaseTest.exe
+        $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe
 
 all: $(LIBS) $(TESTS)
 
-$(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\test $(LIBDIR) $(BIN):
+$(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN):
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
@@ -131,6 +143,9 @@ $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\test $(LIBDIR) $(BIN):
 
 {JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\ServerFramework}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\ServerFramework\ $<
+
+{JMX_CommonServers\GatewayServer}.cpp{$(OBJ)\GatewayServer}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\GatewayServer\ $<
 
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
@@ -167,6 +182,17 @@ $(BIN)\ServerUiTest.exe: $(OBJ)\test\ServerUiTest.obj
 $(BIN)\ServerAppTest.exe: $(OBJ)\test\ServerAppTest.obj
 $(BIN)\DatabaseTest.exe: $(OBJ)\test\DatabaseTest.obj
 
+# The test provides the certification part and the database layer itself.
+$(BIN)\GatewayTest.exe: $(OBJ)\GatewayServer $(OBJ)\test\GatewayTest.obj $(GATEWAY_OBJS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GatewayTest.obj $(GATEWAY_OBJS) $(LIBS) $(SYSLIBS)
+
+gateway: $(BIN)\GatewayServer.exe
+
+$(BIN)\GatewayServer.exe: $(BIN) $(LIBS) $(OBJ)\GatewayServer $(GATEWAY_OBJS) \
+                          $(OBJ)\GatewayServer\WinMain.obj $(GATEWAY_CERT_OBJS)
+	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /out:$@ $(OBJ)\GatewayServer\WinMain.obj \
+	    $(GATEWAY_OBJS) $(GATEWAY_CERT_OBJS) $(LIBS) $(GATEWAY_SYSLIBS)
+
 test: all
 	$(BIN)\MsgTest.exe
 	$(BIN)\SynchTest.exe
@@ -185,6 +211,7 @@ test: all
 	$(BIN)\ServerUiTest.exe
 	$(BIN)\ServerAppTest.exe
 	$(BIN)\DatabaseTest.exe
+	$(BIN)\GatewayTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
