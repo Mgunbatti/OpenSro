@@ -35,7 +35,9 @@ BSLIB_OBJS = \
 	$(OBJ)\BSLib\FileMem.obj \
 	$(OBJ)\BSLib\FileLegacy.obj \
 	$(OBJ)\BSLib\FileMM.obj \
-	$(OBJ)\BSLib\FileSystem.obj
+	$(OBJ)\BSLib\FileSystem.obj \
+	$(OBJ)\BSLib\TimeSpan.obj \
+	$(OBJ)\BSLib\DateTimeUtil.obj
 
 BSNET_OBJS = \
 	$(OBJ)\BSNet\Msg.obj \
@@ -64,13 +66,21 @@ BSNET_OBJS = \
 	$(OBJ)\BSNet\NetEngine.obj
 
 SRVFW_OBJS = \
-	$(OBJ)\ServerFramework\MassiveMsg.obj
+	$(OBJ)\ServerFramework\MassiveMsg.obj \
+	$(OBJ)\ServerFramework\ServerBody.obj \
+	$(OBJ)\ServerFramework\CertArch.obj \
+	$(OBJ)\ServerFramework\CertData.obj \
+	$(OBJ)\ServerFramework\ModuleVersion.obj \
+	$(OBJ)\ServerFramework\ServerConfig.obj \
+	$(OBJ)\ServerFramework\MonitorGraph.obj \
+	$(OBJ)\ServerFramework\FileTransMgr.obj
 
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
 TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
-        $(BIN)\SocketTest.exe $(BIN)\NetEngineTest.exe
+        $(BIN)\SocketTest.exe $(BIN)\NetEngineTest.exe \
+        $(BIN)\ServerDataTest.exe $(BIN)\ServerUtilTest.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -84,6 +94,9 @@ $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\test $(LIBDIR) $(BIN):
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
 
 {JMX_Library\BSLib\file}.cpp{$(OBJ)\BSLib}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\Util}.cpp{$(OBJ)\BSLib}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
 
 {JMX_Library\BSNet}.cpp{$(OBJ)\BSNet}.obj:
@@ -124,6 +137,8 @@ $(BIN)\FileTest.exe: $(OBJ)\test\FileTest.obj
 $(BIN)\ProactorTest.exe: $(OBJ)\test\ProactorTest.obj
 $(BIN)\SocketTest.exe: $(OBJ)\test\SocketTest.obj
 $(BIN)\NetEngineTest.exe: $(OBJ)\test\NetEngineTest.obj
+$(BIN)\ServerDataTest.exe: $(OBJ)\test\ServerDataTest.obj
+$(BIN)\ServerUtilTest.exe: $(OBJ)\test\ServerUtilTest.obj
 
 test: all
 	$(BIN)\MsgTest.exe
@@ -138,6 +153,8 @@ test: all
 	$(BIN)\ProactorTest.exe
 	$(BIN)\SocketTest.exe
 	$(BIN)\NetEngineTest.exe
+	$(BIN)\ServerDataTest.exe
+	$(BIN)\ServerUtilTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
