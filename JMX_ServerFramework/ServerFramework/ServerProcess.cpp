@@ -620,7 +620,8 @@ bool RelayMsgToBody_6008(CServerProcessBase* pProcess, CMsg* pMsg, WORD wTargetB
 
 // BUG(FWAPP-007): when the data cannot be copied, the relay job stays registered.
 bool RelayMassiveMsgToBody_6008(CMassiveMsg* pMassive, CServerProcessBase* pProcess,
-                                WORD wTargetBody, WORD wSourceBody, DWORD dwSourceJobID)
+                                WORD wTargetBody, WORD wSourceBody, DWORD dwSourceJobID,
+                                DWORD dwContext)
 {
     SERVER_CORD* pCord = ServerBody_Find(wTargetBody);
     if (!pCord || !pCord->dwSessionID)
@@ -633,7 +634,7 @@ bool RelayMassiveMsgToBody_6008(CMassiveMsg* pMassive, CServerProcessBase* pProc
 
     COverlapJob_RelayMsg* pJob = OverlapJob_AllocRelayMsg();
     pJob->Setup((CTask*)pProcess->m_pOwner, wTargetBody, pMassive->m_wOpcode, wSourceBody,
-                dwSourceJobID, 0);
+                dwSourceJobID, dwContext);
     pProcess->m_OverlapJobManager.Insert(pJob);
 
     CMassiveMsg* pRelay = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);

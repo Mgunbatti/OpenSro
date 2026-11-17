@@ -190,9 +190,11 @@ C_ASSERT(sizeof(CServerProcessOverlap) == 0x400B8);
 bool RelayMsgToBody_6008(CServerProcessBase* pProcess, CMsg* pMsg, WORD wTargetBody,
                          WORD wSourceBody, DWORD dwSourceJobID, DWORD dwContext);
 // RelayMassiveMsgToBody_6008 (0x4450e0): the same for a massive message (whole data); frees
-// pMassive.
+// pMassive. The other modules always relay with the context 0 (the compiler folded it into the
+// function); GlobalManager (0x48de30) passes it.
 bool RelayMassiveMsgToBody_6008(CMassiveMsg* pMassive, CServerProcessBase* pProcess,
-                                WORD wTargetBody, WORD wSourceBody, DWORD dwSourceJobID);
+                                WORD wTargetBody, WORD wSourceBody, DWORD dwSourceJobID,
+                                DWORD dwContext = 0);
 
 // CheckMsgFullyConsumed (0x443fa0): logs a message the last holder did not read completely.
 void CheckMsgFullyConsumed(CMsg* pMsg);
