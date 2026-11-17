@@ -191,6 +191,30 @@ AGENT_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\agent\Server
 AGENT_LIBS = $(AGENT_LIBDIR)\ServerFramework.lib $(AGENT_LIBDIR)\BSNet.lib \
              $(AGENT_LIBDIR)\BSLib.lib
 
+# AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
+# 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
+# the 2011 build of the libraries.
+AGENT_OBJS = \
+	$(OBJ)\AgentServer\AgentServer.obj \
+	$(OBJ)\AgentServer\AgentMainProcess.obj \
+	$(OBJ)\AgentServer\Token.obj \
+	$(OBJ)\AgentServer\User.obj \
+	$(OBJ)\AgentServer\XTrap.obj
+AGENT_SYSLIBS = $(DOWNLOAD_SYSLIBS)
+# The XTrap detection as in the user's patched AgentServer.exe (see AgentServer\README.md):
+# "nmake agent AGENT_XTRAP_DETECTION_OFF=1" after deleting build\obj\AgentServer. AgentTestNoDetect
+# always checks that variant with its own objects.
+AGENT_APP_DEFS =
+!IFDEF AGENT_XTRAP_DETECTION_OFF
+AGENT_APP_DEFS = /DAGENT_XTRAP_DETECTION_OFF
+!ENDIF
+AGENT_PATCHED_OBJS = \
+	$(OBJ)\AgentServer\AgentServer.obj \
+	$(OBJ)\AgentServer\patched\AgentMainProcess.obj \
+	$(OBJ)\AgentServer\Token.obj \
+	$(OBJ)\AgentServer\User.obj \
+	$(OBJ)\AgentServer\patched\XTrap.obj
+
 TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
@@ -208,6 +232,15 @@ $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\Mach
 $(OBJ)\FarmManager $(FARM_OBJ)\BSLib $(FARM_OBJ)\BSNet $(FARM_OBJ)\ServerFramework \
 $(FARM_LIBDIR):
 	@if not exist $@ mkdir $@
+
+$(OBJ)\AgentServer $(OBJ)\AgentServer\patched:
+	@if not exist $@ mkdir $@
+
+{JMX_CommonServers\AgentServer}.cpp{$(OBJ)\AgentServer}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) $(AGENT_APP_DEFS) /Fo$@ /Fd$(OBJ)\AgentServer\ $<
+
+{JMX_CommonServers\AgentServer}.cpp{$(OBJ)\AgentServer\patched}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /DAGENT_XTRAP_DETECTION_OFF /Fo$@ /Fd$(OBJ)\AgentServer\patched\ $<
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
@@ -424,6 +457,15 @@ $(BIN)\FarmManager.exe: $(BIN) $(FARM_LIBS) $(OBJ)\FarmManager $(FARM_OBJS) \
                         $(OBJ)\FarmManager\WinMain.obj
 	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
 	    /out:$@ $(OBJ)\FarmManager\WinMain.obj $(FARM_OBJS) $(FARM_LIBS) $(FARM_SYSLIBS)
+
+agent: $(BIN)\AgentServer.exe
+
+# GUI exe like the original (ADVAPI32 GDI32 KERNEL32 USER32 WS2_32 iphlpapi ole32); it keeps the
+# framework's NT service code as well.
+$(BIN)\AgentServer.exe: $(BIN) $(AGENT_LIBS) $(OBJ)\AgentServer $(AGENT_OBJS) \
+                        $(OBJ)\AgentServer\WinMain.obj
+	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
+	    /out:$@ $(OBJ)\AgentServer\WinMain.obj $(AGENT_OBJS) $(AGENT_LIBS) $(AGENT_SYSLIBS)
 
 gateway: $(BIN)\GatewayServer.exe
 
