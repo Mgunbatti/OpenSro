@@ -1,4 +1,4 @@
-# The 2011 framework (AgentServer)
+# The 2011 framework (AgentServer, GlobalManager)
 
 `AgentServer.exe` was built on 2011-07-01 (PE header time stamp), two and a half years after the
 2008 GatewayServer the shared library sources were written from. It links a newer version of
@@ -112,3 +112,53 @@ Bugs of the 2011 code reproduced on purpose: FW11-001, FW11-002, FW11-020 (`docs
 `test\Framework2011Test.cpp` checks every row above that a test can reach (real engine, log files
 and packets byte by byte, IAT hooks for message boxes, menus and fonts, a temporary HKCU key for
 the registry code); the other tests keep checking the 2008 behaviour.
+
+## January 2011 (GlobalManager)
+
+`GlobalManager.exe` was built on 2011-01-24, five months before AgentServer. Every BSLib, BSNet
+and ServerFramework function it shares with AgentServer behaves like the July 2011 code above:
+the comparison of its 229 framework functions that are not byte-identical to an already ported
+module found only register allocation, stack layout, constant propagation (`SetTimerPeriod` with
+the timer ID 35, `CTimeSpan(0, h, m, s)`, `DestroySession(g_pSession)`) and out-of-line copies
+of inlined helpers. The pools are named, the engine has the 2011 layout and slot 41, messages
+throw `CMsgException`, the frame window has command 0x9C48 and the suspected-user menu, the
+crash dump goes through the worker thread, and so on.
+
+The differences are in code AgentServer does not link: the BSLib ODBC layer (which the rewrite
+has from the 2008 GatewayServer) and a newer copy of `TimeSpan.cpp`. They are written under
+`#ifdef JMX_FRAMEWORK_2011_01`, which is only ever defined together with `JMX_FRAMEWORK_2011`
+(BSDebug.h stops the build otherwise), so the July 2011, 2008 and 2007 builds are unchanged.
+
+- `GLOBAL_DEFS` = `/DJMX_FRAMEWORK_2011 /DJMX_FRAMEWORK_2011_01
+  /DSERVER_MODULE_NAME="GlobalManager" /DSERVER_CONFIG_MODULE_NAME="GlobalManager"` (the exe has
+  the single string "GlobalManager": service, semaphore "Global\GlobalManager", Server.cfg
+  block, StartupError file);
+- objects in `build\obj\global\{BSLib,BSNet,ServerFramework}`, libraries in
+  `build\lib\global` (`GLOBAL_LIBS`); everything linked with them is compiled with
+  `GLOBAL_DEFS`. After a header change delete `build\obj\global` and `build\lib\global`.
+
+No class layout differs from the July 2011 framework. `DB_PARAM` gets a `char* pszValue` union
+member (same size and offsets in every build).
+
+| Original (GlobalManager) | Function (rewrite file) | January 2011 behaviour | 2008 behaviour |
+|---|---|---|---|
+| 0x4c8590 | `CDBSessionMgr::Open` / `DB_SESSION_COUNT` (BSLib\DB\Database.h/.cpp) | 4 connections per pool | 30 |
+| 0x4c8720, 0x4c8980, 0x4c8a40, 0x4c8810, 0x4c8920 | `CDatabase::InitEnvironment`, `CreateSession`, `DestroySession`, `DestroyAllSessions` | The pool registry is `g_pSetDBSessionMgr`, created on the heap by `InitEnvironment` (before the environment, also when that fails) and deleted by `DestroyAllSessions`; without it `DestroyAllSessions` returns at once (the environment stays) and `DestroySession` dereferences NULL (FW11-021) | Static `g_setDBSessionMgr` |
+| 0x4c9a10 | `CDatabase::ExecDirectWithParams` | Parameter type 6 (`DBPARAM_VARCHAR`): `pszValue` bound as SQL_C_CHAR / SQL_VARCHAR, `cbValue` as column size, buffer length and indicator | Types 0..5; type 6 ends the call (DB-006) |
+| 0x4cce90 | `CDatabase::HandleSQLError` | First line "Query Error!!! Query Result : %d, Query : %s" | The query alone |
+| 0x4869e0 | `CDBQuery::Execute` (BSLib\DB\DBQuery.cpp) | Statement handle initialised to NULL and freed only when allocated (DB-002 fixed); every `HandleSQLError` call gets `m_szQuery` | Uninitialised handle; `NULL` ("[Unknown query]") |
+| 0x4caa70 | `CDBTable::DescribeColumns` | Assert file `D:\WORK2005\Source\JMX_Library\BSLib\DB\Database.cpp`, lines 1571 / 1587 | Without `Source\`, lines 1524 / 1540 |
+| 0x4b5310 | `CDateTime::Format` (BSLib\Util\TimeSpan.cpp) | New, no define: the local time as "%d-%02d-%02d %02d:%02d:%02d" (unreferenced in GlobalManager) | - |
+
+Not reproduced: the second, unreferenced copy of the date constructors in GlobalManager
+(0x4b5210..0x4b5520, `D:\WORK2005\Source\JMX_Library\BSLib\Util\TimeSpan.cpp`) reports range
+errors to the empty trace function instead of `BSAssertFail` and does not check the `_mktime32`
+result; only its `CTimeSpan(LONG, int, int, int)` (the same code) is called. The copy
+GlobalManager's code can reach (0x4aedd0..) is the 2008 code.
+
+Bugs of the January 2011 code reproduced on purpose: FW11-021.
+
+`test\Framework201101Test.cpp` (compiled with `GLOBAL_DEFS`, linked with `GLOBAL_LIBS`) checks
+the pool size, the registry life cycle, the log lines, the query object, `CDateTime::Format`
+and, with the 32-bit Access ODBC driver, a string parameter and the query text in the
+diagnostics. The assert path of `DescribeColumns` is not reached by a test (it opens a dialog).
