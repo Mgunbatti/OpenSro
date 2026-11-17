@@ -1,8 +1,8 @@
 #include "System.h"
 
-#include "BSLib/thread/SockSystemStub.h"
 #include "BSLib/thread/Task.h"
 #include "BSLib/thread/ThreadManager.h"
+#include "BSNet/SockSystem.h"
 
 CSystem g_System;
 
