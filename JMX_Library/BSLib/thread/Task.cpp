@@ -107,3 +107,56 @@ void CTaskManager::StopAllQueues()
     for (TaskMap::iterator it = m_mapTasks.begin(); it != m_mapTasks.end(); ++it)
         it->second->m_pQueue->Stop();     // BUG(THREAD-006): no NULL checks
 }
+
+// ---------------------------------------------------------------------------------------------
+// CTask: suspend / resume (CNetEngine::ProactorSuspend / ProactorResume)
+
+BOOL CTask::SuspendThreads()
+{
+    CSingleLockBS lock(&m_cs, TRUE);
+    if (m_pThreadManager && m_listThreadIDs.size() > 0)
+        return m_pThreadManager->SuspendThreads(this);
+    return FALSE;
+}
+
+BOOL CTask::ResumeThreads()
+{
+    CSingleLockBS lock(&m_cs, TRUE);
+    if (m_pThreadManager && m_listThreadIDs.size() > 0)
+        return m_pThreadManager->ResumeThreads(this);
+    return FALSE;
+}
+
+// ---------------------------------------------------------------------------------------------
+// CTaskManager: proactor map
+
+CTask* CTaskManager::FindTask(DWORD dwID)
+{
+    CSingleLockBS lock(&m_cs, TRUE);
+    TaskMap::iterator it = m_mapTasks.find(dwID);
+    if (it == m_mapTasks.end())
+        return NULL;
+    return it->second;
+}
+
+BOOL CTaskManager::AddTask(DWORD dwID, CTask* pTask)
+{
+    CSingleLockBS lock(&m_cs, TRUE);
+    if (m_mapTasks.find(dwID) != m_mapTasks.end())
+        return FALSE;
+    m_mapTasks[dwID] = pTask;
+    return TRUE;
+}
+
+BOOL CTaskManager::RemoveAndDeleteTask(DWORD dwID)
+{
+    CSingleLockBS lock(&m_cs, TRUE);
+    TaskMap::iterator it = m_mapTasks.find(dwID);
+    if (it == m_mapTasks.end())
+        return FALSE;
+    // The task (and its job) is deleted while the map lock is held.
+    if (it->second)
+        delete it->second;
+    m_mapTasks.erase(it);
+    return TRUE;
+}

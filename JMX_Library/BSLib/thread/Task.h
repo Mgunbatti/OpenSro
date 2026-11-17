@@ -25,8 +25,8 @@ public:
     // Stops the worker threads and forgets their IDs. Returns FALSE when there were none.
     BOOL StopThreads();
 
-    // Defined with the proactor code (CProactor_SuspendLocked 0x495d30, CProactor_ResumeLocked
-    // 0x495e10); the task setup itself is Proactor_Create (0x495a10).
+    // Suspend / resume the worker threads (CNetEngine::ProactorSuspend / ProactorResume).
+    // FALSE when there are none. The task setup itself is Proactor_Create (BSNet\Proactor.h).
     BOOL SuspendThreads();
     BOOL ResumeThreads();
 
@@ -56,6 +56,12 @@ public:
 
     // Calls Stop on every task's queue (engine shutdown).
     void StopAllQueues();
+
+    // The proactor map, each under m_cs. Find returns NULL for unknown IDs; Add fails when the
+    // ID is taken; RemoveAndDelete deletes the task and fails for unknown IDs.
+    CTask* FindTask(DWORD dwID);
+    BOOL AddTask(DWORD dwID, CTask* pTask);
+    BOOL RemoveAndDeleteTask(DWORD dwID);
 
 protected:
     void DeleteAllTasks();

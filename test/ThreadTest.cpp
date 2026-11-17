@@ -113,7 +113,7 @@ class CTestHandler : public CEventHandler
 public:
     CTestHandler(int* pn) : m_pn(pn) {}
     virtual ~CTestHandler() { ++*m_pn; }
-    virtual BOOL AttachToProactor(void*, DWORD) { return TRUE; }
+    virtual BOOL AttachToProactor(CServiceObjectSock*, HANDLE) { return TRUE; }
     virtual int OnIOCompletion(DWORD, LPOVERLAPPED) { return 0; }
     virtual void OnIdle() {}
     int* m_pn;
@@ -449,7 +449,7 @@ static void TestEventHandler()
 {
     int n = 0;
     CEventHandler* p = new CTestHandler(&n);
-    CHECK(p->AttachToProactor(NULL, 0) == TRUE);
+    CHECK(p->AttachToProactor(NULL, NULL) == TRUE);
     delete p;
     CHECK(n == 1);
 }

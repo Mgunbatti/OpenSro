@@ -2,19 +2,23 @@
 
 #include <windows.h>
 
+class CServiceObjectSock;
+
 // Interface of the objects a proactor dispatches to (CBaseSocket and the socket classes).
-// Only the destructor has code; the parameter types of slots 1 and 2 follow the socket
-// overrides and are refined with them.
+// Only the destructor has code here.
 class CEventHandler
 {
 public:
     CEventHandler() {}
     virtual ~CEventHandler() {}                                     // 0
 
-    // Associates the handle with the proactor and starts I/O.
-    virtual BOOL AttachToProactor(void* pProactor, DWORD dwParam) = 0;     // 1
-    // Called by the proactor worker loop with the completion result.
-    virtual int OnIOCompletion(DWORD dwBytes, LPOVERLAPPED pOverlapped) = 0; // 2
+    // Registers hHandle with the proactor (pProactor->AssociateHandle(hHandle, this)) and
+    // starts the first I/O.
+    virtual BOOL AttachToProactor(CServiceObjectSock* pProactor, HANDLE hHandle) = 0;  // 1
+    // Called by the proactor worker loops when an overlapped operation of this handler
+    // completed. A non-zero result means the operation is finished (the IOCP loops then return
+    // a pooled CMsg to the engine); bit 0x8000 asks the proactor to close the handler.
+    virtual int OnIOCompletion(DWORD dwBytes, LPOVERLAPPED pOverlapped) = 0;            // 2
     virtual void OnIdle() = 0;                                      // 3
 };
 
