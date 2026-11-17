@@ -55,4 +55,23 @@ BOOL CWin32Control_PopupMenu::TrackAtCursor(HWND hOwner)
     return TrackPopupMenu(m_hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hOwner, NULL);
 }
 
+BOOL CWin32Control_PopupMenu::AppendItemF(UINT uFlags, UINT_PTR uID, const char* pszFormat, ...)
+{
+    char szText[260];
+    va_list args;
+    va_start(args, pszFormat);
+    int nLen = _vsnprintf_s(szText, sizeof(szText), sizeof(szText) - 1, pszFormat, args);
+    va_end(args);
+    if (nLen < 0 || nLen > (int)sizeof(szText) - 1)
+    {
+        szText[sizeof(szText) - 1] = 0;
+        BSAssertFail();
+    }
+    else if (nLen == sizeof(szText) - 1)
+    {
+        szText[sizeof(szText) - 1] = 0;
+    }
+    return AppendMenuA(m_hMenu, uFlags, uID, szText);
+}
+
 } // namespace ServerFramework

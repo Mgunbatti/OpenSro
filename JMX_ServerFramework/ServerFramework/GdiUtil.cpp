@@ -392,4 +392,52 @@ LRESULT ComboBox_GetCurSel(HWND hCombo)
     return SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
 }
 
+LRESULT ComboBox_AddStringFmtWithData(HWND hCombo, LPARAM lParam, const char* pszFormat, ...)
+{
+    char szText[260];
+    va_list args;
+    va_start(args, pszFormat);
+    int nLen = _vsnprintf_s(szText, sizeof(szText), sizeof(szText) - 1, pszFormat, args);
+    va_end(args);
+    if (nLen < 0 || nLen > (int)sizeof(szText) - 1)
+    {
+        szText[sizeof(szText) - 1] = 0;
+        BSAssertFail();
+    }
+    else if (nLen == sizeof(szText) - 1)
+    {
+        szText[sizeof(szText) - 1] = 0;
+    }
+    LRESULT nItem = SendMessageA(hCombo, CB_ADDSTRING, 0, (LPARAM)szText);
+    return SendMessageA(hCombo, CB_SETITEMDATA, nItem, lParam);
+}
+
+COLORREF Color_BlendPercent(COLORREF clr1, COLORREF clr2, BYTE nPercent)
+{
+    int nRest = 100 - nPercent;
+    BYTE byRed = (BYTE)(nRest * GetRValue(clr1) / 100 + nPercent * GetRValue(clr2) / 100);
+    BYTE byGreen = (BYTE)(nRest * GetGValue(clr1) / 100 + nPercent * GetGValue(clr2) / 100);
+    BYTE byBlue = (BYTE)(nRest * GetBValue(clr1) / 100 + nPercent * GetBValue(clr2) / 100);
+    return RGB(byRed, byGreen, byBlue);
+}
+
+int MessageBoxF(HWND hWnd, const char* pszCaption, UINT uType, const char* pszFormat, ...)
+{
+    char szText[1024];
+    va_list args;
+    va_start(args, pszFormat);
+    int nLen = _vsnprintf_s(szText, sizeof(szText), sizeof(szText) - 1, pszFormat, args);
+    va_end(args);
+    if (nLen < 0 || nLen > (int)sizeof(szText) - 1)
+    {
+        szText[sizeof(szText) - 1] = 0;
+        BSAssertFail();
+    }
+    else if (nLen == sizeof(szText) - 1)
+    {
+        szText[sizeof(szText) - 1] = 0;
+    }
+    return MessageBoxA(hWnd, szText, pszCaption, uType);
+}
+
 } // namespace ServerFramework

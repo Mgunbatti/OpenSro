@@ -110,5 +110,15 @@ std::string ListView_GetItemTextString(HWND hList, int nItem, int nSubItem);
 void ListView_CopyAllToClipboard(HWND hList, int nColumns);
 LRESULT ListView_SetItemCheckState(HWND hList, int nItem, BOOL bChecked);
 LRESULT ComboBox_GetCurSel(HWND hCombo);            // SendMessageA_wrap_5 (0x466d40)
+// ComboBox_AddStringFmtWithData (0x466c70, not referenced): adds the formatted text (asserts
+// beyond 259 characters) with lParam as item data.
+LRESULT ComboBox_AddStringFmtWithData(HWND hCombo, LPARAM lParam, const char* pszFormat, ...);
+
+// Color_BlendPercent (0x464980, not referenced): nPercent of clr2 and the rest of clr1, per
+// channel.
+COLORREF Color_BlendPercent(COLORREF clr1, COLORREF clr2, BYTE nPercent);
+// MessageBoxF (0x4677a0, not referenced): message box with the formatted text (1 KB, asserts on
+// truncation).
+int MessageBoxF(HWND hWnd, const char* pszCaption, UINT uType, const char* pszFormat, ...);
 
 } // namespace ServerFramework

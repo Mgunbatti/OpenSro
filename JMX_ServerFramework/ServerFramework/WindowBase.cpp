@@ -307,4 +307,109 @@ BOOL Win32Ctrl_SetTextInt(CWindowBase* pCtrl, int nValue)
     return SetWindowTextA(pCtrl->m_hWnd, szText);
 }
 
+// The window rectangle shrunk to the client area (in screen coordinates of the window).
+static void GetClientAreaRect(CWindowBase* pWindow, RECT* pRect)
+{
+    RECT rcClient;
+    pWindow->GetWindowRect(pRect);
+    pWindow->GetClientRect(&rcClient);
+    AdjustWindowRect(&rcClient, GetWindowLongA(pWindow->m_hWnd, GWL_STYLE), FALSE);
+    pRect->left -= rcClient.left;
+    pRect->bottom = pRect->top - rcClient.top + rcClient.bottom - rcClient.top;
+    pRect->top -= rcClient.top;
+    pRect->right = pRect->left + rcClient.right - rcClient.left;
+}
+
+void CWindowBase::AddAnchor(HWND hChild, BYTE byFlags)
+{
+    RECT rc;
+    GetClientAreaRect(this, &rc);
+    RECT rcChild;
+    ::GetWindowRect(hChild, &rcChild);
+
+    WINDOW_ANCHOR anchor;
+    anchor.hWnd = hChild;
+    anchor.dwFlags = byFlags;
+    anchor.fLeft = (float)(rcChild.left - rc.left);
+    anchor.fRight = (float)(rc.right - rcChild.right);
+    anchor.fTop = (float)(rcChild.top - rc.top);
+    anchor.fBottom = (float)(rc.bottom - rcChild.bottom);
+    if (byFlags & 0x10)
+        anchor.fLeft = (float)(anchor.fLeft / (double)(rc.right - rc.left));
+    if (byFlags & 0x20)
+        anchor.fRight = (float)(anchor.fRight / (double)(rc.right - rc.left));
+    if (byFlags & 0x40)
+        anchor.fTop = (float)(anchor.fTop / (double)(rc.bottom - rc.top));
+    if (byFlags & 0x80)
+        anchor.fBottom = (float)(anchor.fBottom / (double)(rc.bottom - rc.top));
+    m_listAnchor.push_back(anchor);
+}
+
+void CWindowBase::LayoutAnchors()
+{
+    RECT rc;
+    GetClientAreaRect(this, &rc);
+    double dWidth;
+    double dHeight;
+    for (std::list<WINDOW_ANCHOR>::iterator it = m_listAnchor.begin(); it != m_listAnchor.end();
+         ++it)
+    {
+        const WINDOW_ANCHOR& a = *it;
+        RECT rcChild;
+        ::GetWindowRect(a.hWnd, &rcChild);
+        BYTE byFlags = (BYTE)a.dwFlags;
+        dWidth = (double)(rc.right - rc.left);
+        dHeight = (double)(rc.bottom - rc.top);
+
+        int x;
+        if (byFlags & 1)
+            x = (byFlags & 0x10) ? (int)(dWidth * a.fLeft) : (int)a.fLeft;
+        else
+            x = rcChild.left;
+        int nRight;
+        if (byFlags & 2)
+        {
+            if (byFlags & 0x20)
+                nRight = rc.right - (int)(dWidth * a.fRight) - rc.left;
+            else
+                nRight = (int)(dWidth - a.fRight);
+            if (!(byFlags & 1))
+                x = rcChild.left + nRight - rcChild.right;
+        }
+        else
+        {
+            nRight = x + rcChild.right - rcChild.left;
+        }
+
+        int y;
+        if (byFlags & 4)
+            y = (byFlags & 0x40) ? (int)(dHeight * a.fTop) : (int)a.fTop;
+        else
+            y = rcChild.top;
+        int nBottom;
+        if (byFlags & 8)
+        {
+            if (byFlags & 0x80)
+                nBottom = rc.bottom - (int)(dHeight * a.fBottom) - rc.top;
+            else
+                nBottom = (int)(dHeight - a.fBottom);
+            if (!(byFlags & 4))
+                y = rcChild.top + nBottom - rcChild.bottom;
+        }
+        else
+        {
+            nBottom = y + rcChild.bottom - rcChild.top;
+        }
+        MoveWindow(a.hWnd, x, y, nRight - x, nBottom - y, TRUE);
+    }
+}
+
+std::string* CWindowBase::GetWindowTextString(std::string* pText)
+{
+    char szText[260];
+    GetWindowTextA(m_hWnd, szText, 260);
+    pText->assign(szText, strlen(szText));
+    return pText;
+}
+
 } // namespace ServerFramework

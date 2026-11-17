@@ -4,6 +4,7 @@
 #include <hash_map>
 #include <list>
 #include <map>
+#include <string>
 
 // Window classes of the server monitor GUI. Every window object keeps two handler tables:
 // window messages and WM_COMMAND IDs, each mapped to a member function of the object.
@@ -58,6 +59,15 @@ public:
     // Window rectangle of the parent, or the screen size when there is none.
     RECT* GetParentRectOrScreen(RECT* pRect);
     BOOL CenterOnParent();
+
+    // WindowLayout_AddAnchor (0x45e3d0, not referenced): records the child's distances to the
+    // client area (flags 1/2/4/8 keep left/right/top/bottom, 0x10..0x80 make them proportional).
+    void AddAnchor(HWND hChild, BYTE byFlags);
+    // Window_LayoutAnchoredChildren (0x45e540, not referenced): moves the anchored children.
+    void LayoutAnchors();
+    // Ctrl_GetWindowTextString (0x465840, not referenced): the window text (259 characters at
+    // most).
+    std::string* GetWindowTextString(std::string* pText);
 
     // Handler registration. Asserts when the ID already has a handler. Command IDs are 16 bit;
     // the dispatcher looks up the whole wParam.

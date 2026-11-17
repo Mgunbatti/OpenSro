@@ -15,6 +15,9 @@ public:
 
     // Appends a submenu with the formatted text (asserts beyond 259 characters).
     CWin32Control_PopupMenu* AppendSubMenuF(const char* pszFormat, ...);
+    // Menu_AppendItemF (0x465b90, not referenced): AppendMenuA with the formatted text (asserts
+    // beyond 259 characters).
+    BOOL AppendItemF(UINT uFlags, UINT_PTR uID, const char* pszFormat, ...);
     // PopupMenu_TrackAtCursor (0x465c50)
     BOOL TrackAtCursor(HWND hOwner);
 
