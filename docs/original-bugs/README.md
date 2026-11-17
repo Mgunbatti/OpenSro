@@ -20,6 +20,18 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [BSNET-002](BSNET-002.md) | CMsg | crash | Reading past the end of a received packet crashes the process on purpose |
 | [BSNET-003](BSNET-003.md) | CMsg | wrong | String reads in pop-back mode return without reading and leave the output unchanged |
 | [BSNET-004](BSNET-004.md) | CMsg | minor | Constructor copies an uninitialised pointer into the WSABUF (overwritten right after) |
+| [DB-001](DB-001.md) | Database | wrong | Pool connections are freed without `SQLDisconnect`; connections leak |
+| [DB-002](DB-002.md) | Database | crash | `Execute` frees an uninitialised statement handle when no connection is free |
+| [DB-003](DB-003.md) | Database | crash | SQL diagnostics and query text are used as printf formats |
+| [DB-004](DB-004.md) | Database | minor | SQLSTATE and message compared uninitialised when there is no diagnostic record |
+| [DB-005](DB-005.md) | Database | wrong | Delete by key executes only the WHERE clause |
+| [DB-006](DB-006.md) | Database | wrong | An unknown parameter type returns success without executing |
+| [DB-007](DB-007.md) | Database | crash | The `SQLMoreResults` loop never ends on an error |
+| [DB-008](DB-008.md) | Database | minor | `DescribeColumns` leaks the statement for a table without columns |
+| [DB-009](DB-009.md) | Database | minor | GetData fetch leaks the record on a failed `SQLGetData` |
+| [DB-010](DB-010.md) | Database | crash | Columns without a format text crash the describe step (`strlen(NULL)`) |
+| [DB-011](DB-011.md) | Database | minor | Trailing blanks trimmed past the end of a truncated value |
+| [DB-012](DB-012.md) | Database | crash | Bound fetch loops never end on a fetch error |
 | [FILE-001](FILE-001.md) | Files | wrong | `CFileMem::Open` allocates a new buffer on every open; the old one leaks |
 | [FILE-002](FILE-002.md) | Files | wrong | `CFileMM` opens for reading with `OPEN_ALWAYS`: missing files are created empty; error paths leak handles |
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
