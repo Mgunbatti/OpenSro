@@ -30,6 +30,13 @@ public:
     BOOL SuspendThreads();
     BOOL ResumeThreads();
 
+    // Locked_GetField_0x1C (0x40fc30): the job, read under m_cs.
+    CServiceObject* GetJob()
+    {
+        CSingleLockBS lock(&m_cs, TRUE);
+        return m_desc.pJob;
+    }
+
 public:
     IQue<CMsg>*         m_pQueue;           // +4
     std::list<DWORD>    m_listThreadIDs;    // +8

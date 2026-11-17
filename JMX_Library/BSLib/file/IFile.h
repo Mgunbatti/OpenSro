@@ -75,11 +75,13 @@ public:
     int GetMode() const { return m_nMode; }
     const std::string& GetPath() const { return m_strPath; }
 
+    // Registers the context with position 0; FILE_ERR_ALREADY_OPENED_BY_USER if present. Also
+    // called by the session file transfer (FileTransfer_Finish, context 0).
+    int AddUser(DWORD dwContext);
+
 protected:
     // Frees the positions and returns the object to the closed state.
     void Reset();
-    // Registers the context with position 0; FILE_ERR_ALREADY_OPENED_BY_USER if present.
-    int AddUser(DWORD dwContext);
     DWORD* FindPosition(DWORD dwContext);
     int RemoveUser(DWORD dwContext);
 

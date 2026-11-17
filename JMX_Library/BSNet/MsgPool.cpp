@@ -1,6 +1,40 @@
 #include "MsgPool.h"
 
+#include <map>
+
 #include "BSNet/NetEngineLog.h"
+
+void CMsgPool::DumpEntries()
+{
+    typedef std::map<DWORD, DWORD> CountMap;
+    CountMap mapCount;
+    PFN_DUMP pfnDump = (PFN_DUMP)(DWORD_PTR)m_dw4;
+    if (!pfnDump)
+        return;
+
+    // BUG(NET-010): walks the in-use set without the pool lock while other threads allocate
+    // and free messages.
+    for (std::set<CMsg*>::iterator it = m_setInUse.begin(); it != m_setInUse.end(); ++it)
+    {
+        CMsg* pMsg = *it;
+        DWORD dwOpcode = *pMsg->m_pOpcode;
+        if (dwOpcode == 0x2209)
+            dwOpcode = *(WORD*)pMsg->PtrAt(10);
+        CountMap::iterator itCount = mapCount.find(dwOpcode);
+        if (itCount == mapCount.end())
+            mapCount.insert(CountMap::value_type(dwOpcode, 1));
+        else
+            ++itCount->second;
+    }
+
+    DWORD dwTotal = 0;
+    for (CountMap::iterator it = mapCount.begin(); it != mapCount.end(); ++it)
+    {
+        pfnDump(it->first, it->second);
+        dwTotal += it->second;
+    }
+    pfnDump(0xFFFF, dwTotal);
+}
 
 CMsg* CMsgPool::AllocFromFreeQueue()
 {
