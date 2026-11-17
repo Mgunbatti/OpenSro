@@ -14,13 +14,14 @@ LIBDIR = $(OUT)\lib
 BIN = $(OUT)\bin
 
 BSLIB_OBJS = \
-	$(OBJ)\BSLib\BSDebug.obj
+	$(OBJ)\BSLib\BSDebug.obj \
+	$(OBJ)\BSLib\SynchObject.obj
 
 BSNET_OBJS = \
 	$(OBJ)\BSNet\Msg.obj
 
 LIBS = $(LIBDIR)\BSLib.lib $(LIBDIR)\BSNet.lib
-TESTS = $(BIN)\MsgTest.exe
+TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -28,6 +29,9 @@ $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\test $(LIBDIR) $(BIN):
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\thread}.cpp{$(OBJ)\BSLib}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
 
 {JMX_Library\BSNet}.cpp{$(OBJ)\BSNet}.obj:
@@ -45,8 +49,12 @@ $(LIBDIR)\BSNet.lib: $(OBJ)\BSNet $(LIBDIR) $(BSNET_OBJS)
 $(BIN)\MsgTest.exe: $(OBJ)\test $(BIN) $(OBJ)\test\MsgTest.obj $(LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\MsgTest.obj $(LIBS) ws2_32.lib
 
+$(BIN)\SynchTest.exe: $(OBJ)\test $(BIN) $(OBJ)\test\SynchTest.obj $(LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\SynchTest.obj $(LIBS)
+
 test: all
 	$(BIN)\MsgTest.exe
+	$(BIN)\SynchTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
