@@ -21,6 +21,14 @@ static int CapturingLog(DWORD dwFlags, const char* pszFormat, ...)
     return (int)dwFlags;
 }
 
+// A receiver that faults: NetEngineLog catches it.
+static int FaultingLog(DWORD, const char*, ...)
+{
+    ++g_nLogs;
+    RaiseException(0xE0001234, 0, 0, NULL);
+    return 0;
+}
+
 struct CItem
 {
     int nInit;
@@ -32,6 +40,17 @@ int main()
     // NetEngineLog writes to the engine instance's callback.
     CNetEngine engine;
     engine.m_Config.pfnLog = CapturingLog;
+
+    // faults while formatting or in the receiver are caught (__try in the original)
+    g_nLogs = 0;
+    NetEngineLog(1, "%s", (const char*)1);
+    CHECK(g_nLogs == 0);
+    engine.m_Config.pfnLog = FaultingLog;
+    NetEngineLog(1, "fault %d", 1);
+    CHECK(g_nLogs == 1);
+    engine.m_Config.pfnLog = CapturingLog;
+    NetEngineLog(2, "%s-%d", "text", 3);
+    CHECK(g_nLogs == 2 && strcmp(g_szLastLog, "text-3") == 0);
 
     // generic allocator: grows by one block, runs the init callback, counts usage
     {
