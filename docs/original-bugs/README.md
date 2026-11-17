@@ -25,6 +25,19 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
 | [FILE-004](FILE-004.md) | Files | minor | Lower-casing reads past a string that ends with a DBCS lead byte |
 | [FILE-005](FILE-005.md) | Files | wrong | Cache purge subtracts files that were never counted, so cache usage is under-reported |
+| [NET-001](NET-001.md) | NetEngine | minor | `Initialize` starts Winsock with the previous parameter block's version |
+| [NET-002](NET-002.md) | NetEngine | minor | `GetStatistics` reports the accepted-socket pool for the connect pool too |
+| [NET-003](NET-003.md) | NetEngine | wrong | `Connect` and `AddKeepAliveTarget` resolve the bind address but never use it |
+| [NET-004](NET-004.md) | NetEngine | minor | MAC address lookup allocates 640 times the needed buffer |
+| [NET-005](NET-005.md) | NetEngine | crash | Logging crashes when there is no engine (before construction or after `Shutdown`) |
+| [NET-006](NET-006.md) | NetEngine | minor | A session event that cannot be queued is never released |
+| [NET-007](NET-007.md) | NetEngine | wrong | A session whose socket cannot be attached stays registered after its connect event |
+| [NET-008](NET-008.md) | NetEngine | wrong | A file transfer offset only moves the byte counter, not the file position |
+| [NET-009](NET-009.md) | NetEngine | minor | `CreateNewSession` leaks the session when no ID is left |
+| [NET-010](NET-010.md) | NetEngine | crash | `DumpMsgPool` walks the in-use set without the pool lock |
+| [NET-011](NET-011.md) | NetEngine | wrong | Accepted sessions are announced before the peer address is stored |
+| [NET-012](NET-012.md) | NetEngine | minor | Keep-alive reconnects block with the lock held, stalling session closes |
+| [NET-013](NET-013.md) | NetEngine | minor | A second disconnect overwrites the close reason and posts another `TransmitFile` |
 | [PROACT-001](PROACT-001.md) | Proactor | crash | A failed completion of a pooled message is released twice |
 | [PROACT-002](PROACT-002.md) | Proactor | crash | Event proactor leaves NULL handles in its wait array; the worker exits |
 | [PROACT-003](PROACT-003.md) | Proactor | minor | Failed stop packets are never detected |
