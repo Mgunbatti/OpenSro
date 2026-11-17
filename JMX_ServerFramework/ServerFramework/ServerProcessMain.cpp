@@ -186,6 +186,44 @@ void CServerProcessMain::OnMsg_2001(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
     pQuery->Write(&b, 1);
     b = 0;
     pQuery->Write(&b, 1);
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x4029c0: every other body whose route is this cord, then the cords of those
+    // bodies.
+    // BUG(FM-002): without a cord (a known module that has no cord to this server) the bodies
+    // without a route match, so the query lists every unreachable body.
+    for (ServerBodyList::iterator it = g_pServerBodyList->begin();
+         it != g_pServerBodyList->end(); ++it)
+    {
+        SERVER_BODY* pBody = *it;
+        if (pBody == g_pSelfBody || ServerBody_Find(pBody->wID) != pCord)
+            continue;
+        b = 1;
+        pQuery->Write(&b, 1);
+        pQuery->Write(pBody, 2);
+        if (!pBody->wID)
+            BSAssertFail();
+    }
+    b = 2;
+    pQuery->Write(&b, 1);
+    b = 0;
+    pQuery->Write(&b, 1);
+    for (ServerBodyList::iterator it = g_pServerBodyList->begin();
+         it != g_pServerBodyList->end(); ++it)
+    {
+        SERVER_BODY* pBody = *it;
+        if (pBody == g_pSelfBody || ServerBody_Find(pBody->wID) != pCord)
+            continue;
+        ServerCordList lstCords;
+        ServerCord_CollectForBody(pBody->wID, &lstCords);
+        for (ServerCordList::iterator itCord = lstCords.begin(); itCord != lstCords.end();
+             ++itCord)
+        {
+            b = 1;
+            pQuery->Write(&b, 1);
+            pQuery->Write(*itCord, 4);
+        }
+    }
+#else
     DWORD dwPeer = 0;
     if (pCord)
     {
@@ -213,6 +251,7 @@ void CServerProcessMain::OnMsg_2001(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
             pQuery->Write(pPeerCord, 4);
         }
     }
+#endif
     b = 2;
     pQuery->Write(&b, 1);
     pQuery->SendTo(dwSessionID, FALSE);

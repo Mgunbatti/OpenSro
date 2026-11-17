@@ -5,12 +5,15 @@
 #include "ServerFramework/Trigger.h"
 
 // 1: CServerProcessMain has the 0x631D handler (virtual slot 40) and registers it, as in the 2008
-// framework of GatewayServer, DownloadServer and MachineManager. 0: the older framework of
-// FarmManager without that slot; the hooks from OnCordEstablished on are one slot lower. A
-// compile-time setting of the module like SERVER_MODULE_NAME: ServerProcessMain.cpp and every
-// file that derives from CServerProcessMain must be compiled with the same value.
+// framework of GatewayServer, DownloadServer and MachineManager. 0: the 2007 framework of
+// FarmManager (JMX_FRAMEWORK_2007) without that slot; the hooks from OnCordEstablished on are one
+// slot lower. Every file that sees CServerProcessMain must be compiled with the same value.
 #ifndef SERVER_MAIN_PROCESS_631D
+#ifdef JMX_FRAMEWORK_2007
+#define SERVER_MAIN_PROCESS_631D 0
+#else
 #define SERVER_MAIN_PROCESS_631D 1
+#endif
 #endif
 
 namespace ServerFramework

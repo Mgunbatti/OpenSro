@@ -357,6 +357,19 @@ SERVER_CORD* ServerCord_OnEstablished(DWORD dwSessionID, const char* pszModuleNa
         if (!bAddressMatch)
             continue;
 
+#ifdef JMX_FRAMEWORK_2007
+        // FarmManager 0x4134f0: the new session goes and the cord keeps the old one.
+        // BUG(FM-001): the cord is returned anyway, so the caller treats the closed session's
+        // cord as established.
+        if (pCord->dwSessionID && pCord->dwSessionID != dwSessionID)
+        {
+            LogPrintf(0x1000000,
+                      "server cord already established : created session overlapped : %d, %s(%d)",
+                      dwSessionID, strIP.c_str(), (int)wPort);
+            g_pBSNet->DisconnectSession(dwSessionID, 1);
+            return pCord;
+        }
+#else
         if (pCord->dwSessionID && pCord->dwSessionID != dwSessionID)
         {
             LogPrintf(0x1000000, "server cord already established : discarding session: %d",
@@ -368,6 +381,7 @@ SERVER_CORD* ServerCord_OnEstablished(DWORD dwSessionID, const char* pszModuleNa
                 g_mapSessionCord.erase(itSession);
             pCord->dwSessionID = 0;
         }
+#endif
         if (pCord->dwSessionID != dwSessionID)
         {
             pCord->dwSessionID = dwSessionID;
@@ -390,6 +404,26 @@ SERVER_CORD* ServerCord_OnClosed(DWORD dwSessionID)
     SERVER_CORD* pCord = it->second;
     pCord->dwSessionID = 0;
     ServerBody_UpdateStatusAndNotify(pCord->dwID, 0, 0);
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x4138b0: every body routed through the cord is down.
+    for (ServerBodyList::iterator itBody = g_pServerBodyList->begin();
+         itBody != g_pServerBodyList->end(); ++itBody)
+    {
+        SERVER_BODY* pBody = *itBody;
+        if (pBody == g_pSelfBody || ServerBody_Find(pBody->wID) != pCord)
+            continue;
+        ServerBody_SetStateAndBroadcast2005(0, pBody->wID, 0);
+        ServerCordList lstCords;
+        ServerCord_CollectForBody(pBody->wID, &lstCords);
+        for (ServerCordList::iterator itCord = lstCords.begin(); itCord != lstCords.end();
+             ++itCord)
+        {
+            ServerBody_UpdateStatusAndNotify((*itCord)->dwID, 0, 0);
+        }
+    }
+    g_mapSessionCord.erase(it);
+    LogPrintf(0, "server cord closed : %d", dwSessionID);
+#else
     if (g_pSelfBody)
     {
         WORD wPeerID = pCord->wFromID;
@@ -408,6 +442,7 @@ SERVER_CORD* ServerCord_OnClosed(DWORD dwSessionID)
         g_mapSessionCord.erase(it);
         LogPrintf(0, "server cord closed : %d", dwSessionID);
     }
+#endif
     return pCord;
 }
 
