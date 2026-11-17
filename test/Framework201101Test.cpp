@@ -6,6 +6,7 @@
 
 #include "BSLib/DB/Database.h"
 #include "BSLib/DB/DBQuery.h"
+#include "BSLib/Util/TimeSpan.h"
 #include "BSNet/MsgPool.h"
 #include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
@@ -193,6 +194,18 @@ static void TestDatabaseWithoutServer()
 }
 
 // ---------------------------------------------------------------------------------------------
+// BSLib Util: CDateTime::Format (new in the January 2011 library, no define)
+
+static void TestDateTimeFormat()
+{
+    CDateTime dt(2011, 1, 24, 5, 6, 7);
+    CHECK(dt.Format() == "2011-01-24 05:06:07");
+    CDateTime dt2(1999, 12, 31, 23, 59, 58);
+    CHECK(dt2.Format() == "1999-12-31 23:59:58");
+    CHECK(dt2.GetYear() == 1999 && dt2.GetSecond() == 58);
+}
+
+// ---------------------------------------------------------------------------------------------
 // optional checks against a temporary Access database
 
 #pragma pack(push, 1)
@@ -305,6 +318,7 @@ int main()
     g_pBSNet = &g_Net;
     LogCapture_Start();
 
+    TestDateTimeFormat();
     TestDatabaseWithoutServer();
     TestWithAccessDriver();
 
