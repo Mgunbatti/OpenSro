@@ -12,7 +12,22 @@ installed on Windows.
 | Path | Content |
 |---|---|
 | `toolchain/` | Fetch script, environment script and smoke test for the portable compiler |
+| `JMX_Library/` | Shared libraries, laid out like the original `D:\WORK2005\JMX_Library` tree (BSLib, BSNet) |
+| `test/` | Unit tests, built and run by `nmake test` |
+| `docs/address-map.tsv` | Original function address and IDA name for every ported function |
 | `toolchain/test/` | Smoke test: `hello.cpp` must report `_MSC_FULL_VER=140050727` |
+
+## Build
+
+```bat
+toolchain\env.cmd
+nmake test
+```
+
+The original source paths survive in assert strings (`D:\WORK2005\JMX_Library\BSLib\...`,
+`D:\WORK2005\JMX_ServerFramework\ServerFramework\...`, `D:\WORK2005\JMX_CommonServers\<Server>\...`);
+the repo follows that layout. Where a file name is not recorded (the network library is only known
+from the `IBSNet` interface), the name is a guess.
 
 ## Toolchain
 
