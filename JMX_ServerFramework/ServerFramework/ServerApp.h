@@ -103,7 +103,16 @@ public:
     virtual bool Shutdown();                                                // 14 0x43e9e0
     // Diagnostic dump menu of the server window (SERVER_DUMP_CUSTOM). Nothing here.
     virtual void CustomDump();                                              // 15 0x403660
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x401010: command 0x9C48 of the server window (CServerFrameWindow slot 17).
+    // Nothing here.
+    virtual void OnFrameCommand();                                          // 16
+    // AgentServer 0x401020: the "Suspected User" items of the log list menu, dwCommand 0
+    // register, 1 unregister, 2 show (dwReserved is 0). Nothing here.
+    virtual void OnSuspectedUserCommand(DWORD dwReserved, DWORD dwCommand); // 17
+#endif
     // SERVER_CONTROL_* messages; releases the message (returns ReleaseMsg's result).
+    // (slots 18 / 19 with JMX_FRAMEWORK_2011)
     virtual LONG OnControlMsg(CMsg* pMsg);                                  // 16 0x43eb20
     // State of this server's body (broadcast with 0x2005), kept in m_nPendingState until the
     // architecture is known.
@@ -114,15 +123,22 @@ public:
     std::string         m_strFileTransDir;  // +8   FileXfer_InitEngineAndName
     DWORD               m_dw24;             // +24
     BSNET_INIT_PARAM    m_EngineParam;      // +28
-    int                 m_nPendingState;    // +BC  1
-    CNetEngine          m_NetEngine;        // +C0
+    int                 m_nPendingState;    // +BC  1 (+13C with JMX_FRAMEWORK_2011)
+    CNetEngine          m_NetEngine;        // +C0    (+140 with JMX_FRAMEWORK_2011)
 };
 
 C_ASSERT(FIELD_OFFSET(CServerApp, m_strFileTransDir) == 8);
 C_ASSERT(FIELD_OFFSET(CServerApp, m_EngineParam) == 0x28);
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x430640 (instance 0x52ABE0): the engine parameters are 0x114 bytes.
+C_ASSERT(FIELD_OFFSET(CServerApp, m_nPendingState) == 0x13C);
+C_ASSERT(FIELD_OFFSET(CServerApp, m_NetEngine) == 0x140);
+C_ASSERT(sizeof(CServerApp) == 0x620);
+#else
 C_ASSERT(FIELD_OFFSET(CServerApp, m_nPendingState) == 0xBC);
 C_ASSERT(FIELD_OFFSET(CServerApp, m_NetEngine) == 0xC0);
 C_ASSERT(sizeof(CServerApp) == 0x494);
+#endif
 
 } // namespace ServerFramework
 
@@ -150,7 +166,12 @@ bool Net_GetPublicIPv4Address(char* pszIP, DWORD* pdwIP);
 
 // SingleInstance_CreateSemaphore (0x452f20): semaphore named after the module; NULL when it
 // exists already.
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x44f1e0: the name is passed ("Global\" + module name).
+HANDLE SingleInstance_CreateSemaphore(const char* pszName);
+#else
 HANDLE SingleInstance_CreateSemaphore();
+#endif
 // CloseHandle_wrap (0x452f60)
 void SingleInstance_Close(HANDLE* phSemaphore);
 // NamedSemaphore_Exists (MachineManager 0x42d400, not linked into GatewayServer): TRUE when a

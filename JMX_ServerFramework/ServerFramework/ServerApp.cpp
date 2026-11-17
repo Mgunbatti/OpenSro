@@ -94,9 +94,16 @@ bool Net_GetPublicIPv4Address(char* pszIP, DWORD* pdwIP)
     return *pdwIP != 0;
 }
 
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x44f1e0
+HANDLE SingleInstance_CreateSemaphore(const char* pszName)
+{
+    HANDLE hSemaphore = CreateSemaphoreA(NULL, 0, 1, pszName);
+#else
 HANDLE SingleInstance_CreateSemaphore()
 {
     HANDLE hSemaphore = CreateSemaphoreA(NULL, 0, 1, SERVER_MODULE_NAME);
+#endif
     if (hSemaphore && GetLastError() == ERROR_ALREADY_EXISTS)
     {
         CloseHandle(hSemaphore);
@@ -311,6 +318,11 @@ bool CServerApp::InitNetEngine()
     m_EngineParam.dw8C = g_ServerGlobals.dwDebugOptionDebuggerPresent;
     m_EngineParam.dw90 = g_ServerGlobals.dwDebugOptionStandAlone;
     m_EngineParam.pfnLog = LogPrintf;
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x430880: the engine names its message pool after the module.
+    strcpy_s(m_EngineParam.szMsgPoolName, sizeof(m_EngineParam.szMsgPoolName),
+             g_ServerGlobals.szServiceName);
+#endif
     OnEngineConfig();
     m_EngineParam.pfnDumpMsgPool = ServerApp_LogMsgPoolEntry;
     if (!g_pBSNet->Initialize(m_EngineParam))
@@ -329,6 +341,30 @@ bool CServerApp::RegisterServerTasks()
         BSAssertFail();
     THREAD_AFFINITY affinity;
     MakeAffinity(&affinity, 1);
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x430a00: every failed step is shown in a message box.
+    if (!g_pBSNet->RegisterProactor(SERVER_TASK_OVERLAP, NULL,
+                                    &CServerProcessOverlap::classCServerProcessOverlap, NULL))
+    {
+        BSMessageBoxPrintf("It has been failed to register task");
+        return false;
+    }
+    if (!g_pBSNet->StartProactorWorkers(SERVER_TASK_OVERLAP, 1, 0, 0, 0, &affinity))
+    {
+        BSMessageBoxPrintf("It has been failed to activate task");
+        return false;
+    }
+    if (!RegisterMainProcessTask())
+    {
+        BSMessageBoxPrintf("It has been failed to initialize server task main");
+        return false;
+    }
+    if (!FileXfer_InitEngineAndName(m_strFileTransDir.c_str()))
+    {
+        BSMessageBoxPrintf("It has been failed to initialize server ftp manager");
+        return false;
+    }
+#else
     if (!g_pBSNet->RegisterProactor(SERVER_TASK_OVERLAP, NULL,
                                     &CServerProcessOverlap::classCServerProcessOverlap, NULL)
         || !g_pBSNet->StartProactorWorkers(SERVER_TASK_OVERLAP, 1, 0, 0, 0, &affinity)
@@ -338,6 +374,7 @@ bool CServerApp::RegisterServerTasks()
     }
     if (!FileXfer_InitEngineAndName(m_strFileTransDir.c_str()))
         return false;
+#endif
     LogPrintf(0, "successfully server task registered");
     return true;
 }
@@ -346,9 +383,25 @@ bool CServerApp::RegisterMainProcessTask()
 {
     THREAD_AFFINITY affinity;
     MakeAffinity(&affinity, 0);
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x430b20
+    if (!g_pBSNet->RegisterProactor(SERVER_TASK_MAIN, NULL,
+                                    &CServerProcessMain::classCServerProcessMain, NULL))
+    {
+        BSMessageBoxPrintf("It has been failed to register task CServerProcessMain");
+        return false;
+    }
+    if (!g_pBSNet->StartProactorWorkers(SERVER_TASK_MAIN, 1, 0, 0, 0, &affinity))
+    {
+        BSMessageBoxPrintf("It has been failed to activate task CServerProcessMain");
+        return false;
+    }
+    return true;
+#else
     return g_pBSNet->RegisterProactor(SERVER_TASK_MAIN, NULL,
                                       &CServerProcessMain::classCServerProcessMain, NULL)
         && g_pBSNet->StartProactorWorkers(SERVER_TASK_MAIN, 1, 0, 0, 0, &affinity);
+#endif
 }
 
 bool CServerApp::RequestServerCertification()
@@ -430,6 +483,16 @@ void CServerApp::CustomDump()
 {
 }
 
+#ifdef JMX_FRAMEWORK_2011
+void CServerApp::OnFrameCommand()
+{
+}
+
+void CServerApp::OnSuspectedUserCommand(DWORD, DWORD)
+{
+}
+#endif
+
 LONG CServerApp::OnControlMsg(CMsg* pMsg)
 {
     switch (pMsg->GetOpcode())
@@ -465,6 +528,10 @@ LONG CServerApp::OnControlMsg(CMsg* pMsg)
         g_dwSelfDivisionID = g_pSelfBody->byDivisionID;
         OnLocalDataInitialized();
         InitMonitorCounters();
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x430d20
+        LogPrintf(0x2000001, "%s is initialized successfully", g_ServerGlobals.szServiceName);
+#endif
         break;
     }
     if (!g_pBSNet)
@@ -510,6 +577,22 @@ int ServerApp_RunWindowMode()
     g_pServerApp->OnWindowCreated();
     MonitorGraph_StartUpdateThread();
     g_hServerFrameWnd = g_pServerFrameWindow->m_hWnd;
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x44d960: the completion port comes first, failures are shown.
+    g_hServerIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+    if (!g_pServerApp->RegisterServerTasks())
+    {
+        BSMessageBoxPrintf("It has been failed to Initialize Server Task");
+        g_pServerApp->Shutdown();
+        return -1;
+    }
+    if (!g_pServerApp->RequestServerCertification())
+    {
+        BSMessageBoxPrintf("It has been failed to Request Certification");
+        g_pServerApp->Shutdown();
+        return -1;
+    }
+#else
     if (!g_pServerApp->RegisterServerTasks())
     {
         g_pServerApp->Shutdown();
@@ -521,6 +604,7 @@ int ServerApp_RunWindowMode()
         g_pServerApp->Shutdown();
         return -1;
     }
+#endif
 
     DWORD dwBytes = 0;
     ULONG_PTR ulKey = 0;
@@ -636,6 +720,20 @@ int ServerApp_Startup(HINSTANCE hInstance, const char* pszCmdLine)
     g_ServerGlobals.dwMainThreadID = GetCurrentThreadId();
     g_ServerGlobals.bIOCPMode = FALSE;
     g_ServerGlobals.hInstance = hInstance;
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x433e40: the service name is copied with its field size and the semaphore
+    // lives in the global namespace.
+    if (StringCchCopyA(g_ServerGlobals.szServiceName, 64, SERVER_MODULE_NAME)
+        || StringCchCopyA(g_ServerGlobals.szCommandLine, MAX_PATH, pszCmdLine))
+    {
+        BSAssertFail();
+        return -1;
+    }
+
+    std::string strSemaphore("Global\\");
+    strSemaphore.append(SERVER_MODULE_NAME);
+    HANDLE hSemaphore = SingleInstance_CreateSemaphore(strSemaphore.c_str());
+#else
     if (StringCchCopyA(g_ServerGlobals.szServiceName, 256, SERVER_MODULE_NAME)
         || StringCchCopyA(g_ServerGlobals.szCommandLine, MAX_PATH, pszCmdLine))
     {
@@ -644,6 +742,7 @@ int ServerApp_Startup(HINSTANCE hInstance, const char* pszCmdLine)
     }
 
     HANDLE hSemaphore = SingleInstance_CreateSemaphore();
+#endif
     if (!hSemaphore)
     {
         return StartupError(&hSemaphore, "cannot create semaphore : module already executing",

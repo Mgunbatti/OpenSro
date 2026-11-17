@@ -24,6 +24,9 @@ enum
     IDM_FRAME_EXIT          = 0x9C41,   // posts WM_CLOSE
     IDM_FRAME_ABOUT         = 0x9C43,   // empty message box
     IDM_FRAME_DUMP          = 0x9C44,   // diagnostic dump
+#ifdef JMX_FRAMEWORK_2011
+    IDM_FRAME_COMMAND       = 0x9C48,   // AgentServer: passed to the server application
+#endif
     IDM_FRAME_ARCH_VIEW     = 0xBB9,    // "ArchitectureView" of the MainView submenu
     IDM_FRAME_CHILD_VIEW    = 0xBBA,    // menu item of an added view
 
@@ -32,6 +35,12 @@ enum
     IDM_LOG_SAVE            = 0x101,
     IDM_LOG_CLEAR           = 0x102,
     IDM_LOG_COPY            = 0x103,
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer: passed to the server application (OnSuspectedUserCommand 0 / 1 / 2)
+    IDM_LOG_REGISTER_SUSPECTED_USER     = 0x104,
+    IDM_LOG_UNREGISTER_SUSPECTED_USER   = 0x105,
+    IDM_LOG_SHOW_SUSPECTED_USERS        = 0x106,
+#endif
 
     WM_SERVER_FRAME_9000    = 0x9000,   // passed to the server application
     SERVER_FRAME_TIMER_ID   = 0,
@@ -66,6 +75,11 @@ public:
     virtual LRESULT OnNotify(WPARAM wParam, LPARAM lParam);            // 14  WM_NOTIFY
     virtual LRESULT OnEraseBkgnd(WPARAM wParam, LPARAM lParam);        // 15
     virtual LRESULT OnSysCommand(WPARAM wParam, LPARAM lParam);        // 16
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x457a80: IDM_FRAME_COMMAND, calls the application's OnFrameCommand. 0.
+    // The next three slots are 18..20.
+    virtual LRESULT OnFrameCommand(WPARAM wParam, LPARAM lParam);      // 17
+#endif
     virtual LRESULT OnArchViewCommand(WPARAM wParam, LPARAM lParam);   // 17  first view
     virtual LRESULT OnChildViewCommand(WPARAM wParam, LPARAM lParam);  // 18  last view
     virtual LRESULT OnMessage9000(WPARAM wParam, LPARAM lParam);       // 19

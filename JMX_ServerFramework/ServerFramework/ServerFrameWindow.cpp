@@ -97,6 +97,10 @@ bool CServerFrameWindow::CreateFrame()
     InsertCommandHandler(IDM_FRAME_ABOUT, &CServerFrameWindow::OnAbout);
     InsertCommandHandler(IDM_FRAME_EXIT, &CServerFrameWindow::OnExit);
     InsertCommandHandler(IDM_FRAME_DUMP, &CServerFrameWindow::OnDump);
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x457170
+    InsertCommandHandler(IDM_FRAME_COMMAND, &CServerFrameWindow::OnFrameCommand);
+#endif
     InsertMsgHandler(WM_NOTIFY, &CServerFrameWindow::OnNotify);
     InsertMsgHandler(WM_ERASEBKGND, &CServerFrameWindow::OnEraseBkgnd);
     InsertMsgHandler(WM_SERVER_FRAME_9000, &CServerFrameWindow::OnMessage9000);
@@ -227,6 +231,24 @@ LRESULT CServerFrameWindow::OnExit(WPARAM /*wParam*/, LPARAM /*lParam*/)
 
 LRESULT CServerFrameWindow::OnDump(WPARAM /*wParam*/, LPARAM /*lParam*/)
 {
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x4579f0: the headers also go to the fatal log.
+    if (m_dwDumpFlags & SERVER_DUMP_ENGINE_VERSION)
+    {
+        LogPrintf(0x2000001, "============== Engine Version ================");
+        g_pBSNet->PrintVersion();
+    }
+    if (m_dwDumpFlags & SERVER_DUMP_MSG_USAGE)
+    {
+        LogPrintf(0x2000001, "============== Msg Usage ================");
+        g_pBSNet->DumpMsgPool(1, 0xFFFFFFFF);
+    }
+    if (m_dwDumpFlags & SERVER_DUMP_CUSTOM)
+    {
+        LogPrintf(0x2000001, "============== Custom Dump ================");
+        ServerApp_CustomDump();
+    }
+#else
     if (m_dwDumpFlags & SERVER_DUMP_ENGINE_VERSION)
     {
         LogPrintf(0, "============== Engine Version ================");
@@ -242,6 +264,7 @@ LRESULT CServerFrameWindow::OnDump(WPARAM /*wParam*/, LPARAM /*lParam*/)
         LogPrintf(0, "============== Custom Dump ================");
         ServerApp_CustomDump();
     }
+#endif
     return 0;
 }
 
@@ -289,6 +312,54 @@ LRESULT CServerFrameWindow::OnNotify(WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x457aa0: the menu returns the command (TPM_RETURNCMD) and has three items
+    // for the server application.
+    if (pHdr->code == NM_RCLICK)
+    {
+        HMENU hMenu = CreatePopupMenu();
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_SAVE_CLEAR, "Save && Clear");
+        AppendMenuA(hMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_SAVE, "Save");
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_CLEAR, "Clear");
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_COPY, "Copy SelectedItem To Clipboard");
+        AppendMenuA(hMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_REGISTER_SUSPECTED_USER,
+                    "Register Suspected User");
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_UNREGISTER_SUSPECTED_USER,
+                    "Unregister Suspected User");
+        AppendMenuA(hMenu, MF_STRING, IDM_LOG_SHOW_SUSPECTED_USERS,
+                    "Show Registered Suspected Users");
+        POINT pt;
+        GetCursorPos(&pt);
+        switch (TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, m_hLogList, NULL))
+        {
+        case IDM_LOG_SAVE_CLEAR:
+            ReportLog_Save(this);
+            ClearLog();
+            break;
+        case IDM_LOG_SAVE:
+            ReportLog_Save(this);
+            break;
+        case IDM_LOG_CLEAR:
+            ClearLog();
+            break;
+        case IDM_LOG_COPY:
+            CopySelectedLogToClipboard();
+            break;
+        case IDM_LOG_REGISTER_SUSPECTED_USER:
+            ServerApp_OnSuspectedUserCommand(0);
+            break;
+        case IDM_LOG_UNREGISTER_SUSPECTED_USER:
+            ServerApp_OnSuspectedUserCommand(1);
+            break;
+        case IDM_LOG_SHOW_SUSPECTED_USERS:
+            ServerApp_OnSuspectedUserCommand(2);
+            break;
+        }
+        DestroyMenu(hMenu);
+    }
+#else
     if (pHdr->code == NM_RCLICK)
     {
         HMENU hMenu = CreatePopupMenu();
@@ -323,6 +394,7 @@ LRESULT CServerFrameWindow::OnNotify(WPARAM wParam, LPARAM lParam)
         }
         DestroyMenu(hMenu);
     }
+#endif
     return 0;
 }
 
@@ -330,6 +402,14 @@ LRESULT CServerFrameWindow::OnEraseBkgnd(WPARAM /*wParam*/, LPARAM /*lParam*/)
 {
     return 1;
 }
+
+#ifdef JMX_FRAMEWORK_2011
+LRESULT CServerFrameWindow::OnFrameCommand(WPARAM /*wParam*/, LPARAM /*lParam*/)
+{
+    ServerApp_OnFrameCommand();
+    return 0;
+}
+#endif
 
 LRESULT CServerFrameWindow::OnSysCommand(WPARAM wParam, LPARAM lParam)
 {

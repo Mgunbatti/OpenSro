@@ -34,3 +34,9 @@ BOOL ServerApp_PostQuit();
 
 // Global4F9CF8_GetField188 (0x4467d0): the monitor view of the server window.
 ServerFramework::CServerMoniterView* ServerFrameWindow_GetMonitorView();
+
+// Division checks of g_dwSelfDivisionID, not referenced (GatewayServer 0x422660 / 0x422690,
+// AgentServer 0x40e170 / 0x40e1a0): TRUE for the divisions 6, 7, 8, 12 / 1, 2, 4, 11, 18, 19,
+// 20, 31.
+BOOL SelfDivision_IsInGroup1();
+BOOL SelfDivision_IsInGroup2();

@@ -38,7 +38,32 @@ void ServerApp_OnFrameMessage9000(LPARAM lParam)
     g_pServerApp->OnControlMsg((CMsg*)lParam);
 }
 
+#ifdef JMX_FRAMEWORK_2011
+void ServerApp_OnFrameCommand()
+{
+    g_pServerApp->OnFrameCommand();
+}
+
+void ServerApp_OnSuspectedUserCommand(DWORD dwCommand)
+{
+    g_pServerApp->OnSuspectedUserCommand(0, dwCommand);
+}
+#endif
+
 ServerFramework::CServerMoniterView* ServerFrameWindow_GetMonitorView()
 {
     return g_pServerFrameWindow->m_pMoniterView;
+}
+
+BOOL SelfDivision_IsInGroup1()
+{
+    return g_dwSelfDivisionID == 6 || g_dwSelfDivisionID == 7 || g_dwSelfDivisionID == 12
+        || g_dwSelfDivisionID == 8;
+}
+
+BOOL SelfDivision_IsInGroup2()
+{
+    return g_dwSelfDivisionID == 1 || g_dwSelfDivisionID == 4 || g_dwSelfDivisionID == 11
+        || g_dwSelfDivisionID == 19 || g_dwSelfDivisionID == 20 || g_dwSelfDivisionID == 18
+        || g_dwSelfDivisionID == 2 || g_dwSelfDivisionID == 31;
 }

@@ -23,3 +23,8 @@ void ReportLog_Save(ServerFramework::CServerFrameWindow* pFrame);
 void ServerApp_CustomDump();
 // The server application object, virtual slot 16, for message 0x9000 of the server window.
 void ServerApp_OnFrameMessage9000(LPARAM lParam);
+#ifdef JMX_FRAMEWORK_2011
+// The server application object, virtual slots 16 and 17 of the 2011 framework (AgentServer).
+void ServerApp_OnFrameCommand();
+void ServerApp_OnSuspectedUserCommand(DWORD dwCommand);
+#endif
