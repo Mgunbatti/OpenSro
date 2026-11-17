@@ -12,11 +12,27 @@
 // Discarded trace output of the originals (empty function); the argument is still evaluated.
 #define DB_TRACE(x) ((void)(x))
 
+#ifdef JMX_FRAMEWORK_2011_01
+// GlobalManager 0x4caa70: the January 2011 source tree and its line numbers.
+static const char s_szDatabaseCpp[] =
+    "D:\\WORK2005\\Source\\JMX_Library\\BSLib\\DB\\Database.cpp";
+#define DB_ASSERT_LINE_STRING_SIZE  1571
+#define DB_ASSERT_LINE_OFFSET       1587
+#else
 static const char s_szDatabaseCpp[] = "D:\\WORK2005\\JMX_Library\\BSLib\\DB\\Database.cpp";
+#define DB_ASSERT_LINE_STRING_SIZE  1524
+#define DB_ASSERT_LINE_OFFSET       1540
+#endif
 
 SQLHENV g_hDBEnv = NULL;
 std::string g_strDBConnect;
+#ifdef JMX_FRAMEWORK_2011_01
+std::set<CDBSessionMgr*>* g_pSetDBSessionMgr = NULL;
+#define DB_SESSION_SET (*g_pSetDBSessionMgr)
+#else
 std::set<CDBSessionMgr*> g_setDBSessionMgr;
+#define DB_SESSION_SET g_setDBSessionMgr
+#endif
 
 // ---------------------------------------------------------------------------------------------
 // Type helpers
@@ -230,6 +246,11 @@ SQLHDBC CDBSessionMgr::GetConnection(CDBSessionMgr* pSession, int nIndex)
 
 BOOL CDatabase::InitEnvironment(const char* pszDefaultConnect)
 {
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4c8720: the registry is created first, also when the environment fails.
+    if (g_pSetDBSessionMgr == NULL)
+        g_pSetDBSessionMgr = new std::set<CDBSessionMgr*>;
+#endif
     if (!SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &g_hDBEnv)))
     {
         g_hDBEnv = NULL;
@@ -258,16 +279,32 @@ CDBSessionMgr* CDatabase::CreateSession(const char* pszConnect)
             delete pSession;
         return NULL;
     }
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4c8980
+    g_pSetDBSessionMgr->insert(pSession);
+#else
     g_setDBSessionMgr.insert(pSession);
+#endif
     return pSession;
 }
 
 void CDatabase::DestroySession(CDBSessionMgr* pSession)
 {
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4c8a40
+    // BUG(FW11-021): without a registry (before InitEnvironment, after DestroyAllSessions) the
+    // NULL pointer is dereferenced.
+    std::set<CDBSessionMgr*>& setSessions = *g_pSetDBSessionMgr;
+    std::set<CDBSessionMgr*>::iterator it = setSessions.find(pSession);
+    if (it == setSessions.end())
+        return;
+    setSessions.erase(it);
+#else
     std::set<CDBSessionMgr*>::iterator it = g_setDBSessionMgr.find(pSession);
     if (it == g_setDBSessionMgr.end())
         return;
     g_setDBSessionMgr.erase(it);
+#endif
     if (pSession->IsOpen())
         pSession->Close();
     if (pSession)
@@ -276,8 +313,14 @@ void CDatabase::DestroySession(CDBSessionMgr* pSession)
 
 void CDatabase::DestroyAllSessions()
 {
-    for (std::set<CDBSessionMgr*>::iterator it = g_setDBSessionMgr.begin();
-         it != g_setDBSessionMgr.end(); ++it)
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4c8810: nothing at all (not even the environment) without a registry;
+    // the registry is deleted at the end.
+    if (g_pSetDBSessionMgr == NULL)
+        return;
+#endif
+    for (std::set<CDBSessionMgr*>::iterator it = DB_SESSION_SET.begin();
+         it != DB_SESSION_SET.end(); ++it)
     {
         CDBSessionMgr* pSession = *it;
         if (pSession->IsOpen())
@@ -285,13 +328,20 @@ void CDatabase::DestroyAllSessions()
         if (pSession)
             delete pSession;
     }
-    g_setDBSessionMgr.clear();
+    DB_SESSION_SET.clear();
 
     if (g_hDBEnv)
     {
         SQLFreeHandle(SQL_HANDLE_ENV, g_hDBEnv);
         g_hDBEnv = NULL;
     }
+#ifdef JMX_FRAMEWORK_2011_01
+    if (g_pSetDBSessionMgr)
+    {
+        delete g_pSetDBSessionMgr;
+        g_pSetDBSessionMgr = NULL;
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -365,6 +415,14 @@ int CDatabase::ExecDirectWithParams(CDBSessionMgr* pSession, int nConn, const ch
             nCType = SQL_C_DOUBLE;
             nSqlType = SQL_DOUBLE;
             break;
+#ifdef JMX_FRAMEWORK_2011_01
+        case DBPARAM_VARCHAR:
+            // GlobalManager 0x4c9b27: the string itself, cbValue as column size, buffer length
+            // and indicator.
+            SQLBindParameter(hStmt, nParam + 1, param.nIOType, SQL_C_CHAR, SQL_VARCHAR,
+                             param.cbValue, 0, param.pszValue, param.cbValue, &param.cbValue);
+            continue;
+#endif
         default:
             // BUG(DB-006): an unknown parameter type ends the function before SQLExecDirect;
             // the statement is never executed and the result is 0 (SQL_SUCCESS).
@@ -406,7 +464,12 @@ int CDatabase::HandleSQLError(SQLRETURN nRet, SQLHANDLE hStmt, const char* pszQu
     const char* pszText = pszQuery;
     if (pszText == NULL)
         pszText = "[Unknown query]";
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4cce90: the result code is logged with the query.
+    NetEngineLog(0x2000001, "Query Error!!! Query Result : %d, Query : %s", (int)nRet, pszText);
+#else
     NetEngineLog(0x2000001, "%s", pszText);
+#endif
 
     if (nRet == SQL_NO_DATA)
     {
@@ -1379,7 +1442,7 @@ int CDBTable::DescribeColumns()
                         && pCol->nSize != nBufferLength)
                     {
                         // "string column whose length differs from the declared one!"
-                        if (!BSAssertDialog(1524, s_szDatabaseCpp,
+                        if (!BSAssertDialog(DB_ASSERT_LINE_STRING_SIZE, s_szDatabaseCpp,
                                             "\xbd\xba\xc6\xae\xb8\xb5 \xc4\xc3\xb7\xb3\xc0\xce"
                                             "\xb5\xa5 \xb1\xe6\xc0\xcc\xb0\xa1 \xb8\xed\xbd\xc3"
                                             "\xc0\xfb\xc0\xb8\xb7\xce \xc1\xa4\xc7\xd8\xc1\xd8 "
@@ -1402,7 +1465,7 @@ int CDBTable::DescribeColumns()
                     {
                         // "a declared column was not bound! [%s::%s] a column that should have
                         // been bound before is missing, or its name differs from the DB"
-                        if (!BSAssertDialog(1540, s_szDatabaseCpp,
+                        if (!BSAssertDialog(DB_ASSERT_LINE_OFFSET, s_szDatabaseCpp,
                                             "\xbf\xc0\xc8\xaa! \xbc\xb1\xbe\xf0\xc0\xba \xc7\xcf"
                                             "\xb0\xed Bind \xbd\xc3\xc5\xb0\xc1\xf6 \xbe\xca\xc0"
                                             "\xba \xc4\xc3\xb7\xb3\xc0\xcc \xc0\xd6\xb4\xd9! \n"

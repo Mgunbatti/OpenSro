@@ -51,12 +51,25 @@ static BOOL IsCharType(SQLSMALLINT nType)
     return nType == SQL_CHAR || nType == SQL_VARCHAR || nType == SQL_LONGVARCHAR;
 }
 
+// The query text HandleSQLError logs: the January 2011 library (GlobalManager 0x4869e0) passes
+// m_szQuery, the 2008 one NULL ("[Unknown query]").
+#ifdef JMX_FRAMEWORK_2011_01
+#define DBQUERY_ERROR_TEXT m_szQuery
+#else
+#define DBQUERY_ERROR_TEXT NULL
+#endif
+
 int CDBQuery::Execute()
 {
     int nResult = -1;
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4869e0: initialised, freed only when allocated (DB-002 fixed).
+    SQLHSTMT hStmt = NULL;
+#else
     // BUG(DB-002): not initialised; the termination handler frees it even when no statement
     // was allocated.
     SQLHSTMT hStmt;
+#endif
 
     __try
     {
@@ -80,7 +93,7 @@ int CDBQuery::Execute()
         if (!SQL_SUCCEEDED(nRet) && nRet != SQL_NO_DATA)
         {
             LogPrintf(0x2000000, "execute query error : %s", m_szQuery);
-            CDatabase::HandleSQLError(nRet, hStmt, NULL);
+            CDatabase::HandleSQLError(nRet, hStmt, DBQUERY_ERROR_TEXT);
             nResult = -2;
             __leave;
         }
@@ -99,7 +112,7 @@ int CDBQuery::Execute()
                 {
                     if (nRet != SQL_NO_DATA)
                     {
-                        CDatabase::HandleSQLError(nRet, hStmt, NULL);
+                        CDatabase::HandleSQLError(nRet, hStmt, DBQUERY_ERROR_TEXT);
                         nResult = -2;
                         __leave;
                     }
@@ -120,7 +133,7 @@ int CDBQuery::Execute()
             nLastRet = nRet;
             if (!SQL_SUCCEEDED(nRet))
             {
-                CDatabase::HandleSQLError(nRet, hStmt, NULL);
+                CDatabase::HandleSQLError(nRet, hStmt, DBQUERY_ERROR_TEXT);
                 nResult = 1;
                 __leave;
             }
@@ -131,7 +144,7 @@ int CDBQuery::Execute()
         nLastRet = nRet;
         if (!SQL_SUCCEEDED(nRet) || nColumns == 0)
         {
-            CDatabase::HandleSQLError(nRet, hStmt, NULL);
+            CDatabase::HandleSQLError(nRet, hStmt, DBQUERY_ERROR_TEXT);
             nResult = -2;
             __leave;
         }
@@ -149,7 +162,7 @@ int CDBQuery::Execute()
                 m_bRowFetched = 0;
                 if (!m_pTrigger->OnTrigger2((DWORD)this, 0))
                 {
-                    CDatabase::HandleSQLError(nLastRet, hStmt, NULL);
+                    CDatabase::HandleSQLError(nLastRet, hStmt, DBQUERY_ERROR_TEXT);
                     nResult = 1;
                     __leave;
                 }
@@ -159,7 +172,7 @@ int CDBQuery::Execute()
             {
                 if (nRow >= m_nBufferSize / m_nRowSize)
                 {
-                    CDatabase::HandleSQLError(nLastRet, hStmt, NULL);
+                    CDatabase::HandleSQLError(nLastRet, hStmt, DBQUERY_ERROR_TEXT);
                     nResult = 1;
                     __leave;
                 }
@@ -174,7 +187,7 @@ int CDBQuery::Execute()
                 nLastRet = nRet;
                 if (!SQL_SUCCEEDED(nRet))
                 {
-                    CDatabase::HandleSQLError(nRet, hStmt, NULL);
+                    CDatabase::HandleSQLError(nRet, hStmt, DBQUERY_ERROR_TEXT);
                     nResult = -5;
                     __leave;
                 }
@@ -184,7 +197,7 @@ int CDBQuery::Execute()
                 nLastRet = nRet;
                 if (!SQL_SUCCEEDED(nRet))
                 {
-                    CDatabase::HandleSQLError(nRet, hStmt, NULL);
+                    CDatabase::HandleSQLError(nRet, hStmt, DBQUERY_ERROR_TEXT);
                     nResult = -3;
                     __leave;
                 }
@@ -224,7 +237,7 @@ int CDBQuery::Execute()
                 if (nColumn + 1 <= nColumns && nUsed > m_nRowSize - 1)
                 {
                     BSAssertFail();
-                    CDatabase::HandleSQLError(nLastRet, hStmt, NULL);
+                    CDatabase::HandleSQLError(nLastRet, hStmt, DBQUERY_ERROR_TEXT);
                     nResult = -4;
                     __leave;
                 }
@@ -236,7 +249,7 @@ int CDBQuery::Execute()
                 m_bRowFetched = 1;
                 if (!m_pTrigger->OnTrigger2((DWORD)this, 0))
                 {
-                    CDatabase::HandleSQLError(nLastRet, hStmt, NULL);
+                    CDatabase::HandleSQLError(nLastRet, hStmt, DBQUERY_ERROR_TEXT);
                     nResult = 1;
                     __leave;
                 }
@@ -247,8 +260,16 @@ int CDBQuery::Execute()
     }
     __finally
     {
+#ifdef JMX_FRAMEWORK_2011_01
+        if (hStmt)
+        {
+            SQLFreeStmt(hStmt, SQL_CLOSE);
+            SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
+        }
+#else
         SQLFreeStmt(hStmt, SQL_CLOSE);
         SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
+#endif
     }
     return nResult;
 }

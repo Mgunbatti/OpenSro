@@ -41,8 +41,13 @@ typedef std::list<CDBRecord*> CDBRecordList;
 
 enum
 {
+#ifdef JMX_FRAMEWORK_2011_01
+    // GlobalManager 0x4c8590: the January 2011 library opens 4 connections per pool.
+    DB_SESSION_COUNT        = 4,        // connections per CDBSessionMgr
+#else
     DB_SESSION_COUNT        = 30,       // connections per CDBSessionMgr
-    DB_STATEMENT_SIZE       = 0xC00,    // SQL text buffers of the table code
+#endif
+    DB_STATEMENT_SIZE      = 0xC00,    // SQL text buffers of the table code
     DB_FETCH_BUFFER_SIZE    = 0x2000,   // row-wise binding buffer of one SQLFetchScroll
 };
 
@@ -346,6 +351,9 @@ enum
     DBPARAM_BIGINT      = 3,    // SQL_C_SBIGINT  / SQL_BIGINT
     DBPARAM_REAL        = 4,    // SQL_C_FLOAT    / SQL_REAL
     DBPARAM_DOUBLE      = 5,    // SQL_C_DOUBLE   / SQL_DOUBLE
+    // January 2011 only (GlobalManager 0x4c9a10): pszValue bound as SQL_C_CHAR / SQL_VARCHAR,
+    // cbValue is the column size, the buffer length and the length indicator.
+    DBPARAM_VARCHAR     = 6,
 };
 
 struct DB_PARAM
@@ -360,6 +368,7 @@ struct DB_PARAM
         __int64     llValue;
         float       fValue;
         double      dValue;
+        char*       pszValue;       // DBPARAM_VARCHAR
     };
     SQLINTEGER  cbValue;        // +10  length / indicator
 };
@@ -414,4 +423,10 @@ int Time_GetScaledTimeOfDay();
 // Globals.
 extern SQLHENV g_hDBEnv;                            // 0x4F9D4C
 extern std::string g_strDBConnect;                  // 0x4F8378
+#ifdef JMX_FRAMEWORK_2011_01
+// GlobalManager 0x559D68: the January 2011 registry is created by InitEnvironment and deleted
+// by DestroyAllSessions.
+extern std::set<CDBSessionMgr*>* g_pSetDBSessionMgr;
+#else
 extern std::set<CDBSessionMgr*> g_setDBSessionMgr;  // 0x53BA0C
+#endif
