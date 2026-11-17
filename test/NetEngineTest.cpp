@@ -29,6 +29,7 @@
 #include "ServerFramework/MassiveMsg.h"
 
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 using namespace ServerFramework;
 
@@ -982,6 +983,7 @@ static void TestMisc()
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     InitializeCriticalSection(&g_csLog);
     char szTemp[MAX_PATH];
     GetTempPathA(MAX_PATH, szTemp);

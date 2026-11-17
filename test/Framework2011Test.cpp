@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 #ifndef JMX_FRAMEWORK_2011
 #error Framework2011Test is compiled with JMX_FRAMEWORK_2011 (see the Makefile)
@@ -1811,6 +1812,7 @@ static void TestFramework2011()
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     TestLibrary2011();
     TestFramework2011();
     return TEST_RESULT("Framework2011Test");

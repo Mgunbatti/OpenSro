@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -1016,6 +1017,7 @@ static void TestWindowMode()
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     BSDebugSetFlags(0, 0);
     InitializeCriticalSection(&s_csEvents);
     s_hInstance = GetModuleHandleA(NULL);

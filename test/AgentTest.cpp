@@ -26,6 +26,7 @@
 
 #include "LogCapture.h"
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 using namespace ServerFramework;
 
@@ -1646,6 +1647,7 @@ static void TestShutdown()
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     setvbuf(stdout, NULL, _IONBF, 0);
     BSDebugSetFlags(0, 0);
     InitializeCriticalSection(&s_cs);

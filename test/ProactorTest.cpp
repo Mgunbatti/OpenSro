@@ -22,6 +22,7 @@
 #include "BSNet/SockStream.h"
 
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 // ---------------------------------------------------------------------------------------------
 // Test doubles
@@ -1053,6 +1054,7 @@ static void TestTaskAndMap()
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     WSADATA wd;
     WSAStartup(MAKEWORD(2, 2), &wd);
 

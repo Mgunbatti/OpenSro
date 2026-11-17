@@ -26,6 +26,7 @@
 
 #include "LogCapture.h"
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 using namespace ServerFramework;
 
@@ -853,6 +854,7 @@ static void RemoveTree(const std::string& strDir)
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     BSDebugSetFlags(0, 0);
     InitializeCriticalSection(&s_cs);
     char szTemp[MAX_PATH];

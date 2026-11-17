@@ -26,6 +26,7 @@
 #include "BSNet/security/Security.h"
 
 #include "TestCheck.h"
+#include "LoopbackBind.h"
 
 // ---------------------------------------------------------------------------------------------
 // Test doubles
@@ -1513,6 +1514,23 @@ static void TestDatagram()
 
 static void TestUdpPing()
 {
+    // the test's sockets stay on the loopback address (LoopbackBind.h), also unbound senders
+    SOCKET hAny = socket(AF_INET, SOCK_DGRAM, 0);
+    sockaddr_in any = Loopback(0);
+    any.sin_addr.s_addr = INADDR_ANY;
+    int nAnyLen = sizeof(any);
+    CHECK(bind(hAny, (sockaddr*)&any, sizeof(any)) == 0);
+    CHECK(getsockname(hAny, (sockaddr*)&any, &nAnyLen) == 0
+          && any.sin_addr.s_addr == htonl(INADDR_LOOPBACK) && any.sin_port != 0);
+    SOCKET hSender = socket(AF_INET, SOCK_DGRAM, 0);
+    CHECK(sendto(hSender, "x", 1, 0, (sockaddr*)&any, sizeof(any)) == 1);
+    sockaddr_in sender;
+    nAnyLen = sizeof(sender);
+    CHECK(getsockname(hSender, (sockaddr*)&sender, &nAnyLen) == 0
+          && sender.sin_addr.s_addr == htonl(INADDR_LOOPBACK));
+    closesocket(hSender);
+    closesocket(hAny);
+
     // packet format
     SOCKET r = socket(AF_INET, SOCK_DGRAM, 0);
     sockaddr_in a = Loopback(0);
@@ -1665,6 +1683,7 @@ static void TestDebugOutput()
 
 int main()
 {
+    CHECK(LoopbackBind_Install() == 1);
     InitializeCriticalSection(&g_csLog);
     InitializeCriticalSection(&g_csSessions);
     Security_BuildCrcTable();

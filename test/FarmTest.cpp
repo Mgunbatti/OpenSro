@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "LogCapture.h"
+#include "LoopbackBind.h"
 #include "TestCheck.h"
 
 using namespace ServerFramework;
@@ -138,47 +139,14 @@ static bool WaitLog(const std::string& strPrefix, DWORD dwFlags = (DWORD)-1,
 }
 
 // ---------------------------------------------------------------------------------------------
-// The UDP ping service binds every address of its port: kept on the loopback address.
-
-typedef int (WSAAPI* PFN_BIND)(SOCKET s, const sockaddr* pAddr, int nLen);
-static PFN_BIND s_pfnBind;
+// The UDP ping service binds every address of its port; LoopbackBind.h keeps it (and every other
+// socket of the test) on the loopback address. Successful binds of the service port are counted.
 static volatile LONG s_nUdpPingBinds;
 
-static int WSAAPI LoopbackBind(SOCKET s, const sockaddr* pAddr, int nLen)
+static void OnLoopbackBound(const sockaddr_in& addr, int nResult)
 {
-    sockaddr_in addr;
-    if (pAddr && nLen == sizeof(addr) && pAddr->sa_family == AF_INET)
-    {
-        memcpy(&addr, pAddr, sizeof(addr));
-        if (addr.sin_addr.s_addr == INADDR_ANY)
-            addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        int nResult = s_pfnBind(s, (const sockaddr*)&addr, nLen);
-        if (nResult == 0 && addr.sin_port == htons(UDPPING_SERVER_PORT))
-            InterlockedIncrement(&s_nUdpPingBinds);
-        return nResult;
-    }
-    return s_pfnBind(s, pAddr, nLen);
-}
-
-static void HookBindToLoopback()
-{
-    s_pfnBind = (PFN_BIND)GetProcAddress(LoadLibraryA("ws2_32.dll"), "bind");
-    BYTE* pBase = (BYTE*)GetModuleHandleA(NULL);
-    IMAGE_NT_HEADERS* pNt = (IMAGE_NT_HEADERS*)(pBase + ((IMAGE_DOS_HEADER*)pBase)->e_lfanew);
-    IMAGE_DATA_DIRECTORY& dir = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IAT];
-    void** ppEntry = (void**)(pBase + dir.VirtualAddress);
-    int nPatched = 0;
-    for (DWORD i = 0; i < dir.Size / sizeof(void*); ++i)
-    {
-        if (ppEntry[i] != (void*)s_pfnBind)
-            continue;
-        DWORD dwOld;
-        VirtualProtect(&ppEntry[i], sizeof(void*), PAGE_READWRITE, &dwOld);
-        ppEntry[i] = (void*)LoopbackBind;
-        VirtualProtect(&ppEntry[i], sizeof(void*), dwOld, &dwOld);
-        ++nPatched;
-    }
-    CHECK(nPatched == 1);
+    if (nResult == 0 && addr.sin_port == htons(UDPPING_SERVER_PORT))
+        InterlockedIncrement(&s_nUdpPingBinds);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -912,9 +880,9 @@ static void TestShutdown()
 
 int main()
 {
+    CHECK(LoopbackBind_Install(OnLoopbackBound) == 1);
     BSDebugSetFlags(0, 0);
     InitializeCriticalSection(&s_cs);
-    HookBindToLoopback();
     char szTemp[MAX_PATH];
     GetTempPathA(MAX_PATH, szTemp);
     char szDir[MAX_PATH];
