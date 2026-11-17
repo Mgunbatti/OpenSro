@@ -15,6 +15,7 @@ installed on Windows.
 | `JMX_Library/` | Shared libraries, laid out like the original `D:\WORK2005\JMX_Library` tree (BSLib, BSNet) |
 | `test/` | Unit tests, built and run by `nmake test` |
 | `docs/address-map.tsv` | Original function address and IDA name for every ported function |
+| `docs/original-bugs/` | Bugs found in the originals; reproduced on purpose and marked `BUG(<ID>)` in the code |
 | `toolchain/test/` | Smoke test: `hello.cpp` must report `_MSC_FULL_VER=140050727` |
 
 ## Build
