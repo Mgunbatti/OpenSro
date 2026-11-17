@@ -1,6 +1,7 @@
 #include "TimeSpan.h"
 
 #include <string.h>
+#include <strsafe.h>
 
 #include "BSLib/BSDebug.h"
 
@@ -274,6 +275,23 @@ bool CDateTime::GetAsSystemTime(SYSTEMTIME& st)
     st.wSecond = (WORD)ptm->tm_sec;
     st.wMilliseconds = 0;
     return true;
+}
+
+// 0x4b5310 (GlobalManager): a local struct tm; the conversion result is not checked.
+std::string CDateTime::Format() const
+{
+    std::string str;
+    struct tm atm;
+    _localtime32_s(&atm, &m_time);
+    char sz[0x100];
+    memset(sz, 0, sizeof(sz));
+    if (StringCchPrintfA(sz, sizeof(sz), "%d-%02d-%02d %02d:%02d:%02d", atm.tm_year + 1900,
+                         atm.tm_mon + 1, atm.tm_mday, atm.tm_hour, atm.tm_min, atm.tm_sec)
+        == S_OK)
+    {
+        str.assign(sz, strlen(sz));
+    }
+    return str;
 }
 
 // The getters below use the result of GetLocalTm without checking it.

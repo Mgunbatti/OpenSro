@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <time.h>
 
+#include <string>
+
 // Time span and point in time, shaped like MFC's CTimeSpan / CTime but with 32-bit time values
 // (the originals use _mktime32 / _localtime32_s / _time32).
 
@@ -63,6 +65,9 @@ public:
     // Fills m_tm with the local time; NULL when the time cannot be converted.
     struct tm* GetLocalTm();
     bool GetAsSystemTime(SYSTEMTIME& st);
+    // GlobalManager 0x4b5310 (January 2011 library): the local time as
+    // "YYYY-MM-DD hh:mm:ss" (month, day and time with two digits); empty when it does not fit.
+    std::string Format() const;
 
     int GetYear();
     int GetMonth();
