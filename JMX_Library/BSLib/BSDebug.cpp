@@ -8,6 +8,10 @@
 #include <vector>
 #include <strsafe.h>
 
+#ifdef JMX_FRAMEWORK_2011
+#include "BSLib/Util/StringUtil.h"
+#endif
+
 DWORD g_dwBSDebugFlags[2] = { 0x112, 0x12A };
 BOOL  g_bBSDebugAsserted = FALSE;
 char  g_szBSDebugError[4096];
@@ -159,13 +163,55 @@ LONG BSDebugWriteMiniDump(EXCEPTION_POINTERS* pExceptionInfo)
     GetModuleFileNameA(NULL, szModule, 260);
     _splitpath_s(szModule, szDrive, 260, szDir, 260, szName, 260, NULL, 0);
     GetLocalTime(&st);
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x462240: a running number (1, 2, ...) instead of rand() % 10.
+    static int s_nDumpCount = 0;
+    if (StringCchPrintfA(szSuffix, 260, "_[%04d-%02d-%02d %02d-%02d-%02d]_%d", st.wYear, st.wMonth,
+                         st.wDay, st.wHour, st.wMinute, st.wSecond, ++s_nDumpCount))
+        return EXCEPTION_CONTINUE_SEARCH;
+#else
     if (StringCchPrintfA(szSuffix, 260, "_[%04d-%02d-%02d %02d-%02d-%02d]_%d", st.wYear, st.wMonth,
                          st.wDay, st.wHour, st.wMinute, st.wSecond, rand() % 10))
         return EXCEPTION_CONTINUE_SEARCH;
+#endif
     if (StringCchCatA(szName, 260, szSuffix))
         return EXCEPTION_CONTINUE_SEARCH;
     _makepath_s(szDumpFile, 260, szDrive, szDir, szName, ".dmp");
 
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x462240: the handle is checked, and a failed MiniDumpWriteDump is reported in
+    // very_fatal_log.txt of the current directory. The invalid handle is still closed.
+    HANDLE hFile = CreateFileA(szDumpFile, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS,
+                               FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE)
+    {
+        MINIDUMP_EXCEPTION_INFORMATION mei;
+        mei.ThreadId = GetCurrentThreadId();
+        mei.ExceptionPointers = pExceptionInfo;
+        mei.ClientPointers = FALSE;
+        if (!g_pfnMiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
+                                    MiniDumpNormal, &mei, NULL, NULL))
+        {
+            LONG nError = (LONG)GetLastError();
+            FILE* pFile = NULL;
+            if (!fopen_s(&pFile, "very_fatal_log.txt", "a"))
+            {
+                SYSTEMTIME stLog;
+                GetLocalTime(&stLog);
+                if (nError > 0)
+                    nError = (LONG)((nError & 0xFFFF) | 0x80070000);
+                fprintf(pFile,
+                        "[MiniDumpWriteDump] %04d-%02d-%02d %02d:%02d:%02d Cannot Write MiniDump "
+                        "(LastError : %d)\r\n",
+                        stLog.wYear, stLog.wMonth, stLog.wDay, stLog.wHour, stLog.wMinute,
+                        stLog.wSecond, nError);
+                fclose(pFile);
+            }
+        }
+    }
+    CloseHandle(hFile);
+    return EXCEPTION_EXECUTE_HANDLER;
+#else
     // BUG(BSLIB-004): the handle is not checked.
     HANDLE hFile = CreateFileA(szDumpFile, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS,
                                FILE_ATTRIBUTE_NORMAL, NULL);
@@ -177,6 +223,7 @@ LONG BSDebugWriteMiniDump(EXCEPTION_POINTERS* pExceptionInfo)
                            NULL, NULL);
     CloseHandle(hFile);
     return EXCEPTION_EXECUTE_HANDLER;
+#endif
 }
 
 // "\tmodule: file.cpp (line)\n\t\tsymbol\n\n".
@@ -273,7 +320,12 @@ static void WalkStack(CONTEXT* pContext)
         unsigned n = FormatStackFrame(szFrame, hProcess, *it);
         if (nLeft < n)
             break;
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x4624e0: the limit is the buffer size (nLeft still never shrinks).
+        StringCchCatA(pszOut, 4096, szFrame);
+#else
         StringCchCatA(pszOut, 520, szFrame);
+#endif
         nLeft -= n;
     }
 }
@@ -401,6 +453,123 @@ bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...)
         ExitProcess(0);
     return (dwFlags & BSDBG_BREAK) == 0;
 }
+
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x462d10: the message part of the assert dialogs, from the callback on (the same
+// steps as the end of BSAssertDialog). The call stack is the buffer g_pszCallStack points to.
+static bool BSAssertDialog_ShowMessage(const char* pszFile, const char* pszExpr, int nLine,
+                                       DWORD dwFlags)
+{
+    char szText[4096];
+
+    if (dwFlags & BSDBG_CALLBACK)
+        g_pfnAssertCallback(nLine, pszFile, pszExpr);
+
+    DWORD dwContinue = dwFlags & BSDBG_DIALOG_CONTINUE;
+    if (!dwContinue && !(dwFlags & BSDBG_DIALOG_EXIT))
+        ExitProcess(0);
+
+    if (StringCchPrintfA(szText, 4096,
+                         "Debug Assertion Failed.\n\nExpression : %s\nLine : %d\nFile : %s\n\n",
+                         pszExpr, nLine, pszFile))
+        return false;
+
+    if (dwFlags & BSDBG_CALLSTACK)
+    {
+        if (StringCchCatA(szText, 4096, "CallStack:\n"))
+            return false;
+        if (StringCchCatA(szText, 4096, g_pszCallStack))
+            return false;
+        if (StringCchCatA(szText, 4096, "\n\n"))
+            return false;
+    }
+
+    if (!dwContinue)
+    {
+        if (StringCchCatA(szText, 4096, "(press \"ok\" to exit program)"))
+            return false;
+        MessageBoxA(NULL, szText, "BSLib Debug Module", MB_ICONHAND);
+        ExitProcess(0);
+    }
+
+    if (StringCchCatA(szText, 4096, "(press \"ok\" to advance, press \"cancel\" to exit)"))
+        return false;
+    if (MessageBoxA(NULL, szText, "BSLib Debug Module", MB_OKCANCEL | MB_ICONHAND) != IDOK)
+        ExitProcess(0);
+    return (dwFlags & BSDBG_BREAK) == 0;
+}
+
+// AgentServer 0x462960 (not referenced in AgentServer).
+bool BSAssertDialogW(int nLine, const wchar_t* pszFile, const wchar_t* pszFormat, ...)
+{
+    char szCallStack[4096];
+    char szExpr[4096];
+    wchar_t szExprW[0x400];
+    char szFile[260];
+
+    g_bBSDebugAsserted = TRUE;
+    DWORD dwFlags = g_dwBSDebugFlags[!IsDebuggerPresent()];
+    szCallStack[0] = 0;
+
+    // Unlike BSAssertDialog here, a call stack and a minidump exclude each other.
+    if (dwFlags & BSDBG_CALLSTACK)
+    {
+        __try
+        {
+            g_pszCallStack = szCallStack;
+            throw "oops";
+        }
+        __except (StackWalkFilter(GetExceptionInformation()))
+        {
+        }
+    }
+    else if (dwFlags & BSDBG_MINIDUMP)
+    {
+        __try
+        {
+            g_pszCallStack = szCallStack;
+            throw "oops";
+        }
+        __except (BSDebugWriteMiniDump(GetExceptionInformation()))
+        {
+        }
+    }
+
+    va_list args;
+    va_start(args, pszFormat);
+    HRESULT hr = StringCchVPrintfW(szExprW, 0x400, pszFormat, args);
+    va_end(args);
+    if (hr != S_OK)
+        return false;
+
+    memset(szFile, 0, sizeof(szFile));
+    memset(szExpr, 0, sizeof(szExpr));
+    size_t cchFile = 0;
+    size_t cchExpr = 0;
+    if (!pszFile)
+        return false;
+    if (StringCchLengthW(pszFile, 4096, &cchFile) != S_OK)
+        return false;
+    if (StringCchLengthW(szExprW, 4096, &cchExpr) != S_OK)
+        return false;
+    if (!WideCharToMultiByte_wrap(pszFile, (int)cchFile, szFile, 260))
+        return false;
+    if (!WideCharToMultiByte_wrap(szExprW, (int)cchExpr, szExpr, 0x1000))
+        return false;
+    return BSAssertDialog_ShowMessage(szFile, szExpr, nLine, dwFlags);
+}
+
+// AgentServer 0x4619f0
+void File_AppendString(const char* pszPath, const char* pszText)
+{
+    FILE* pFile = NULL;
+    if (fopen_s(&pFile, pszPath, "a") == 0 && pFile)
+    {
+        fprintf_s(pFile, "%s", pszText);
+        fclose(pFile);
+    }
+}
+#endif
 
 void BSDebugSetOutputCallback(PFN_BSDEBUG_OUTPUT pfn)
 {

@@ -55,6 +55,16 @@ bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...);
 bool BSDebugLoadDbgHelp();
 LONG BSDebugWriteMiniDump(EXCEPTION_POINTERS* pExceptionInfo);
 
+#ifdef JMX_FRAMEWORK_2011
+// Wide character assert dialog (AgentServer 0x462960): the file name and the formatted text
+// (0x400 characters) are converted to the ANSI code page; with BSDBG_CALLSTACK no minidump is
+// written. Returns FALSE when the caller should break into the debugger.
+bool BSAssertDialogW(int nLine, const wchar_t* pszFile, const wchar_t* pszFormat, ...);
+
+// File_AppendString (AgentServer 0x4619f0): appends the text to the file (fopen_s "a").
+void File_AppendString(const char* pszPath, const char* pszText);
+#endif
+
 #define BS_ASSERT(expr) ((expr) ? (void)0 : (void)BSAssertFail())
 
 #define BS_ASSERT_DIALOG(expr)                                              \
