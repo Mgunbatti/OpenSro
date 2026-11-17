@@ -38,6 +38,16 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [THREAD-004](THREAD-004.md) | Threads | minor | Stopped thread controls stay in the manager's map until shutdown |
 | [THREAD-005](THREAD-005.md) | Threads | crash | Task destructor clears its thread manager first, so worker threads are never stopped |
 | [THREAD-006](THREAD-006.md) | Threads | crash | Task queue stopped without a NULL check |
+| [SOCK-001](SOCK-001.md) | Sockets | crash | mswsock.dll is freed after `AcceptEx`/`TransmitFile` pointers are taken from it |
+| [SOCK-002](SOCK-002.md) | Sockets | wrong | Socket buffer size helper halves the size after every success |
+| [SOCK-003](SOCK-003.md) | Sockets | wrong | A message rejected by the send queue limit is never released |
+| [SOCK-004](SOCK-004.md) | Sockets | minor | A failed `TransmitFile` disconnect is never detected |
+| [SOCK-005](SOCK-005.md) | Sockets | crash | A datagram without a message task is released twice (unreachable today) |
+| [SOCK-006](SOCK-006.md) | Sockets | minor | UDP ping packets carry four uninitialised stack bytes |
+| [SOCK-007](SOCK-007.md) | Sockets | crash | A UDP ping host name that does not resolve crashes the process |
+| [SOCK-008](SOCK-008.md) | Sockets | minor | UDP ping receive errors are only reported when formatting fails |
+| [SOCK-009](SOCK-009.md) | Sockets | wrong | Removing a UDP ping target is inverted |
+| [SOCK-010](SOCK-010.md) | Sockets | wrong | The handshake state byte is never initialised |
 | [SRVFW-001](SRVFW-001.md) | ServerFramework | crash | Crash-dump fallback writes its .txt only when `fopen_s` fails, through an invalid `FILE*` |
 | [SRVFW-002](SRVFW-002.md) | CMassiveMsg | wrong | Reads and writes cross at most one part boundary and throw for anything larger |
 | [SRVFW-003](SRVFW-003.md) | CMassiveMsg | minor | Peeking the inner opcode leaves the read cursor one byte further on two paths |
