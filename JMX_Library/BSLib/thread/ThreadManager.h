@@ -5,7 +5,7 @@
 
 #include "BSLib/thread/SynchObject.h"
 #include "BSLib/thread/SimpleThread.h"
-#include "BSLib/thread/ServiceObjectFwd.h"
+#include "BSLib/thread/ServiceObject.h"
 
 class CTask;
 class CThreadManager;
