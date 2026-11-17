@@ -11,3 +11,5 @@ build/
 *.lib
 # generated from the original binary by tools/gen_security_constants.py
 JMX_Library/BSNet/security/SecurityConstants.inl
+# generated from the original binary by tools/gen_certify_constants.py (publisher key)
+JMX_CommonServers/GatewayServer/CertifyConstants.inl
