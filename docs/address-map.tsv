@@ -180,3 +180,48 @@ GatewayServer	0x49a3f0	CKeyExchange::GenerateServerPublic	KEYEXCHANGE_DH::Genera
 GatewayServer	0x49a440	CKeyExchange::ComputeSharedSecret	KEYEXCHANGE_DH::ComputeServerSecret
 GatewayServer	0x49a460	CKeyExchange::GeneratePrivateAndPublicKey	KEYEXCHANGE_DH::GenerateClientPublic
 GatewayServer	0x49a4c0	CKeyExchange::ComputeValue_2	KEYEXCHANGE_DH::ComputeClientSecret
+GatewayServer	0x46d780	CEventHandler::ctor_or_dtor	CEventHandler::CEventHandler / CEventHandler::~CEventHandler
+GatewayServer	0x46d790	CEventHandler::scalar_deleting_dtor	CEventHandler::~CEventHandler (scalar deleting)
+GatewayServer	0x495910	Struct14_Init_495910	THREAD_DESC::THREAD_DESC / THREAD_DESC::Clear
+GatewayServer	0x495930	Struct14_Init_495930	THREAD_DESC::THREAD_DESC / THREAD_DESC::Clear
+GatewayServer	0x495960	CTask::ctor	CTask::CTask
+GatewayServer	0x495b40	CTask::dtor	CTask::~CTask
+GatewayServer	0x495c40	CTask_StopWorkerThreadsLocked	CTask::StopThreads
+GatewayServer	0x495ef0	Proactor_StartWorkerThreads	CTask::StartThreads
+GatewayServer	0x496b80	CTaskManager::ctor	CTaskManager::CTaskManager
+GatewayServer	0x496bf0	CTaskManager::dtor	CTaskManager::~CTaskManager
+GatewayServer	0x496c70	CTaskManager::DeleteAllProactors	CTaskManager::DeleteAllTasks
+GatewayServer	0x496d20	CTaskManager_ForEachProactor_CallVf07	CTaskManager::StopAllQueues
+GatewayServer	0x496d90	CTaskManager::vf00	CTaskManager::~CTaskManager (scalar deleting)
+GatewayServer	0x496db0	CSystem_GlobalInit	CSystem::CSystem
+GatewayServer	0x496e90	CSystem::vf00	CSystem::~CSystem (scalar deleting)
+GatewayServer	0x496eb0	CSystem::dtor	CSystem::~CSystem
+GatewayServer	0x496f70	CSystem_SetGlobalInstance	CSingletonT<CSystem>::CSingletonT
+GatewayServer	0x49a550	CThreadManager::ctor	CThreadManager::CThreadManager
+GatewayServer	0x49a600	CThreadManager::vf00	CThreadManager::~CThreadManager (scalar deleting)
+GatewayServer	0x49a670	CThreadManager::dtor	CThreadManager::~CThreadManager
+GatewayServer	0x49a6f0	CThreadManager::NextThreadKey	CThreadManager::NextThreadKey
+GatewayServer	0x49a710	CThreadManager::DestroyAllThreads	CThreadManager::DestroyAllThreads
+GatewayServer	0x49a800	OS_IsWindowsNT	OSIsWindowsNT
+GatewayServer	0x49a890	CThreadManager::CreateThreadsWithAffinity	CThreadManager::CreateThreads
+GatewayServer	0x49aaf0	CThreadManager::SpawnThread	CThreadManager::SpawnThread
+GatewayServer	0x49abe0	WorkerThread_Suspend_wrap	CThreadManager::SuspendOne
+GatewayServer	0x49ac00	WorkerThread_Resume_wrap	CThreadManager::ResumeOne
+GatewayServer	0x49ac20	ThreadControl_StopWorker_wrap	CThreadManager::StopOne
+GatewayServer	0x49ac40	WorkerThreads_ForEachMatching	CThreadManager::ForEachThread
+GatewayServer	0x49ad60	WorkerThreads_ApplySuspend	CThreadManager::SuspendThreads
+GatewayServer	0x49ad70	WorkerThreads_ApplyResume	CThreadManager::ResumeThreads
+GatewayServer	0x49ad80	WorkerThreads_ApplyFn49AC20	CThreadManager::StopThreads
+GatewayServer	0x49ca70	CSimpleThread::InitThunk	CSimpleThread::CSimpleThread
+GatewayServer	0x49cad0	nullsub_1244	CSimpleThread::Run
+GatewayServer	0x49cb80	CThreadControl::ctor	CThreadControl::CThreadControl
+GatewayServer	0x49cc20	CThreadControl::vf00	CThreadControl::~CThreadControl (scalar deleting)
+GatewayServer	0x49cc40	CThreadControl::dtor	CThreadControl::~CThreadControl
+GatewayServer	0x49ccb0	CThreadControl::SetParamsAndCreate	CThreadControl::Create
+GatewayServer	0x49cd00	ThreadControl_StopWorker	CThreadControl::Stop
+GatewayServer	0x49ce30	CThreadControl::ThreadMain	CThreadControl::Run
+GatewayServer	0x49cec0	CSimpleThread_ThunkCallVf1	CSimpleThread::ThunkProc
+GatewayServer	0x49cee0	CThreadControl::JoinAndClose	CSimpleThread::Close
+GatewayServer	0x49cf20	CThread_CreateSuspended	CSimpleThread::Create
+GatewayServer	0x49cf60	WorkerThread_Resume	CSimpleThread::Resume
+GatewayServer	0x49cfb0	WorkerThread_Suspend	CSimpleThread::Suspend
