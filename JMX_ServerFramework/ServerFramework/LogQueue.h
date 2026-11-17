@@ -25,3 +25,10 @@ void FatalLog_AppendLine(const char* pszText);
 // WriteStartupErrorFile (0x41d1a0, not in the list): formats the text and appends it as a line
 // to <module dir>\StartupError_<pszModule>.txt.
 void ServerApp_WriteStartupErrorFile(const char* pszModule, const char* pszFormat, ...);
+
+#ifdef JMX_FRAMEWORK_2011
+// LogFile_AppendTimestampedLine (AgentServer 0x42b800): formats the text (0x1000 bytes) and
+// appends "date\ttime\ttext\r\n" to pszPath (relative to the current directory). False on
+// NULL arguments or when a formatting step fails.
+bool LogFile_AppendTimestampedLine(const char* pszPath, const char* pszFormat, ...);
+#endif

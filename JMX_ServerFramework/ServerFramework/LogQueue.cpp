@@ -195,8 +195,47 @@ void FatalLog_AppendLine(const char* pszText)
     FILE* pFile;
     if (!fopen_s(&pFile, szFile, "a"))
     {
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x430570: the module name in brackets before the text.
+        fprintf(pFile, "%04d-%02d-%02d\t%02d:%02d:%02d\t[%s]\t%s\n", st.wYear, st.wMonth,
+                st.wDay, st.wHour, st.wMinute, st.wSecond, g_ServerGlobals.szServiceName,
+                pszText);
+#else
         fprintf(pFile, "%04d-%02d-%02d\t%02d:%02d:%02d\t%s\n", st.wYear, st.wMonth, st.wDay,
                 st.wHour, st.wMinute, st.wSecond, pszText);
+#endif
         fclose(pFile);
     }
 }
+
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x42b800
+bool LogFile_AppendTimestampedLine(const char* pszPath, const char* pszFormat, ...)
+{
+    if (!pszPath || !pszFormat)
+        return false;
+    char szText[0x1000];
+    va_list args;
+    va_start(args, pszFormat);
+    int n = _vsnprintf_s(szText, sizeof(szText), sizeof(szText) - 1, pszFormat, args);
+    va_end(args);
+    if (n < 0 || n > (int)sizeof(szText) - 1)
+        return false;
+    if (n == sizeof(szText) - 1)
+        szText[sizeof(szText) - 1] = 0;
+
+    char szFile[MAX_PATH];
+    if (StringCchPrintfA(szFile, MAX_PATH, "%s", pszPath))
+        return false;
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    char szLine[0x2000];
+    if (StringCchPrintfA(szLine, sizeof(szLine), "%04d-%02d-%02d\t%02d:%02d:%02d\t%s\r\n",
+                         st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, szText))
+    {
+        return false;
+    }
+    File_AppendString(szFile, szLine);
+    return true;
+}
+#endif
