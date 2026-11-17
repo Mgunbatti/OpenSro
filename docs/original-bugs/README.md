@@ -139,3 +139,9 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SRVFW-001](SRVFW-001.md) | ServerFramework | crash | Crash-dump fallback writes its .txt only when `fopen_s` fails, through an invalid `FILE*` |
 | [SRVFW-002](SRVFW-002.md) | CMassiveMsg | wrong | Reads and writes cross at most one part boundary and throw for anything larger |
 | [SRVFW-003](SRVFW-003.md) | CMassiveMsg | minor | Peeking the inner opcode leaves the read cursor one byte further on two paths |
+| [AS-001](AS-001.md) | AgentServer | crash | A refused complete massive message is freed twice (Dispatch and OnMsg_600D) |
+| [AS-002](AS-002.md) | AgentServer | wrong | A session ID 0 stops the 0x220A multi-session relay |
+| [AS-003](AS-003.md) | AgentServer | minor | 0x2209 counts the bytes of an already released message |
+| [AS-004](AS-004.md) | AgentServer | crash | XTrap_S_SetActiveCode is called without being checked after the DLL load |
+| [AS-005](AS-005.md) | AgentServer | minor | 0x6103 compares the token with an unset address when the peer address is unknown |
+| [AS-006](AS-006.md) | AgentServer | crash | A forwarded client packet is released twice |
