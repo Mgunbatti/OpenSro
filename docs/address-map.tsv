@@ -38,3 +38,14 @@ GatewayServer	0x443d70	CMsg::WriteString_2	CMsg::operator<<(const std::string&)
 GatewayServer	0x40b730	CMsg::ReadString	CMsg::operator>>(std::string&)
 GatewayServer	0x40b430	CMsg_ReadWString	CMsg::operator>>(std::wstring&)
 GatewayServer	0x443e40	CMsg_FormatDebugString	CMsg::FormatDebugString
+GatewayServer	0x47d560	CSynchObject::ctor	CSynchObject::CSynchObject
+GatewayServer	0x47d5e0	CSynchObject::dtor	CSynchObject::~CSynchObject
+GatewayServer	0x47d660	CSynchObject::Lock	CSynchObject::Lock
+GatewayServer	0x47d680	CSynchObject::vf02	CSynchObject::Unlock(LONG, LPLONG)
+GatewayServer	0x47d690	CSynchObject::vf04	CSynchObject::IsCriticalSection
+GatewayServer	0x47d6c0	CCriticalSectionBS::ctor	CCriticalSectionBS::CCriticalSectionBS
+GatewayServer	0x40d1b0	CCriticalSectionBS::dtor	CCriticalSectionBS::~CCriticalSectionBS
+GatewayServer	0x40d230	CCriticalSectionBS::Lock	CCriticalSectionBS::Lock
+GatewayServer	0x40d260	CCriticalSectionBS::Unlock	CCriticalSectionBS::Unlock
+GatewayServer	0x40d270	CCriticalSectionBS::vf04	CCriticalSectionBS::IsCriticalSection
+GatewayServer	0x482ae0	MsgPool_Free (inlined lock)	CSingleLockBS
