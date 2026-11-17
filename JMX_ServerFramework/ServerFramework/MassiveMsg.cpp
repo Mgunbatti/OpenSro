@@ -7,7 +7,7 @@ IBSNet* g_pBSNet = NULL;
 namespace ServerFramework
 {
 
-CChunkAllocatorMT<CMassiveMsg> g_MassiveMsgPool;
+CChunkAllocatorMT<CMassiveMsg> g_MassiveMsgPool MASSIVE_MSG_POOL_ARGS;
 
 CMassiveMsg::CMassiveMsg()
 {

@@ -75,6 +75,13 @@ C_ASSERT(FIELD_OFFSET(CMassiveMsg, m_wOpcode) == 30);
 C_ASSERT(FIELD_OFFSET(CMassiveMsg, m_pCurMsg) == 40);
 
 extern CChunkAllocatorMT<CMassiveMsg> g_MassiveMsgPool;
+// Constructor arguments of g_MassiveMsgPool (a macro so that MassiveMsg.cpp keeps its lines).
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x438e10: the pool is named.
+#define MASSIVE_MSG_POOL_ARGS (NULL, 0, 500, "CMassiveMsg")
+#else
+#define MASSIVE_MSG_POOL_ARGS
+#endif
 
 // Inner opcode of a 0x600D packet: from the header packet itself, or from pMassive for a part.
 WORD GetMassiveOpcode(CMsg* pMsg, CMassiveMsg* pMassive);

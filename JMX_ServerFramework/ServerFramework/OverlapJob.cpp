@@ -12,8 +12,16 @@ namespace ServerFramework
 // BUG(FWAPP-004): the ID pool and both job pools are not locked, but jobs are allocated and
 // returned on the main process thread and on the overlap process thread.
 COverlapJobIDPool g_OverlapJobIDPool;
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x42de40 / 0x44aed0: the pools are named.
+CChunkAllocatorST<COverlapJob_InitializeLocalData> g_OverlapJobInitLocalDataPool(
+    NULL, 0, 500, "COverlapJob_InitializeLocalData");
+CChunkAllocatorST<COverlapJob_RelayMsg> g_OverlapJobRelayMsgPool(NULL, 0, 500,
+                                                                 "COverlapJob_RelayMsg");
+#else
 CChunkAllocatorST<COverlapJob_InitializeLocalData> g_OverlapJobInitLocalDataPool;
 CChunkAllocatorST<COverlapJob_RelayMsg> g_OverlapJobRelayMsgPool;
+#endif
 
 // ---------------------------------------------------------------------------------------------
 // COverlapJobIDPool
