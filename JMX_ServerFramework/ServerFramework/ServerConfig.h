@@ -53,8 +53,11 @@ C_ASSERT(FIELD_OFFSET(SERVER_GLOBALS, mapExtra) == 0x2BC);
 
 extern SERVER_GLOBALS g_ServerGlobals;
 
-// Name of the module's own block in Server.cfg (besides "common").
+// Name of the module's own block in Server.cfg (besides "common"). Like SERVER_MODULE_NAME
+// (CertArch.h) a compile-time setting of the module the framework is built for.
+#ifndef SERVER_CONFIG_MODULE_NAME
 #define SERVER_CONFIG_MODULE_NAME   "GatewayServer"
+#endif
 
 // Size of the token buffer ServerConfig_Load passes to Cfg_ReadNextToken.
 enum { SERVER_CONFIG_TOKEN_SIZE = 1024 };
