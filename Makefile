@@ -198,7 +198,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ServerDataTest.exe $(BIN)\ServerUtilTest.exe \
         $(BIN)\ServerUiTest.exe $(BIN)\ServerAppTest.exe \
         $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe \
-        $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe
+        $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe \
+        $(BIN)\Framework2011Test.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -324,6 +325,10 @@ $(AGENT_LIBDIR)\ServerFramework.lib: $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDIR
 $(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
 	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\FarmTest.cpp
 
+# Framework2011Test checks the 2011 framework and needs its defines.
+$(OBJ)\test\Framework2011Test.obj: test\Framework2011Test.cpp
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework2011Test.cpp
+
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
 
@@ -387,6 +392,10 @@ $(BIN)\MachineTest.exe: $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
 $(BIN)\FarmTest.exe: $(OBJ)\FarmManager $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(FARM_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(FARM_LIBS) $(SYSLIBS)
 
+# Linked with the 2011 builds of the libraries.
+$(BIN)\Framework2011Test.exe: $(OBJ)\test\Framework2011Test.obj $(AGENT_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework2011Test.obj $(AGENT_LIBS) $(SYSLIBS)
+
 $(BIN)\MachineTestChild.exe: $(OBJ)\test $(BIN) $(OBJ)\test\MachineTestChild.obj
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTestChild.obj user32.lib
 
@@ -446,6 +455,7 @@ test: all
 	$(BIN)\DownloadTest.exe
 	$(BIN)\MachineTest.exe
 	$(BIN)\FarmTest.exe
+	$(BIN)\Framework2011Test.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
