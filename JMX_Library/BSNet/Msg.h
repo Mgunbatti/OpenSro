@@ -28,6 +28,45 @@ enum
     MSG_OP_ACK           = 0x8000,
 };
 
+#ifdef JMX_FRAMEWORK_2011
+// Exceptions of the 2011 library. Nothing catches them by type: a short read in a packet handler
+// ends in the __except of the server process message loop like the 2008 access violation (the
+// session is closed), but destructors run on the way.
+class CInternalException
+{
+public:
+    CInternalException() : m_dw4(0) {}
+    virtual ~CInternalException() {}                                            // 0x408120
+    virtual const char* GetName() { return "CInternalException"; }              // 0x408190
+
+public:
+    DWORD   m_dw4;      // +4
+};
+
+C_ASSERT(sizeof(CInternalException) == 8);
+
+// Thrown by the CMsg readers on a short read (AgentServer 0x4693f0..0x469630).
+class CMsgException : public CInternalException
+{
+public:
+    CMsgException()                                                             // 0x4081f0
+    {
+        m_dw4 = 1;
+        m_dw8 = 1;
+    }
+    virtual const char* GetName() { return "CMsgException"; }                   // 0x408150
+
+public:
+    DWORD   m_dw8;      // +8
+};
+
+C_ASSERT(sizeof(CMsgException) == 0xC);
+
+#define MSG_READ_FAILED() throw CMsgException()
+#else
+#define MSG_READ_FAILED() BS_CRASH()
+#endif
+
 class CMsg
 {
 public:
@@ -62,13 +101,14 @@ public:
     void WriteBytes(const void* pSrc, WORD wLen);
     void ReadBytes(void* pDst, WORD wLen);
 
-    // BUG(BSNET-002): a short packet crashes the process here and in PopBack.
+    // BUG(BSNET-002): a short packet crashes the process here and in PopBack (2011: throws
+    // CMsgException).
     template <typename T> CMsg& Read(T& v)
     {
         if (m_bReadForward)
         {
             if (m_wReadPos + sizeof(T) > m_wWritePos)
-                BS_CRASH();
+                MSG_READ_FAILED();
             v = *(T*)(m_pData + m_wReadPos);
             m_wReadPos += sizeof(T);
         }
@@ -83,7 +123,7 @@ public:
     template <typename T> void PopBack(T& v)
     {
         if (m_wWritePos - MSG_HEADER_SIZE < (int)sizeof(T))
-            BS_CRASH();
+            MSG_READ_FAILED();
         m_wWritePos -= sizeof(T);
         v = *(T*)(m_pData + m_wWritePos);
         SetPayloadSize((WORD)(m_wWritePos - MSG_HEADER_SIZE));
