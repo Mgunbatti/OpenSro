@@ -37,8 +37,14 @@ using namespace ServerFramework;
 // to 172.31.x only partly).
 bool Net_IsPrivateIPv4(DWORD dwIP)
 {
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x40a4d0: 192.168.0.0/16 is not private.
+    DWORD adwMask[2] = { 0xFFFFFF0A, 0xFFFF1FAC };
+    for (DWORD i = 0; i < 2; ++i)
+#else
     DWORD adwMask[3] = { 0xFFFFFF0A, 0xFFFF1FAC, 0xFFFFA8C0 };
     for (DWORD i = 0; i < 3; ++i)
+#endif
     {
         if (dwIP == (dwIP & adwMask[i]))
             return true;
@@ -400,7 +406,12 @@ bool CServerApp::InitMonitorCounters()
 bool CServerApp::Shutdown()
 {
     DWORD dwStart = GetTickCount();
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x409a10
+    SetServerState(7);
+#else
     SetServerState(SERVER_STATE_STOPPED);
+#endif
     FileXfer_ResetQueueAndState_Global();
     if (GetTickCount() - dwStart < 300)
         Sleep(300);
@@ -431,10 +442,17 @@ LONG CServerApp::OnControlMsg(CMsg* pMsg)
             DWORD dwFlags;
             *pMsg >> dwFlags;
             *pMsg >> strText;
+#ifdef JMX_FRAMEWORK_2007
+            // FarmManager 0x409b50
+            if (dwFlags == 0x2000001)
+                FatalLog_AppendLine(strText.c_str());
+            m_pfnLog(dwFlags, strText.c_str());
+#else
             if (dwFlags == 0x2000001 || dwFlags == 0x3000000)
                 FatalLog_AppendLine(strText.c_str());
             if (dwFlags != 0x3000000)
                 m_pfnLog(dwFlags, strText.c_str());
+#endif
         }
         break;
 

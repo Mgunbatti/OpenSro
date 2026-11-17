@@ -149,8 +149,11 @@ CFG_RESULT ReadOption(char*& p, char* pszToken)
     }
     if (StrCmpI_Locale(pszToken, "PromptAtClose") == 0)
         return ReadBoolOption(p, pszToken, g.bPromptAtClose);
+#ifndef JMX_FRAMEWORK_2007
+    // FarmManager 0x40a7b0 has no such key (it ends in mapExtra).
     if (StrCmpI_Locale(pszToken, "WritePerfLogToText") == 0)
         return ReadBoolOption(p, pszToken, g.bWritePerfLogToText);
+#endif
 
     std::string strKey(pszToken);
     p = Cfg_ReadNextToken(p, pszToken);

@@ -24,20 +24,39 @@ using namespace ServerFramework;
 
 // Level names by the high byte of the log flags (0x4F81C8); higher levels give "".
 static const char* const s_apszLogLevel[4] = { "notify", "warnning", "fatal", "unknown" };
+#ifdef JMX_FRAMEWORK_2007
+// Console colours of the levels, the last for all higher ones (FarmManager 0x4CF7D8).
+static const WORD s_awConsoleColor[4] = { 0x7, 0xE, 0xC, 0xF };
+#else
 // Console colours of the levels, the last for all higher ones (0x4F8134).
 static const WORD s_awConsoleColor[5] = { 0x7, 0xE, 0xC, 0xF, 0x0 };
+#endif
 
 const char* LogLevel_ToString(DWORD dwFlags)
 {
     BYTE byLevel = HIBYTE(HIWORD(dwFlags));
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x409220: higher levels are "unknown".
+    if (byLevel > 3)
+        byLevel = 3;
+    return s_apszLogLevel[byLevel];
+#else
     if (byLevel <= 3)
         return s_apszLogLevel[byLevel];
     return "";
+#endif
 }
+
+#ifdef JMX_FRAMEWORK_2007
+// FarmManager 0x40a630: a 0x2800-byte buffer.
+#define LOG_PRINTF_BUFFER_SIZE 0x2800
+#else
+#define LOG_PRINTF_BUFFER_SIZE 0x2000
+#endif
 
 int LogPrintf(DWORD dwFlags, const char* pszFormat, ...)
 {
-    char szText[0x2000];
+    char szText[LOG_PRINTF_BUFFER_SIZE];
     va_list args;
     va_start(args, pszFormat);
     int n = _vsnprintf_s(szText, sizeof(szText), sizeof(szText) - 1, pszFormat, args);
@@ -80,8 +99,14 @@ void __cdecl ServerApp_LogMsgPoolEntry(DWORD dwOpcode, DWORD dwCount)
 int __cdecl Console_WriteLogLine(DWORD dwFlags, const char* pszText)
 {
     BYTE byLevel = HIBYTE(HIWORD(dwFlags));
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x43f360
+    if (byLevel >= 3)
+        byLevel = 3;
+#else
     if (byLevel >= 4)
         byLevel = 4;
+#endif
     SetConsoleTextAttribute(g_hServerConsole, s_awConsoleColor[byLevel]);
     DWORD dwWritten;
     WriteConsoleA(g_hServerConsole, "[", 1, &dwWritten, NULL);
