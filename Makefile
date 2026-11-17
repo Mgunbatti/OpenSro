@@ -49,7 +49,14 @@ BSNET_OBJS = \
 	$(OBJ)\BSNet\Proactor.obj \
 	$(OBJ)\BSNet\PeerProcess.obj \
 	$(OBJ)\BSNet\Maintainer.obj \
-	$(OBJ)\BSNet\NetEngineFwd.obj
+	$(OBJ)\BSNet\NetEngineFwd.obj \
+	$(OBJ)\BSNet\BaseSocket.obj \
+	$(OBJ)\BSNet\SockStream.obj \
+	$(OBJ)\BSNet\SockListener.obj \
+	$(OBJ)\BSNet\SockDatagram.obj \
+	$(OBJ)\BSNet\SockPool.obj \
+	$(OBJ)\BSNet\SockSystem.obj \
+	$(OBJ)\BSNet\UdpPing.obj
 
 SRVFW_OBJS = \
 	$(OBJ)\ServerFramework\MassiveMsg.obj
@@ -57,7 +64,8 @@ SRVFW_OBJS = \
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
 TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
-        $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe
+        $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
+        $(BIN)\SocketTest.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -109,6 +117,7 @@ $(BIN)\SecurityTest.exe: $(OBJ)\test\SecurityTest.obj
 $(BIN)\ThreadTest.exe: $(OBJ)\test\ThreadTest.obj
 $(BIN)\FileTest.exe: $(OBJ)\test\FileTest.obj
 $(BIN)\ProactorTest.exe: $(OBJ)\test\ProactorTest.obj
+$(BIN)\SocketTest.exe: $(OBJ)\test\SocketTest.obj
 
 test: all
 	$(BIN)\MsgTest.exe
@@ -121,6 +130,7 @@ test: all
 	$(BIN)\ThreadTest.exe
 	$(BIN)\FileTest.exe
 	$(BIN)\ProactorTest.exe
+	$(BIN)\SocketTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
