@@ -20,6 +20,8 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [BSNET-002](BSNET-002.md) | CMsg | crash | Reading past the end of a received packet crashes the process on purpose |
 | [BSNET-003](BSNET-003.md) | CMsg | wrong | String reads in pop-back mode return without reading and leave the output unchanged |
 | [BSNET-004](BSNET-004.md) | CMsg | minor | Constructor copies an uninitialised pointer into the WSABUF (overwritten right after) |
+| [SEC-001](SEC-001.md) | Security | wrong | Blowfish encryption does not pad buffers shorter than 7 bytes and reads 8 source bytes |
+| [SEC-002](SEC-002.md) | Security | crash | Random prime search can divide by zero or return 1 for small start values |
 | [SRVFW-001](SRVFW-001.md) | ServerFramework | crash | Crash-dump fallback writes its .txt only when `fopen_s` fails, through an invalid `FILE*` |
 | [SRVFW-002](SRVFW-002.md) | CMassiveMsg | wrong | Reads and writes cross at most one part boundary and throw for anything larger |
 | [SRVFW-003](SRVFW-003.md) | CMassiveMsg | minor | Peeking the inner opcode leaves the read cursor one byte further on two paths |
