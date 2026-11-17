@@ -118,17 +118,36 @@ GATEWAY_CERT_OBJS = \
 	$(OBJ)\GatewayServer\GatewayMainProcessCert.obj
 GATEWAY_SYSLIBS = kernel32.lib wininet.lib advapi32.lib iphlpapi.lib user32.lib odbc32.lib \
                   ws2_32.lib shlwapi.lib ole32.lib gdi32.lib comctl32.lib
-TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
+
+# DownloadServer application (JMX_CommonServers\DownloadServer), built by "nmake download". The
+# framework files that name the module (service, semaphore and startup error name, the
+# certification check, the Server.cfg block) are compiled again for it and linked before the
+# libraries.
+DOWNLOAD_OBJS = \
+	$(OBJ)\DownloadServer\DownloadServer.obj \
+	$(OBJ)\DownloadServer\DownloadServerMainProcess.obj
+DOWNLOAD_FW_OBJS = \
+	$(OBJ)\DownloadServer\fw\CertArch.obj \
+	$(OBJ)\DownloadServer\fw\ServerApp.obj \
+	$(OBJ)\DownloadServer\fw\ServerConfig.obj
+DOWNLOAD_FW_DEFS = /DSERVER_MODULE_NAME=\"DownloadServer\" \
+                   /DSERVER_CONFIG_MODULE_NAME=\"DownloadServer\"
+DOWNLOAD_SYSLIBS = kernel32.lib advapi32.lib iphlpapi.lib user32.lib ws2_32.lib ole32.lib \
+                   gdi32.lib comctl32.lib
+
+TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
         $(BIN)\SocketTest.exe $(BIN)\NetEngineTest.exe \
         $(BIN)\ServerDataTest.exe $(BIN)\ServerUtilTest.exe \
         $(BIN)\ServerUiTest.exe $(BIN)\ServerAppTest.exe \
-        $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe
+        $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe \
+        $(BIN)\DownloadTest.exe
 
 all: $(LIBS) $(TESTS)
 
-$(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN):
+$(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
+$(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw:
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
@@ -157,6 +176,12 @@ $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\tes
 
 {JMX_CommonServers\GatewayServer}.cpp{$(OBJ)\GatewayServer}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\GatewayServer\ $<
+
+{JMX_CommonServers\DownloadServer}.cpp{$(OBJ)\DownloadServer}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\DownloadServer\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\DownloadServer\fw}.obj:
+	cl $(CFLAGS) $(DOWNLOAD_FW_DEFS) /Fo$@ /Fd$(OBJ)\DownloadServer\fw\ $<
 
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
@@ -203,6 +228,21 @@ $(BIN)\GatewayCertTest.exe: $(OBJ)\GatewayServer $(OBJ)\test\GatewayCertTest.obj
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GatewayCertTest.obj $(GATEWAY_OBJS) \
 	    $(GATEWAY_CERT_OBJS) $(LIBS) $(GATEWAY_SYSLIBS)
 
+# The DownloadServer variants of the framework files come before the libraries.
+$(BIN)\DownloadTest.exe: $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw \
+                         $(OBJ)\test\DownloadTest.obj $(DOWNLOAD_OBJS) $(DOWNLOAD_FW_OBJS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\DownloadTest.obj $(DOWNLOAD_OBJS) \
+	    $(DOWNLOAD_FW_OBJS) $(LIBS) $(SYSLIBS)
+
+download: $(BIN)\DownloadServer.exe
+
+# Like the original the exe keeps the framework's NT service code (the advapi32 import), although
+# its WinMain runs the window mode.
+$(BIN)\DownloadServer.exe: $(BIN) $(LIBS) $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw \
+                           $(DOWNLOAD_OBJS) $(OBJ)\DownloadServer\WinMain.obj $(DOWNLOAD_FW_OBJS)
+	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
+	    /out:$@ $(OBJ)\DownloadServer\WinMain.obj $(DOWNLOAD_OBJS) $(DOWNLOAD_FW_OBJS) $(LIBS) $(DOWNLOAD_SYSLIBS)
+
 gateway: $(BIN)\GatewayServer.exe
 
 $(BIN)\GatewayServer.exe: $(BIN) $(LIBS) $(OBJ)\GatewayServer $(GATEWAY_OBJS) \
@@ -230,6 +270,7 @@ test: all
 	$(BIN)\DatabaseTest.exe
 	$(BIN)\GatewayTest.exe
 	$(BIN)\GatewayCertTest.exe
+	$(BIN)\DownloadTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
