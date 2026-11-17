@@ -7,7 +7,8 @@
 # _SECURE_SCL_THROWS=1: the originals' checked iterators throw out_of_range / invalid_argument
 # ("invalid vector<T> subscript") instead of calling _invalid_parameter.
 CFLAGS  = /nologo /c /O2 /MT /EHsc /GS /W3 /Zi /DWIN32 /DNDEBUG /D_WINDOWS \
-          /D_WIN32_WINNT=0x0500 /D_SECURE_SCL_THROWS=1 /IJMX_Library
+          /D_WIN32_WINNT=0x0500 /DWIN32_LEAN_AND_MEAN /D_SECURE_SCL_THROWS=1 \
+          /IJMX_Library /IJMX_ServerFramework
 LIBFLAGS = /nologo
 SYSLIBS = ws2_32.lib user32.lib
 
@@ -21,14 +22,20 @@ BSLIB_OBJS = \
 	$(OBJ)\BSLib\SynchObject.obj
 
 BSNET_OBJS = \
-	$(OBJ)\BSNet\Msg.obj
+	$(OBJ)\BSNet\Msg.obj \
+	$(OBJ)\BSNet\MsgPool.obj \
+	$(OBJ)\BSNet\NetEngineLog.obj
 
-LIBS = $(LIBDIR)\BSLib.lib $(LIBDIR)\BSNet.lib
-TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe
+SRVFW_OBJS = \
+	$(OBJ)\ServerFramework\MassiveMsg.obj
+
+LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
+TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
+        $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe
 
 all: $(LIBS) $(TESTS)
 
-$(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\test $(LIBDIR) $(BIN):
+$(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\test $(LIBDIR) $(BIN):
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
@@ -40,6 +47,9 @@ $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\test $(LIBDIR) $(BIN):
 {JMX_Library\BSNet}.cpp{$(OBJ)\BSNet}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSNet\ $<
 
+{JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\ServerFramework}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\ServerFramework\ $<
+
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
 
@@ -49,19 +59,28 @@ $(LIBDIR)\BSLib.lib: $(OBJ)\BSLib $(LIBDIR) $(BSLIB_OBJS)
 $(LIBDIR)\BSNet.lib: $(OBJ)\BSNet $(LIBDIR) $(BSNET_OBJS)
 	lib $(LIBFLAGS) /out:$@ $(BSNET_OBJS)
 
-$(BIN)\MsgTest.exe: $(OBJ)\test $(BIN) $(OBJ)\test\MsgTest.obj $(LIBS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\MsgTest.obj $(LIBS) $(SYSLIBS)
+$(LIBDIR)\ServerFramework.lib: $(OBJ)\ServerFramework $(LIBDIR) $(SRVFW_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(SRVFW_OBJS)
 
-$(BIN)\SynchTest.exe: $(OBJ)\test $(BIN) $(OBJ)\test\SynchTest.obj $(LIBS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\SynchTest.obj $(LIBS) $(SYSLIBS)
+{$(OBJ)\test}.obj{$(BIN)}.exe:
+	link /nologo /DEBUG /out:$@ $< $(LIBS) $(SYSLIBS)
 
-$(BIN)\DebugTest.exe: $(OBJ)\test $(BIN) $(OBJ)\test\DebugTest.obj $(LIBS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\DebugTest.obj $(LIBS) $(SYSLIBS)
+$(TESTS): $(OBJ)\test $(BIN) $(LIBS)
+
+$(BIN)\MsgTest.exe: $(OBJ)\test\MsgTest.obj
+$(BIN)\SynchTest.exe: $(OBJ)\test\SynchTest.obj
+$(BIN)\DebugTest.exe: $(OBJ)\test\DebugTest.obj
+$(BIN)\PoolTest.exe: $(OBJ)\test\PoolTest.obj
+$(BIN)\QueTest.exe: $(OBJ)\test\QueTest.obj
+$(BIN)\MassiveMsgTest.exe: $(OBJ)\test\MassiveMsgTest.obj
 
 test: all
 	$(BIN)\MsgTest.exe
 	$(BIN)\SynchTest.exe
 	$(BIN)\DebugTest.exe
+	$(BIN)\PoolTest.exe
+	$(BIN)\QueTest.exe
+	$(BIN)\MassiveMsgTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
