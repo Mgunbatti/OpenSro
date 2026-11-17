@@ -293,3 +293,100 @@ GatewayServer	0x48aec0	CFileSystem::PurgeUnusedFileEntries	CFileSystem::PurgeUnu
 GatewayServer	0x48af40	CFileSystem::ReleaseFileEntry	CFileSystem::ReleaseFileEntry
 GatewayServer	0x48b060	CFileSystem::FindOrCreateFileObject	CFileSystem::FindOrCreateFileObject
 GatewayServer	0x48b910	CFileSystem_SetGlobalInstance	CSingletonT<CFileSystem>::CSingletonT
+GatewayServer	0x40abf0	CServiceObject::vf05	CServiceObject::GetOwner
+GatewayServer	0x446680	CServiceObject::vf02	CServiceObject::Initialize
+GatewayServer	0x4466a0	CBase::dtor	CServiceObject::~CServiceObject
+GatewayServer	0x446710	CBase::scalar_deleting_dtor	CBase::~CBase (scalar deleting)
+GatewayServer	0x446730	CServiceObject::ctor	CServiceObject::CServiceObject
+GatewayServer	0x4467b0	CServiceObject::scalar_deleting_dtor	CServiceObject::~CServiceObject (scalar deleting)
+GatewayServer	0x4709d0	ProactorIOCP_ForwardCompletion	Listener_ForwardHandlerClosed
+GatewayServer	0x47f960	ProactorMap_Find	CTaskManager::FindTask
+GatewayServer	0x47fa80	ProactorMap_Add	CTaskManager::AddTask
+GatewayServer	0x47fbb0	ProactorMap_RemoveAndDelete	CTaskManager::RemoveAndDeleteTask
+GatewayServer	0x482060	CProactorIOCP_DispatchCompletion	Proactor_NotifyHandlerClosed
+GatewayServer	0x487e20	Callback_InvokeField8	CRuntimeClass::CreateObject
+GatewayServer	0x487f70	List_ContainsNode_Next10	CRuntimeClass::IsDerivedFrom
+GatewayServer	0x487f90	CBase::GetRuntimeClass	CBase::GetRuntimeClass
+GatewayServer	0x487fc0	CServiceObject::GetRuntimeClass	CServiceObject::GetRuntimeClass
+GatewayServer	0x487fd0	CServiceObjectSock::GetRuntimeClass	CServiceObjectSock::GetRuntimeClass
+GatewayServer	0x495a10	Proactor_Create	Proactor_Create
+GatewayServer	0x495d30	CProactor_SuspendLocked	CTask::SuspendThreads
+GatewayServer	0x495e10	CProactor_ResumeLocked	CTask::ResumeThreads
+GatewayServer	0x496f90	CServiceObjectSock::vf08	CServiceObjectSock::GetSendQueue
+GatewayServer	0x496fa0	CProactorIOCP::CreateObject	CProactorIOCP::CreateObject
+GatewayServer	0x497020	CProactorIOCP::GetRuntimeClass	CProactorIOCP::GetRuntimeClass
+GatewayServer	0x497030	CProactorIOCP::ctor	CProactorIOCP::CProactorIOCP
+GatewayServer	0x4970c0	CProactorIOCP::vf01	CProactorIOCP::~CProactorIOCP (scalar deleting)
+GatewayServer	0x4970e0	CServiceObjectSock::ctor	CServiceObjectSock::CServiceObjectSock
+GatewayServer	0x497140	CServiceObject::dtor	CServiceObjectSock::~CServiceObjectSock
+GatewayServer	0x497190	CServiceObjectSock::scalar_deleting_dtor	CServiceObjectSock::~CServiceObjectSock (scalar deleting)
+GatewayServer	0x4971f0	CProactorIOCP::dtor	CProactorIOCP::~CProactorIOCP
+GatewayServer	0x497250	CProactorIOCP::Close	CProactorIOCP::Close
+GatewayServer	0x497280	CProactorIOCP::AssociateHandle	CProactorIOCP::AssociateHandle
+GatewayServer	0x4972f0	CProactorIOCP::CompletionWorkerLoop	CProactorIOCP::Run
+GatewayServer	0x497410	CProactorIOCP::SignalStop	CProactorIOCP::SignalStop
+GatewayServer	0x497520	PostQueuedCompletionStatus_wrap	CProactorIOCP::PostStopPacket
+GatewayServer	0x497540	PostQueuedCompletionStatus_Repeat	CProactorIOCP::PostStopPackets
+GatewayServer	0x497590	CProactorIOCP::vf07	CProactorIOCP::CloseHandler
+GatewayServer	0x4975d0	STL_list_TakeFront_ProactorEvent	CProactorEvent::TakeFreeEvent
+GatewayServer	0x497680	CProactorEvent::CreateObject	CProactorEvent::CreateObject
+GatewayServer	0x497700	CProactorEvent::GetRuntimeClass	CProactorEvent::GetRuntimeClass
+GatewayServer	0x497710	CProactorEvent::ctor	CProactorEvent::CProactorEvent
+GatewayServer	0x497800	CProactorEvent::vf01	CProactorEvent::~CProactorEvent (scalar deleting)
+GatewayServer	0x497820	CProactorEvent::dtor	CProactorEvent::~CProactorEvent
+GatewayServer	0x497a30	CProactorEvent_ClearHandleSlot	CProactorEvent::ClearSlot
+GatewayServer	0x497a90	CProactorEvent::RecountHandles	CProactorEvent::RecountHandles
+GatewayServer	0x497b00	CProactorEvent::AssociateHandle	CProactorEvent::AssociateHandle
+GatewayServer	0x497c50	CProactorEvent::GetSlotOverlapped	CProactorEvent::GetSlotOverlapped
+GatewayServer	0x497d30	CProactorEvent::CloseSlotAndNotify	CProactorEvent::CloseHandler
+GatewayServer	0x497e20	CProactorEvent::EventWorkerLoop	CProactorEvent::Run
+GatewayServer	0x497f70	CProactorEvent::SignalStop	CProactorEvent::SignalStop
+GatewayServer	0x498760	CMaintainer::CreateObject	CMaintainer::CreateObject
+GatewayServer	0x4987e0	CMaintainer::GetRuntimeClass	CMaintainer::GetRuntimeClass
+GatewayServer	0x4987f0	CMaintainer::ctor	CMaintainer::CMaintainer
+GatewayServer	0x498880	CMaintainer::vf01	CMaintainer::~CMaintainer (scalar deleting)
+GatewayServer	0x4988a0	CMaintainer::dtor	CMaintainer::~CMaintainer
+GatewayServer	0x498920	CMaintainer::Initialize	CMaintainer::Initialize
+GatewayServer	0x4989b0	CMaintainer::TimerWorkerLoop	CMaintainer::Run
+GatewayServer	0x498a30	CMaintainer::CallMember5C	CMaintainer::ReapSessions
+GatewayServer	0x498a70	CMaintainer::SignalStop	CMaintainer::SignalStop
+GatewayServer	0x498b20	CScheduledCallbacker_CMaintainer_K::ctor	CScheduledCallbacker<CMaintainer>::CScheduledCallbacker
+GatewayServer	0x498b70	CScheduledCallbacker_CMaintainer_K::dtor_2	CScheduledCallbacker<CMaintainer>::~CScheduledCallbacker
+GatewayServer	0x498be0	STL_vector_PushBackDefault_Maintainer_wrap	CScheduledCallbacker<CMaintainer>::Add
+GatewayServer	0x498c10	CMaintainer::TickTimers	CScheduledCallbacker<CMaintainer>::Tick
+GatewayServer	0x498c80	CScheduledCallbacker_CMaintainer_K::vf00	CScheduledCallbacker<CMaintainer>::~CScheduledCallbacker (scalar deleting)
+GatewayServer	0x49be60	CPeerProcessOverlapped::vf08	CPeerProcessOverlapped::GetSendQueue
+GatewayServer	0x49be70	GetGlobal_53AD80	NetEngine_GetDatagram
+GatewayServer	0x49be80	CPeerProcessOverlapped::CreateObject	CPeerProcessOverlapped::CreateObject
+GatewayServer	0x49bf00	CPeerProcessOverlapped::GetRuntimeClass	CPeerProcessOverlapped::GetRuntimeClass
+GatewayServer	0x49bf10	CPeerProcessOverlapped::ctor	CPeerProcessOverlapped::CPeerProcessOverlapped
+GatewayServer	0x49bfb0	CPeerProcessOverlapped::scalar_deleting_dtor	CPeerProcessOverlapped::~CPeerProcessOverlapped (scalar deleting)
+GatewayServer	0x49bfd0	CPeerProcessOverlapped::dtor	CPeerProcessOverlapped::~CPeerProcessOverlapped
+GatewayServer	0x49c0b0	CPeerProcessOverlapped::Init_CreateSendQueue	CPeerProcessOverlapped::Initialize
+GatewayServer	0x49c150	CompletionRoutine	PeerProcess_SendCompletion
+GatewayServer	0x49c180	CPeerProcessOverlapped::EventWaitSendLoop	CPeerProcessOverlapped::Run
+GatewayServer	0x49c380	CPeerProcessOverlapped::Stop_DrainSendQueue	CPeerProcessOverlapped::SignalStop
+GatewayServer	0x49c400	CPeerProcessOverlapped::AssociateHandle	CPeerProcessOverlapped::AssociateHandle
+GatewayServer	0x49c4c0	CPeerProcessOverlapped::vf07	CPeerProcessOverlapped::CloseHandler
+GatewayServer	0x49c4d0	CPeerProcessOverlapped::GetSlotByEventIndex	CPeerProcessOverlapped::GetSlotOverlapped
+GatewayServer	0x49c5b0	CPeerProcessOverlapped::RecountHandles	CPeerProcessOverlapped::RecountHandles
+GatewayServer	0x49c620	CPeerProcessIOCP::CreateObject	CPeerProcessIOCP::CreateObject
+GatewayServer	0x49c6a0	CPeerProcessIOCP::GetRuntimeClass	CPeerProcessIOCP::GetRuntimeClass
+GatewayServer	0x49c6b0	CPeerProcessIOCP::ctor	CPeerProcessIOCP::CPeerProcessIOCP
+GatewayServer	0x49c720	CPeerProcessIOCP::scalar_deleting_dtor	CPeerProcessIOCP::~CPeerProcessIOCP (scalar deleting)
+GatewayServer	0x49c740	CPeerProcessIOCP::dtor	CPeerProcessIOCP::~CPeerProcessIOCP
+GatewayServer	0x49c7a0	CPeerProcessIOCP::vf02	CPeerProcessIOCP::Initialize
+GatewayServer	0x49c7c0	CPeerProcessIOCP::Close	CPeerProcessIOCP::Close
+GatewayServer	0x49c7f0	CPeerProcessIOCP::CompletionWorkerLoop	CPeerProcessIOCP::Run
+GatewayServer	0x49c8d0	CPeerProcessIOCP::PostStopToWorkers	CPeerProcessIOCP::SignalStop
+GatewayServer	0x49c9b0	CPeerProcessIOCP::AssociateHandle	CPeerProcessIOCP::AssociateHandle
+GatewayServer	0x49c9f0	CPeerProcessIOCP::vf07	CPeerProcessIOCP::CloseHandler
+GatewayServer	0x49ca00	PostQueuedCompletionStatus_wrap_2	CPeerProcessIOCP::PostStopPacket
+GatewayServer	0x49ca20	IOCP_PostCompletionNTimes	CPeerProcessIOCP::PostStopPackets
+GatewayServer	0x497000	sub_497000	CProactorIOCP::DeleteObject
+GatewayServer	0x4976e0	sub_4976E0	CProactorEvent::DeleteObject
+GatewayServer	0x4987c0	sub_4987C0	CMaintainer::DeleteObject
+GatewayServer	0x49bee0	sub_49BEE0	CPeerProcessOverlapped::DeleteObject
+GatewayServer	0x49c680	sub_49C680	CPeerProcessIOCP::DeleteObject
+GatewayServer	0x43eda0	TimeoutConfig_InitDefaults	MAINTAINER_CONFIG::MAINTAINER_CONFIG
+GatewayServer	0x498a60	KeepAlive_TryConnect_wrap	CMaintainer::KeepAlive
