@@ -81,6 +81,15 @@ int main()
     CHECK(BSAssertDialog(1, "file", "%s", szLong) == false);
     CHECK(g_bBSDebugAsserted);
 
+    // the dialog collects either the call stack or a minidump, never both
+    BSDebugSetFlags(BSDBG_CALLSTACK | BSDBG_MINIDUMP | BSDBG_DIALOG_CONTINUE,
+                    BSDBG_CALLSTACK | BSDBG_MINIDUMP | BSDBG_DIALOG_CONTINUE);
+    CHECK(BSAssertDialog(1, "file", "%s", szLong) == false);
+    CHECK(CountDumps(true) == 0);
+    BSDebugSetFlags(BSDBG_MINIDUMP | BSDBG_DIALOG_CONTINUE, BSDBG_MINIDUMP | BSDBG_DIALOG_CONTINUE);
+    CHECK(BSAssertDialog(1, "file", "%s", szLong) == false);
+    CHECK(CountDumps(true) == 1);
+
     BSDebugSetFlags(0x112, 0x12A);
     printf(g_nFailed ? "DebugTest: %d failed\n" : "DebugTest: all passed\n", g_nFailed);
     return g_nFailed ? 1 : 0;

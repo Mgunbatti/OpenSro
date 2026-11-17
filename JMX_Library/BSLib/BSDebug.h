@@ -49,7 +49,9 @@ __declspec(noreturn) void BSAssertFailAndThrow();
 // throw. Called by the modules' RegisterMainProcessTask.
 void BSInstallSETranslator();
 
-// Assert dialog. Returns FALSE when the caller should break into the debugger.
+// Assert dialog. With BSDBG_CALLSTACK the call stack is collected and no minidump is written;
+// otherwise BSDBG_MINIDUMP writes one. Returns FALSE when the caller should break into the
+// debugger.
 bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...);
 
 bool BSDebugLoadDbgHelp();

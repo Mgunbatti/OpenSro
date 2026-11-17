@@ -740,7 +740,7 @@ static void TestAssertDialogW()
     CHECK(!BSAssertDialogW(1, L"f", strLong.c_str()));
     CHECK(s_nAssertLine == 0);
 
-    // call stack, no minidump (they exclude each other in 2011)
+    // call stack, no minidump (they exclude each other)
     char szModule[MAX_PATH];
     GetModuleFileNameA(NULL, szModule, MAX_PATH);
     std::string strDir = szModule;

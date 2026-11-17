@@ -384,6 +384,8 @@ bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...)
     DWORD dwFlags = g_dwBSDebugFlags[!IsDebuggerPresent()];
     szCallStack[0] = 0;
 
+    // A call stack and a minidump exclude each other (GatewayServer 0x475620, FarmManager
+    // 0x4587e0, AgentServer 0x462b90).
     if (dwFlags & BSDBG_CALLSTACK)
     {
         __try
@@ -395,7 +397,7 @@ bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...)
         {
         }
     }
-    if (dwFlags & BSDBG_MINIDUMP)
+    else if (dwFlags & BSDBG_MINIDUMP)
     {
         __try
         {
@@ -511,7 +513,7 @@ bool BSAssertDialogW(int nLine, const wchar_t* pszFile, const wchar_t* pszFormat
     DWORD dwFlags = g_dwBSDebugFlags[!IsDebuggerPresent()];
     szCallStack[0] = 0;
 
-    // Unlike BSAssertDialog here, a call stack and a minidump exclude each other.
+    // As in BSAssertDialog, a call stack and a minidump exclude each other.
     if (dwFlags & BSDBG_CALLSTACK)
     {
         __try
