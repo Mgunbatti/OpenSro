@@ -9,7 +9,7 @@
 #include "BSLib/thread/ServiceObject.h"
 #include "BSLib/thread/Task.h"
 #include "BSLib/thread/ThreadManager.h"
-#include "BSNet/BaseSocketFwd.h"
+#include "BSNet/BaseSocket.h"
 #include "BSNet/Maintainer.h"
 #include "BSNet/Msg.h"
 #include "BSNet/NetEngineFwd.h"
@@ -17,6 +17,9 @@
 #include "BSNet/PeerProcess.h"
 #include "BSNet/Proactor.h"
 #include "BSNet/QueMT.h"
+#include "BSNet/SockDatagram.h"
+#include "BSNet/SockListener.h"
+#include "BSNet/SockStream.h"
 
 #include "TestCheck.h"
 
@@ -131,7 +134,7 @@ public:
 
 public:
     BYTE                m_pad[0x110];       // +4
-    CBaseSocket*        m_pListener;        // +114
+    CSockListener*      m_pListener;        // +114
     CRITICAL_SECTION    m_cs;
     std::vector<void*>  m_vecReleased;
     std::vector<DWORD>  m_vecClosedIDs;
@@ -317,6 +320,30 @@ void NetEngine_KeepAliveTryConnect(IBSNet* pEngine)
     InterlockedIncrement(&g_nKeepAlive);
 }
 
+// Session functions the socket classes reference (not reached by these tests).
+DWORD NetEngine_CreateNewSession(IBSNet*, CSockStream*, DWORD)
+{
+    return 0;
+}
+
+void Session_PostHandshakeEvent(CSession*)
+{
+}
+
+int Session_HandleFileTransferData(CMsg*, CSockStream*)
+{
+    return 0;
+}
+
+BOOL FileTransfer_AccumulateSent(CSession*, DWORD)
+{
+    return TRUE;
+}
+
+void FileTransfer_Finish(CSession*, int)
+{
+}
+
 static sockaddr_in LoopbackAddr(u_short wPort)
 {
     sockaddr_in a;
@@ -448,9 +475,9 @@ static void TestProactorIOCP()
     session.dwID = 0x1234;
     CTestSocket sock;
     sock.m_pSession = &session;
-    sock.m_nState = 1;
+    sock.m_nKind = 1;
     CTestSocket sync;
-    sync.m_nState = 1;
+    sync.m_nKind = 1;
 
     // plain completion of a socket block: dispatched, nothing released
     BS_OVERLAPPED ov;
@@ -500,11 +527,12 @@ static void TestProactorIOCP()
 
     // with a listener: state 2 is ignored, other states go through it to the engine
     CTestSocket listener;
-    g_Net.m_pListener = &listener;
-    sock.m_nState = 2;
+    // only the listener's lock is used
+    g_Net.m_pListener = (CSockListener*)(CBaseSocket*)&listener;
+    sock.m_nKind = 2;
     CHECK(p->CloseHandler(&sock, 9) == 1);
     CHECK(g_Net.ClosedCount() == 2);
-    sock.m_nState = 1;
+    sock.m_nKind = 1;
     CHECK(p->CloseHandler(&sock, 9) == 77);
     CHECK(g_Net.ClosedCount() == 3 && g_Net.m_vecClosedReasons[2] == 9);
     g_Net.m_pListener = NULL;
@@ -529,7 +557,7 @@ static void TestProactorIOCP()
     g_Net.Clear();
     session.dwID = 0x99;
     sock.m_pSession = &session;
-    sock.m_nState = 1;
+    sock.m_nKind = 1;
     sock.m_nResult = 1;
     BS_OVERLAPPED ovRecv;
     memset(&ovRecv, 0, sizeof(ovRecv));
@@ -547,7 +575,7 @@ static void TestProactorIOCP()
     CHECK(MakeTcpPair(&c, &s));
     CHECK(p->AssociateHandle((HANDLE)s, &sock) == TRUE);
     g_Net.Clear();
-    sock.m_nState = 0;
+    sock.m_nKind = 0;
     nBefore = sock.m_nCompletions;
     CHECK(PostRecv(s, &ovRecv, buf, sizeof(buf)));
     ResetConnection(c);
@@ -803,8 +831,9 @@ static void TestPeerProcessOverlapped()
     CHECK(p->m_ahEvents[2] == sock.m_ov60.ov.hEvent && p->m_apOverlapped[2] == &sock.m_ov60);
 
     NETENGINE_DATAGRAM dg;
-    dg.pSocket = &sock;
-    dg.dwParam = 0;
+    // the peer process only uses the socket handle
+    dg.pSocket = (CSockDatagram*)(CBaseSocket*)&sock;
+    dg.dwTaskID = 0;
     g_pNetEngineDatagram = &dg;
     CHECK(NetEngine_GetDatagram() == &dg);
 

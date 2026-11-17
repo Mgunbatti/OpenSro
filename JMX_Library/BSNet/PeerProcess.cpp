@@ -6,6 +6,7 @@
 #include "BSNet/NetEngineFwd.h"
 #include "BSNet/NetEngineLog.h"
 #include "BSNet/QueMT.h"
+#include "BSNet/SockDatagram.h"
 
 // Discarded trace output of the originals (empty function); the argument is still evaluated.
 #define BS_PEER_TRACE(x) ((void)(x))
@@ -164,7 +165,7 @@ BOOL CPeerProcessOverlapped::RecountHandles()
 BOOL CPeerProcessOverlapped::AssociateHandle(HANDLE /*hHandle*/, CEventHandler* pHandler)
 {
     CSingleLockBS lock(&m_cs, TRUE);
-    SOCK_OVERLAPPED* pOverlapped = static_cast<CBaseSocket*>(pHandler)->GetOverlapped(1);
+    SOCK_OVERLAPPED* pOverlapped = static_cast<CSockDatagram*>(pHandler)->GetOverlapped(1);
     if (pOverlapped)
     {
         m_ahEvents[2] = pOverlapped->ov.hEvent;

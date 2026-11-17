@@ -6,26 +6,20 @@
 #include "BSNet/NetEngineFwd.h"
 #include "BSNet/NetEngineLog.h"
 #include "BSNet/QueMT.h"
+#include "BSNet/SockListener.h"
+#include "BSNet/SockStream.h"
 
 // ---------------------------------------------------------------------------------------------
 // Close path shared by the proactors
 
-int Listener_ForwardHandlerClosed(CBaseSocket* pListener, CBaseSocket* pSock, DWORD dwReason)
-{
-    CSingleLockBS lock(&pListener->m_cs, TRUE);
-    if (pSock->m_nState == 2)
-        return 1;
-    return NetEngine_CloseSession(SockStream_GetOwnerSessionID(pSock), dwReason);
-}
-
 int Proactor_NotifyHandlerClosed(IBSNet* pEngine, CEventHandler* pHandler, DWORD dwReason)
 {
-    CBaseSocket* pListener = NetEngine_GetListener(pEngine);
+    CSockListener* pListener = NetEngine_GetListener(pEngine);
     if (pListener)
         return Listener_ForwardHandlerClosed(pListener, static_cast<CBaseSocket*>(pHandler),
                                              dwReason);
-    return NetEngine_CloseSession(SockStream_GetOwnerSessionID(
-                                      static_cast<CBaseSocket*>(pHandler)), dwReason);
+    return NetEngine_CloseSession(static_cast<CSockStream*>(pHandler)->GetOwnerSessionID(),
+                                  dwReason);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -102,7 +96,7 @@ DWORD CProactorIOCP::Run(volatile LONG* pbStop, int /*nIndex*/)
             // non-zero result below releases it a second time.
             if (pIo->dwNotPooled == 0)
                 NetEngine_ReleaseMsg(pOverlapped);
-            if (pHandler->m_nState == 0)
+            if (pHandler->m_nKind == SOCK_KIND_STREAM)
             {
                 CloseHandler(pHandler, 3);
                 continue;
@@ -256,9 +250,9 @@ BOOL CProactorEvent::AssociateHandle(HANDLE /*hHandle*/, CEventHandler* pHandler
     if (hEvent)
         m_listFreeEvents.push_back(hEvent);
 
-    CBaseSocket* pSock = static_cast<CBaseSocket*>(pHandler);
-    SOCK_OVERLAPPED* pOverlappedA4 = SockStream_GetOverlappedA4(pSock);
-    SOCK_OVERLAPPED* pOverlapped60 = SockStream_GetOverlapped60(pSock);
+    CSockStream* pSock = static_cast<CSockStream*>(pHandler);
+    SOCK_OVERLAPPED* pOverlappedA4 = &pSock->m_ovRecv;
+    SOCK_OVERLAPPED* pOverlapped60 = &pSock->m_ovSend;
     m_ahEvents[nIndex] = pOverlappedA4->ov.hEvent;
     m_apOverlapped[nIndex] = pOverlappedA4;
     m_ahEvents[nIndex + 1] = pOverlapped60->ov.hEvent;
@@ -278,8 +272,8 @@ int CProactorEvent::CloseHandler(CEventHandler* pHandler, DWORD dwIndex)
     CSingleLockBS lock(&m_cs, TRUE);
     ClearSlot(dwIndex & ~1);
     if (pHandler)
-        return NetEngine_CloseSession(SockStream_GetOwnerSessionID(
-                                          static_cast<CBaseSocket*>(pHandler)), 3);
+        return NetEngine_CloseSession(
+            static_cast<CSockStream*>(pHandler)->GetOwnerSessionID(), 3);
     return 0;
 }
 

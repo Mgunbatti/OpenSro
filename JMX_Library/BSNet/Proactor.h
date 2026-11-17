@@ -5,7 +5,7 @@
 #include <list>
 
 #include "BSLib/thread/ServiceObject.h"
-#include "BSNet/BaseSocketFwd.h"
+#include "BSNet/BaseSocket.h"
 
 class CTask;
 class CThreadManager;
@@ -90,6 +90,3 @@ BOOL Proactor_Create(CRuntimeClass* pClass, CTask* pTask, CThreadManager* pThrea
 // straight to the engine (session of the handler, dwReason).
 int Proactor_NotifyHandlerClosed(IBSNet* pEngine, CEventHandler* pHandler, DWORD dwReason);
 
-// Listener side of the close path: ignores sockets in state 2, otherwise closes the socket's
-// session with dwReason. Returns 1 for ignored sockets, else the engine's result.
-int Listener_ForwardHandlerClosed(CBaseSocket* pListener, CBaseSocket* pSock, DWORD dwReason);

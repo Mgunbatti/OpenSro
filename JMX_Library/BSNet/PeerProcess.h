@@ -4,7 +4,7 @@
 #include <windows.h>
 
 #include "BSLib/thread/ServiceObject.h"
-#include "BSNet/BaseSocketFwd.h"
+#include "BSNet/BaseSocket.h"
 
 // Peer (datagram) process for Windows NT: completion port with a fixed concurrency of 2. The
 // worker loops ignore the stop flag and end on a packet with key 0.
@@ -55,7 +55,7 @@ public:
     // Stops the send queue, sets the stop event and returns the queued messages to the
     // engine.
     virtual int SignalStop();                           // 4
-    // Takes pHandler's overlapped block 1 (CBaseSocket::GetOverlapped) as wait slot 2.
+    // Takes pHandler's overlapped block 1 (CSockDatagram::GetOverlapped) as wait slot 2.
     virtual BOOL AssociateHandle(HANDLE hHandle, CEventHandler* pHandler);     // 6
     virtual int CloseHandler(CEventHandler* pHandler, DWORD dwParam);          // 7
     virtual IQue<CMsg>* GetSendQueue();                 // 8
