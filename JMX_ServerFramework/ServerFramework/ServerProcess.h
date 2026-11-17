@@ -114,6 +114,9 @@ public:
 
     // ServerProcessBase_RegisterTick5000Timer (0x444670)
     void RegisterOverlapTimer();
+    // AgentServer 0x431720 (inlined as RegisterOverlapTimer in GatewayServer): adds a timer
+    // entry (last tick now); an existing entry of the ID is kept.
+    void RegisterTimer(BYTE byTimerID, DWORD dwPeriod, PFN_PROCESS_TIMER pfnTimer);
     // ServerProcessBase_TimerMap_SetPeriodByKey (0x444620, not referenced)
     void SetTimerPeriod(BYTE byTimerID, DWORD dwPeriod);
     // ServerProcessBase_TimerMap_EraseByKey (0x4446c0, not referenced)
@@ -193,5 +196,12 @@ bool RelayMassiveMsgToBody_6008(CMassiveMsg* pMassive, CServerProcessBase* pProc
 
 // CheckMsgFullyConsumed (0x443fa0): logs a message the last holder did not read completely.
 void CheckMsgFullyConsumed(CMsg* pMsg);
+
+#ifdef JMX_FRAMEWORK_2011
+// Msg_FormatDebugString (AgentServer 0x42b520): the 2011 description of a message in the
+// framework logs, "IP:<peer> Req|Ack|NoDir:0x<opcode> (0x<inner opcode of 0x2209>) (MsgType:<high
+// nibble>), <size> - <unread>" (255 characters). NULL when the text does not fit.
+char* Msg_FormatDebugString(char* pszOut, CMsg* pMsg);
+#endif
 
 } // namespace ServerFramework

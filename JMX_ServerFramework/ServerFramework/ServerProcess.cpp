@@ -6,6 +6,10 @@
 #include "ServerFramework/ServerBody.h"
 #include "ServerFramework/ServerDataExtern.h"
 
+#ifdef JMX_FRAMEWORK_2011
+#include <strsafe.h>
+#endif
+
 namespace ServerFramework
 {
 
@@ -28,12 +32,52 @@ static WORD CordPeerBody(SERVER_CORD* pCord)
     return pCord->wToID;
 }
 
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x42b520
+char* Msg_FormatDebugString(char* pszOut, CMsg* pMsg)
+{
+    *pszOut = 0;
+    WORD wOpcode = pMsg->GetOpcode();
+    std::string strIP;
+    g_pBSNet->GetSessionPeerAddress(pMsg->m_dwSessionID, &strIP, NULL, NULL);
+    WORD wInner = 0;
+    if (pMsg->GetOpcode() == 0x2209)
+    {
+        if (pMsg->m_nCapacity <= 10)
+            BSAssertFail();
+        wInner = *(WORD*)(pMsg->m_pData + 10);
+    }
+    const char* pszDir;
+    if (wOpcode & MSG_OP_REQ)
+        pszDir = "Req";
+    else if (wOpcode & MSG_OP_ACK)
+        pszDir = "Ack";
+    else
+        pszDir = "NoDir";
+    if (StringCchPrintfA(pszOut, 0xFF, "IP:%s %s:0x%04X (0x%04X) (MsgType:%d), %d - %d",
+                         strIP.c_str(), pszDir, wOpcode & 0xFFF, wInner, wOpcode >> 12,
+                         *pMsg->m_pSize & MSG_SIZE_MASK,
+                         (int)pMsg->m_wWritePos - (int)pMsg->m_wReadPos))
+    {
+        BSAssertFail();
+        return NULL;
+    }
+    return pszOut;
+}
+#endif
+
 void CheckMsgFullyConsumed(CMsg* pMsg)
 {
     if (pMsg->m_lRefCount == 1 && pMsg->m_wWritePos != pMsg->m_wReadPos)
     {
         char szDesc[256];
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x42b790
+        LogPrintf(0x1000000, "msg is not completely used : %s",
+                  Msg_FormatDebugString(szDesc, pMsg));
+#else
         LogPrintf(0x1000000, "msg is not completely used : %s", pMsg->FormatDebugString(szDesc));
+#endif
         pMsg->SkipRemaining();
     }
 }
@@ -156,8 +200,14 @@ void CServerProcessBase::OnUnhandledMsg(CMsg* pMsg, DWORD, DWORD, CMassiveMsg* p
     char szDesc[256];
     if (pMsg)
     {
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x4315d0
+        LogPrintf(0x1000000, "unhandled msg received %s : %s",
+                  GetRuntimeClass()->m_lpszClassName, Msg_FormatDebugString(szDesc, pMsg));
+#else
         LogPrintf(0x1000000, "unhandled msg received %s : %s",
                   GetRuntimeClass()->m_lpszClassName, pMsg->FormatDebugString(szDesc));
+#endif
         pMsg->SkipRemaining();
     }
     if (pMassive)
@@ -197,6 +247,16 @@ void CServerProcessBase::OnTimerTick(CMsg*, DWORD, DWORD, CMassiveMsg*)
         }
         ++it;
     }
+}
+
+void CServerProcessBase::RegisterTimer(BYTE byTimerID, DWORD dwPeriod,
+                                       PFN_PROCESS_TIMER pfnTimer)
+{
+    SERVER_PROCESS_TIMER timer;
+    timer.dwLastTick = GetTickCount();
+    timer.dwPeriod = dwPeriod;
+    timer.pfnTimer = pfnTimer;
+    m_mapTimer.insert(ServerProcessTimerMap::value_type(byTimerID, timer));
 }
 
 void CServerProcessBase::RegisterOverlapTimer()
