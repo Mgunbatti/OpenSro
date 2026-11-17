@@ -2,6 +2,7 @@
 #include "BSLib/file/FileLegacy.h"
 #include "BSLib/file/FileMM.h"
 #include "BSLib/file/FileMem.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
 
 #include <stdarg.h>
@@ -478,7 +479,9 @@ int main()
     CreateDirectoryA(szDir, NULL);
     g_strDir = szDir;
 
-    g_pfnNetEngineLog = CaptureLog;
+    // NetEngineLog writes to the engine instance's callback.
+    CNetEngine engine;
+    engine.m_Config.pfnLog = CaptureLog;
 
     TestLowerCase();
     TestIDPool();
@@ -487,7 +490,7 @@ int main()
     TestMemory();
     TestFileSystem();
 
-    g_pfnNetEngineLog = NULL;
+    engine.m_Config.pfnLog = NULL;
     CHECK(RemoveDirectoryA(szDir));
 
     return TEST_RESULT("FileTest");

@@ -37,44 +37,56 @@ public:
         return 1;
     }
 
-    virtual int __stdcall QueryInterface(DWORD, void**) { return 0; }
-    virtual int __stdcall AddRef() { return 0; }
+    virtual HRESULT __stdcall QueryInterface(const GUID&, void**) { return 0; }
+    virtual ULONG __stdcall AddRef() { return 0; }
     virtual int __stdcall Shutdown() { return 0; }
     virtual BOOL __stdcall Initialize(BSNET_INIT_PARAM) { return 0; }
-    virtual DWORD __stdcall ConnectSockAddr(DWORD*, const sockaddr*, int, DWORD) { return 0; }
-    virtual int __stdcall Connect(const char*, u_short, const char*, DWORD, DWORD) { return 0; }
+    virtual DWORD __stdcall ConnectSockAddr(const sockaddr*, const sockaddr*, DWORD, int)
+    {
+        return 0;
+    }
+    virtual DWORD __stdcall Connect(const char*, u_short, const char*, DWORD, int) { return 0; }
     virtual BOOL __stdcall ListenSockAddr(const sockaddr*) { return 0; }
-    virtual int __stdcall Listen(const char*, u_short) { return 0; }
-    virtual int __stdcall RegisterProactor(DWORD, void*, DWORD, DWORD) { return 0; }
+    virtual BOOL __stdcall Listen(const char*, u_short) { return 0; }
+    virtual BOOL __stdcall RegisterProactor(DWORD, CTask*, CRuntimeClass*, void*) { return 0; }
     virtual int __stdcall vf09(DWORD, DWORD, DWORD, DWORD) { return 0; }
-    virtual void* __stdcall StartProactorWorkers(DWORD, DWORD, DWORD, DWORD, DWORD, DWORD*) { return 0; }
-    virtual void* __stdcall ProactorResume(DWORD) { return 0; }
-    virtual void* __stdcall ProactorSuspend(DWORD) { return 0; }
-    virtual int __stdcall UnregisterProactor(DWORD) { return 0; }
-    virtual int __stdcall GetStatistics(DWORD, DWORD) { return 0; }
-    virtual int __stdcall GetSessionPeerAddress(DWORD, DWORD*, ULONG*, u_short*) { return 0; }
-    virtual int __stdcall GetProactor(DWORD) { return 0; }
-    virtual char __stdcall StartHandshake(DWORD, BYTE*) { return 0; }
-    virtual int __stdcall BeginSessionFileTransfer(DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD,
-                                                   DWORD, DWORD, DWORD, DWORD) { return 0; }
-    virtual int __stdcall SendFile(DWORD, void*, DWORD, DWORD) { return 0; }
-    virtual int __stdcall DisconnectSession(DWORD*, SOCKET) { return 0; }
+    virtual BOOL __stdcall StartProactorWorkers(DWORD, int, int, unsigned, DWORD,
+                                                THREAD_AFFINITY*)
+    {
+        return 0;
+    }
+    virtual BOOL __stdcall ProactorResume(DWORD) { return 0; }
+    virtual BOOL __stdcall ProactorSuspend(DWORD) { return 0; }
+    virtual BOOL __stdcall UnregisterProactor(DWORD) { return 0; }
+    virtual void __stdcall GetStatistics(DWORD, NETENGINE_STATISTICS*) {}
+    virtual BOOL __stdcall GetSessionPeerAddress(DWORD, std::string*, ULONG*, u_short*)
+    {
+        return 0;
+    }
+    virtual CTask* __stdcall GetProactor(DWORD) { return 0; }
+    virtual BOOL __stdcall StartHandshake(DWORD, SECURITY_HANDSHAKE_PARAM*) { return 0; }
+    virtual BOOL __stdcall BeginSessionFileTransfer(DWORD, std::string, DWORD, DWORD, int)
+    {
+        return 0;
+    }
+    virtual BOOL __stdcall SendFile(DWORD, const std::string&, DWORD, int) { return 0; }
+    virtual int __stdcall DisconnectSession(DWORD, DWORD) { return 0; }
     virtual int __stdcall CloseSessionTransferFile(DWORD, DWORD) { return 0; }
-    virtual int __stdcall ExcludeSessionFromCleanup(DWORD) { return 0; }
+    virtual void __stdcall ExcludeSessionFromCleanup(DWORD) {}
     virtual int __stdcall GetSessionSocketState(DWORD) { return 0; }
-    virtual int __stdcall RemoveKeepAliveTarget(DWORD) { return 0; }
-    virtual void* __stdcall AddKeepAliveTarget(DWORD, DWORD, DWORD, DWORD, DWORD) { return 0; }
+    virtual BOOL __stdcall RemoveKeepAliveTarget(DWORD) { return 0; }
+    virtual void __stdcall AddKeepAliveTarget(const char*, u_short, const char*, DWORD, DWORD) {}
     virtual void __stdcall CloseAllFiles() {}
-    virtual int __stdcall DumpMsgPool(BYTE, DWORD) { return 0; }
-    virtual char __stdcall vf31(BYTE) { return 0; }
-    virtual DWORD __stdcall CleanupDisconnectedSessions() { return 0; }
-    virtual void* __stdcall GetMsgPool() { return &m_Pool; }
-    virtual int __stdcall GetSessionLocalMacAddress(DWORD, DWORD*) { return 0; }
-    virtual int __stdcall SetSecurityMode(BYTE) { return 0; }
-    virtual int __stdcall PrintVersion() { return 0; }
+    virtual void __stdcall DumpMsgPool(BYTE, DWORD) {}
+    virtual void __stdcall SetDebugAsserted(BYTE) {}
+    virtual void __stdcall CleanupDisconnectedSessions() {}
+    virtual CMsgPool* __stdcall GetMsgPool() { return &m_Pool; }
+    virtual BOOL __stdcall GetSessionLocalMacAddress(DWORD, BYTE*) { return 0; }
+    virtual void __stdcall SetSecurityMode(BYTE) {}
+    virtual void __stdcall PrintVersion() {}
     virtual BOOL __stdcall RegisterDatagramProactor(DWORD) { return 0; }
-    virtual int __stdcall OpenDatagramSocket(int) { return 0; }
-    virtual int __stdcall SendDatagram(DWORD, DWORD) { return 0; }
+    virtual int __stdcall OpenDatagramSocket(WORD) { return 0; }
+    virtual int __stdcall SendDatagram(const sockaddr*, CMsg*) { return 0; }
 };
 
 int main()

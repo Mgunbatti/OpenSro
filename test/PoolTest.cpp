@@ -1,4 +1,5 @@
 #include "BSNet/MsgPool.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
 
 #include <string.h>
@@ -28,7 +29,9 @@ struct CItem
 
 int main()
 {
-    g_pfnNetEngineLog = CapturingLog;
+    // NetEngineLog writes to the engine instance's callback.
+    CNetEngine engine;
+    engine.m_Config.pfnLog = CapturingLog;
 
     // generic allocator: grows by one block, runs the init callback, counts usage
     {
