@@ -198,6 +198,8 @@ SERVER_BODY* ServerBody_FindByPortAndPublicIP(const char* pszPublicIP, WORD wPor
 SERVER_BODY* ServerCord_FindPeerBody(SERVER_CORD* pCord, SERVER_BODY* pBody);
 SERVER_BODY* ServerBody_FindSelf(SERVER_CORD* pCord);
 SERVER_CORD* ServerCordMap_FindById(DWORD dwCordID);
+// The cord bound to the session, NULL if none (AgentServer 0x4100d0; inlined in GatewayServer).
+SERVER_CORD* ServerCordMap_FindBySession(DWORD dwSessionID);
 // Route lookup: the cord to send through to reach the body.
 SERVER_CORD* ServerBody_Find(WORD wBodyID);
 

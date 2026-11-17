@@ -524,6 +524,28 @@ void CServerProcessMain::OnSessionLost(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
     *pMsg >> dwSessionID >> dwReason;
     if (g_ServerGlobals.bReportConnectionLog)
     {
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x42c690: every line also goes to the fatal log.
+        switch ((WORD)dwReason)
+        {
+        case 0:
+            LogPrintf(0x2000001, "Session Lost [%d]: NETENGINE_ERROR-%s", dwSessionID,
+                      g_apszNetEngineError[HIWORD(dwReason) & 0x7FFF]);
+            break;
+        case 1:
+            LogPrintf(0x2000001, "Session Lost [%d]: INTENTIONAL_KILL", dwSessionID);
+            break;
+        case 2:
+            LogPrintf(0x2000001, "Session Lost [%d]: STALE_SESSION", dwSessionID);
+            break;
+        case 3:
+            LogPrintf(0x2000001, "Session Lost [%d]: CLOSED_BY_PEER", dwSessionID);
+            break;
+        case 4:
+            LogPrintf(0x2000001, "Session Lost [%d]: ENGINE_SHUTDOWN", dwSessionID);
+            break;
+        }
+#else
         switch ((WORD)dwReason)
         {
         case 0:
@@ -543,6 +565,7 @@ void CServerProcessMain::OnSessionLost(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
             LogPrintf(0x1000000, "Session Lost [%d]: ENGINE_SHUTDOWN", dwSessionID);
             break;
         }
+#endif
     }
 
     SERVER_CORD* pCord = FindSessionCord(dwSessionID);
@@ -744,8 +767,14 @@ void CServerProcessMain::OnMsg_2311(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
         char* pszShardName = (char*)pShard->ab3 + 1;
         LogPrintf(0, "shard [%d] name changed : %s -> %s", pShard->wID, pszShardName,
                   strName.c_str());
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x42d630: at most 31 characters.
+        if (StringCchCopyA(pszShardName, 32, strName.c_str()))
+            BSAssertFail();
+#else
         if (StringCchCopyA(pszShardName, 256, strName.c_str()))
             BSAssertFail();
+#endif
         for (ServerBodyList::iterator it = g_pServerBodyList->begin();
              it != g_pServerBodyList->end(); ++it)
         {

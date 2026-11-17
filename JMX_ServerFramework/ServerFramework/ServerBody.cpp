@@ -191,6 +191,14 @@ SERVER_CORD* ServerCordMap_FindById(DWORD dwCordID)
     return it->second;
 }
 
+SERVER_CORD* ServerCordMap_FindBySession(DWORD dwSessionID)
+{
+    std::map<DWORD, SERVER_CORD*>::iterator it = g_mapSessionCord.find(dwSessionID);
+    if (it == g_mapSessionCord.end())
+        return NULL;
+    return it->second;
+}
+
 SERVER_CORD* ServerBody_Find(WORD wBodyID)
 {
     stdext::hash_map<WORD, SERVER_CORD*>::iterator it = g_hmapServerRoute.find(wBodyID);
@@ -386,8 +394,14 @@ SERVER_CORD* ServerCord_OnEstablished(DWORD dwSessionID, const char* pszModuleNa
         {
             pCord->dwSessionID = dwSessionID;
             g_mapSessionCord.insert(std::make_pair(dwSessionID, pCord));
+#ifdef JMX_FRAMEWORK_2011
+            // AgentServer 0x4122e0: also to the fatal log.
+            LogPrintf(0x2000001, "server cord established : %d (%s:%d)", dwSessionID,
+                      strIP.c_str(), (int)wPort);
+#else
             LogPrintf(0, "server cord established : %d (%s:%d)", dwSessionID, strIP.c_str(),
                       (int)wPort);
+#endif
             g_pBSNet->ExcludeSessionFromCleanup(dwSessionID);
         }
         return pCord;
@@ -440,7 +454,12 @@ SERVER_CORD* ServerCord_OnClosed(DWORD dwSessionID)
             }
         }
         g_mapSessionCord.erase(it);
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x4126c0: also to the fatal log.
+        LogPrintf(0x2000001, "server cord closed : %d", dwSessionID);
+#else
         LogPrintf(0, "server cord closed : %d", dwSessionID);
+#endif
     }
 #endif
     return pCord;
