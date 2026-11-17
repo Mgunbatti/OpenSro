@@ -1,0 +1,11 @@
+# portable toolchain is downloaded by toolchain/fetch_msvc8.ps1, never committed
+toolchain/msvc8sp1/
+toolchain/_dl/
+# build outputs
+build/
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.map
+*.lib
