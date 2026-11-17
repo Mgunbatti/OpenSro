@@ -178,3 +178,23 @@ DWORD CertData_GetIgnoreShardMaxUserValue()
     }
     return 0;
 }
+
+// Map53B958_FindValueLocked (0x44d040). Unreferenced in GatewayServer.
+CERT_DATA_SETTING* CertData_FindSettingLocked(DWORD dwID)
+{
+    CSingleLockBS lock(&g_csCertData, TRUE);
+    std::map<DWORD, CERT_DATA_SETTING*>::iterator it = g_mapCertDataSetting.find(dwID);
+    if (it == g_mapCertDataSetting.end())
+        return NULL;
+    return it->second;
+}
+
+// Map53B964_FindValueLocked (0x44d160). Unreferenced in GatewayServer.
+CERT_DATA_GROUP* CertData_FindGroupLocked(BYTE byID)
+{
+    CSingleLockBS lock(&g_csCertData, TRUE);
+    std::map<BYTE, CERT_DATA_GROUP*>::iterator it = g_mapCertDataGroup.find(byID);
+    if (it == g_mapCertDataGroup.end())
+        return NULL;
+    return it->second;
+}

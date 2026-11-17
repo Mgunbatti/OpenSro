@@ -66,3 +66,7 @@ bool CertData_ReadRecordLists(ServerFramework::CMassiveMsg* pMsg);
 bool PrivIPMap_ContainsIP(BYTE byGroupID, DWORD dwIP);
 // Value of the "Ignore_Shard_MaxUser" setting, 0 without one.
 DWORD CertData_GetIgnoreShardMaxUserValue();
+
+// Locked lookups; NULL when the id is unknown. Not called by GatewayServer.
+CERT_DATA_SETTING* CertData_FindSettingLocked(DWORD dwID);
+CERT_DATA_GROUP* CertData_FindGroupLocked(BYTE byID);
