@@ -153,21 +153,25 @@ MACHINE_SYSLIBS = kernel32.lib advapi32.lib iphlpapi.lib user32.lib ws2_32.lib o
                   gdi32.lib comctl32.lib pdh.lib
 
 # FarmManager application (JMX_CommonServers\FarmManager), built by "nmake farm". FarmManager is
-# built on the 2007 framework whose CServerProcessMain has no 0x631D handler (one virtual slot
-# less): ServerProcessMain.cpp is compiled again with the framework files that name the module,
-# and the FarmManager sources and test with the same defines.
+# built on the 2007 framework: the blocks under JMX_FRAMEWORK_2007 in the library sources (one of
+# them changes the layout of CServerProcessMain and CServerArchitectureView). So that no object
+# of the link mixes the two versions, the three libraries are built a second time from the same
+# sources with FARM_DEFS into build\obj\farm and build\lib\farm (FARM_LIBS), and the FarmManager
+# sources and its test are compiled with the same defines. The module name defines go to every
+# farm framework file; only CertArch, ServerApp and ServerConfig use them.
 FARM_OBJS = \
 	$(OBJ)\FarmManager\FarmManager.obj \
 	$(OBJ)\FarmManager\FarmManagerMainProcess.obj
-FARM_FW_OBJS = \
-	$(OBJ)\FarmManager\fw\CertArch.obj \
-	$(OBJ)\FarmManager\fw\ServerApp.obj \
-	$(OBJ)\FarmManager\fw\ServerConfig.obj \
-	$(OBJ)\FarmManager\fw\ServerProcessMain.obj
-FARM_FW_DEFS = /DSERVER_MODULE_NAME=\"FarmManager\" \
-               /DSERVER_CONFIG_MODULE_NAME=\"FarmManager\" \
-               /DSERVER_MAIN_PROCESS_631D=0
+FARM_DEFS = /DJMX_FRAMEWORK_2007 \
+            /DSERVER_MODULE_NAME=\"FarmManager\" \
+            /DSERVER_CONFIG_MODULE_NAME=\"FarmManager\"
 FARM_SYSLIBS = $(DOWNLOAD_SYSLIBS)
+FARM_OBJ = $(OBJ)\farm
+FARM_LIBDIR = $(LIBDIR)\farm
+FARM_BSLIB_OBJS = $(BSLIB_OBJS:build\obj\BSLib=build\obj\farm\BSLib)
+FARM_BSNET_OBJS = $(BSNET_OBJS:build\obj\BSNet=build\obj\farm\BSNet)
+FARM_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\farm\ServerFramework)
+FARM_LIBS = $(FARM_LIBDIR)\ServerFramework.lib $(FARM_LIBDIR)\BSNet.lib $(FARM_LIBDIR)\BSLib.lib
 
 TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
@@ -182,7 +186,8 @@ all: $(LIBS) $(TESTS)
 
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
 $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
-$(OBJ)\FarmManager $(OBJ)\FarmManager\fw:
+$(OBJ)\FarmManager $(FARM_OBJ)\BSLib $(FARM_OBJ)\BSNet $(FARM_OBJ)\ServerFramework \
+$(FARM_LIBDIR):
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
@@ -225,14 +230,44 @@ $(OBJ)\FarmManager $(OBJ)\FarmManager\fw:
 	cl $(CFLAGS) $(MACHINE_FW_DEFS) /Fo$@ /Fd$(OBJ)\MachineManager\fw\ $<
 
 {JMX_CommonServers\FarmManager}.cpp{$(OBJ)\FarmManager}.obj:
-	cl $(CFLAGS) $(FARM_FW_DEFS) /Fo$@ /Fd$(OBJ)\FarmManager\ $<
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(OBJ)\FarmManager\ $<
 
-{JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\FarmManager\fw}.obj:
-	cl $(CFLAGS) $(FARM_FW_DEFS) /Fo$@ /Fd$(OBJ)\FarmManager\fw\ $<
+{JMX_Library\BSLib}.cpp{$(FARM_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
 
-# FarmTest derives from the FarmManager classes and needs their defines.
+{JMX_Library\BSLib\thread}.cpp{$(FARM_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\file}.cpp{$(FARM_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\Util}.cpp{$(FARM_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\DB}.cpp{$(FARM_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
+
+{JMX_Library\BSNet}.cpp{$(FARM_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSNet\ $<
+
+{JMX_Library\BSNet\security}.cpp{$(FARM_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSNet\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(FARM_OBJ)\ServerFramework}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\ServerFramework\ $<
+
+$(FARM_LIBDIR)\BSLib.lib: $(FARM_OBJ)\BSLib $(FARM_LIBDIR) $(FARM_BSLIB_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(FARM_BSLIB_OBJS)
+
+$(FARM_LIBDIR)\BSNet.lib: $(FARM_OBJ)\BSNet $(FARM_LIBDIR) $(FARM_BSNET_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(FARM_BSNET_OBJS)
+
+$(FARM_LIBDIR)\ServerFramework.lib: $(FARM_OBJ)\ServerFramework $(FARM_LIBDIR) $(FARM_SRVFW_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(FARM_SRVFW_OBJS)
+
+# FarmTest uses the FarmManager classes and the 2007 framework and needs their defines.
 $(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
-	cl $(CFLAGS) $(FARM_FW_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\FarmTest.cpp
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\FarmTest.cpp
 
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
@@ -293,11 +328,9 @@ $(BIN)\MachineTest.exe: $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTest.obj $(MACHINE_OBJS) \
 	    $(MACHINE_FW_OBJS) $(LIBS) $(SYSLIBS) pdh.lib
 
-# The FarmManager variants of the framework files come before the libraries.
-$(BIN)\FarmTest.exe: $(OBJ)\FarmManager $(OBJ)\FarmManager\fw $(OBJ)\test\FarmTest.obj \
-                     $(FARM_OBJS) $(FARM_FW_OBJS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(FARM_FW_OBJS) $(LIBS) \
-	    $(SYSLIBS)
+# Linked with the 2007 builds of the libraries.
+$(BIN)\FarmTest.exe: $(OBJ)\FarmManager $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(FARM_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(FARM_LIBS) $(SYSLIBS)
 
 $(BIN)\MachineTestChild.exe: $(OBJ)\test $(BIN) $(OBJ)\test\MachineTestChild.obj
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTestChild.obj user32.lib
@@ -323,11 +356,10 @@ $(BIN)\MachineManager.exe: $(BIN) $(LIBS) $(OBJ)\MachineManager $(OBJ)\MachineMa
 farm: $(BIN)\FarmManager.exe
 
 # GUI exe like the original; it keeps the framework's NT service code as well.
-$(BIN)\FarmManager.exe: $(BIN) $(LIBS) $(OBJ)\FarmManager $(OBJ)\FarmManager\fw $(FARM_OBJS) \
-                        $(OBJ)\FarmManager\WinMain.obj $(FARM_FW_OBJS)
+$(BIN)\FarmManager.exe: $(BIN) $(FARM_LIBS) $(OBJ)\FarmManager $(FARM_OBJS) \
+                        $(OBJ)\FarmManager\WinMain.obj
 	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
-	    /out:$@ $(OBJ)\FarmManager\WinMain.obj $(FARM_OBJS) $(FARM_FW_OBJS) $(LIBS) \
-	    $(FARM_SYSLIBS)
+	    /out:$@ $(OBJ)\FarmManager\WinMain.obj $(FARM_OBJS) $(FARM_LIBS) $(FARM_SYSLIBS)
 
 gateway: $(BIN)\GatewayServer.exe
 

@@ -32,7 +32,7 @@ public:
     virtual void InitMsgHandlers();                                             // 6
     // OnGlobalManagerCord_Send6306 (0x4014d0): the cord to the GlobalManager is up: the patch
     // file data is dropped and 0x6306 asks the GlobalManager for it again. Slot 40 of the 2007
-    // framework (SERVER_MAIN_PROCESS_631D=0).
+    // framework (JMX_FRAMEWORK_2007, SERVER_MAIN_PROCESS_631D 0).
     virtual void OnCordEstablished(SERVER_CORD* pCord, SERVER_BODY* pPeer);    // 40
 
 public:
