@@ -57,6 +57,11 @@ bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...);
 bool BSDebugLoadDbgHelp();
 LONG BSDebugWriteMiniDump(EXCEPTION_POINTERS* pExceptionInfo);
 
+// The January 2011 framework (GlobalManager) is the July 2011 one plus a few blocks.
+#if defined(JMX_FRAMEWORK_2011_01) && !defined(JMX_FRAMEWORK_2011)
+#error JMX_FRAMEWORK_2011_01 needs JMX_FRAMEWORK_2011 (see GLOBAL_DEFS in the Makefile)
+#endif
+
 #ifdef JMX_FRAMEWORK_2011
 // Wide character assert dialog (AgentServer 0x462960): the file name and the formatted text
 // (0x400 characters) are converted to the ANSI code page; with BSDBG_CALLSTACK no minidump is

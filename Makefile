@@ -191,6 +191,22 @@ AGENT_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\agent\Server
 AGENT_LIBS = $(AGENT_LIBDIR)\ServerFramework.lib $(AGENT_LIBDIR)\BSNet.lib \
              $(AGENT_LIBDIR)\BSLib.lib
 
+# The January 2011 framework of GlobalManager (JMX_ServerFramework\FRAMEWORK_2011.md, "January 2011
+# (GlobalManager)"): the July 2011 framework (JMX_FRAMEWORK_2011) plus the few blocks under
+# JMX_FRAMEWORK_2011_01. The libraries are built a third time with GLOBAL_DEFS into
+# build\obj\global and build\lib\global (GLOBAL_LIBS); everything linked with them is compiled
+# with GLOBAL_DEFS too (the exe has the single module string "GlobalManager").
+GLOBAL_DEFS = /DJMX_FRAMEWORK_2011 /DJMX_FRAMEWORK_2011_01 \
+              /DSERVER_MODULE_NAME=\"GlobalManager\" \
+              /DSERVER_CONFIG_MODULE_NAME=\"GlobalManager\"
+GLOBAL_OBJ = $(OBJ)\global
+GLOBAL_LIBDIR = $(LIBDIR)\global
+GLOBAL_BSLIB_OBJS = $(BSLIB_OBJS:build\obj\BSLib=build\obj\global\BSLib)
+GLOBAL_BSNET_OBJS = $(BSNET_OBJS:build\obj\BSNet=build\obj\global\BSNet)
+GLOBAL_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\global\ServerFramework)
+GLOBAL_LIBS = $(GLOBAL_LIBDIR)\ServerFramework.lib $(GLOBAL_LIBDIR)\BSNet.lib \
+              $(GLOBAL_LIBDIR)\BSLib.lib
+
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
 # 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
 # the 2011 build of the libraries.
@@ -225,7 +241,7 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe \
         $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe
 
-all: $(LIBS) $(TESTS)
+all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
 $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
@@ -353,6 +369,43 @@ $(AGENT_LIBDIR)\BSNet.lib: $(AGENT_OBJ)\BSNet $(AGENT_LIBDIR) $(AGENT_BSNET_OBJS
 $(AGENT_LIBDIR)\ServerFramework.lib: $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDIR) \
                                      $(AGENT_SRVFW_OBJS)
 	lib $(LIBFLAGS) /out:$@ $(AGENT_SRVFW_OBJS)
+
+$(GLOBAL_OBJ)\BSLib $(GLOBAL_OBJ)\BSNet $(GLOBAL_OBJ)\ServerFramework $(GLOBAL_LIBDIR):
+	@if not exist $@ mkdir $@
+
+{JMX_Library\BSLib}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\thread}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\file}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\Util}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\DB}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
+
+{JMX_Library\BSNet}.cpp{$(GLOBAL_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSNet\ $<
+
+{JMX_Library\BSNet\security}.cpp{$(GLOBAL_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSNet\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(GLOBAL_OBJ)\ServerFramework}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\ServerFramework\ $<
+
+$(GLOBAL_LIBDIR)\BSLib.lib: $(GLOBAL_OBJ)\BSLib $(GLOBAL_LIBDIR) $(GLOBAL_BSLIB_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(GLOBAL_BSLIB_OBJS)
+
+$(GLOBAL_LIBDIR)\BSNet.lib: $(GLOBAL_OBJ)\BSNet $(GLOBAL_LIBDIR) $(GLOBAL_BSNET_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(GLOBAL_BSNET_OBJS)
+
+$(GLOBAL_LIBDIR)\ServerFramework.lib: $(GLOBAL_OBJ)\ServerFramework $(GLOBAL_LIBDIR) \
+                                      $(GLOBAL_SRVFW_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(GLOBAL_SRVFW_OBJS)
 
 # FarmTest uses the FarmManager classes and the 2007 framework and needs their defines.
 $(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
