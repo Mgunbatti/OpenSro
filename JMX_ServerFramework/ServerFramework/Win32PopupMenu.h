@@ -18,7 +18,7 @@ public:
     // Menu_AppendItemF (0x465b90, not referenced): AppendMenuA with the formatted text (asserts
     // beyond 259 characters).
     BOOL AppendItemF(UINT uFlags, UINT_PTR uID, const char* pszFormat, ...);
-    // PopupMenu_TrackAtCursor (0x465c50)
+    // PopupMenu_TrackAtCursor (0x465c50): returns the chosen command (TPM_RETURNCMD)
     BOOL TrackAtCursor(HWND hOwner);
 
 public:

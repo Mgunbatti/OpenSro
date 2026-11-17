@@ -62,6 +62,54 @@ static void DrainLog()
         s_Log.push_back(v[i].strText);
 }
 
+// TrackPopupMenu stand-in (patched into this executable's import table): records the flags and
+// returns the command the test chose, as with TPM_RETURNCMD.
+static UINT s_uTrackFlags;
+static BOOL s_nTrackResult;
+static int  s_nTrackCalls;
+
+static BOOL WINAPI TestTrackPopupMenu(HMENU, UINT uFlags, int, int, int, HWND, const RECT*)
+{
+    ++s_nTrackCalls;
+    s_uTrackFlags = uFlags;
+    return s_nTrackResult;
+}
+
+static int HookImport(const char* pszDll, const char* pszName, void* pfnNew)
+{
+    void* pfnOld = (void*)GetProcAddress(LoadLibraryA(pszDll), pszName);
+    BYTE* pBase = (BYTE*)GetModuleHandleA(NULL);
+    IMAGE_NT_HEADERS* pNt = (IMAGE_NT_HEADERS*)(pBase + ((IMAGE_DOS_HEADER*)pBase)->e_lfanew);
+    IMAGE_DATA_DIRECTORY& dir = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IAT];
+    void** ppEntry = (void**)(pBase + dir.VirtualAddress);
+    int nPatched = 0;
+    for (DWORD i = 0; i < dir.Size / sizeof(void*); ++i)
+    {
+        if (ppEntry[i] != pfnOld)
+            continue;
+        DWORD dwOld;
+        VirtualProtect(&ppEntry[i], sizeof(void*), PAGE_READWRITE, &dwOld);
+        ppEntry[i] = pfnNew;
+        VirtualProtect(&ppEntry[i], sizeof(void*), dwOld, &dwOld);
+        ++nPatched;
+    }
+    return nPatched;
+}
+
+// Sets the command the stand-in returns for the next popup; CheckTracked checks that exactly one
+// popup was shown, with TPM_RETURNCMD only (as every call in the originals).
+static void ExpectTrack(BOOL nCmd)
+{
+    s_nTrackResult = nCmd;
+    s_uTrackFlags = 0;
+    s_nTrackCalls = 0;
+}
+
+static void CheckTracked()
+{
+    CHECK(s_nTrackCalls == 1 && s_uTrackFlags == TPM_RETURNCMD);
+}
+
 // ---------------------------------------------------------------------------------------------
 
 static HINSTANCE s_hInstance;
@@ -424,6 +472,10 @@ static void TestPopupMenu()
     CHECK(GetSubMenu(pRoot->m_hMenu, 0) == pSub->m_hMenu);
     CHECK(GetSubMenu(pSub->m_hMenu, 0) == pNested->m_hMenu);
     CHECK(pRoot->m_listSubMenu.size() == 2 && pRoot->m_listSubMenu.back() == pSub2);
+    // the chosen command is returned (TPM_RETURNCMD)
+    ExpectTrack(0x1234);
+    CHECK(pRoot->TrackAtCursor(NULL) == 0x1234);
+    CheckTracked();
     HMENU hNested = pNested->m_hMenu;
     HMENU hRoot = pRoot->m_hMenu;
     delete pRoot;
@@ -662,6 +714,41 @@ static void TestArchitectureView(CServerArchitectureView* pView)
     CHECK(SendMessageA(pView->m_hWnd, WM_ERASEBKGND, 0, 0) == 1);
     CHECK(SendMessageA(pView->m_hWnd, WM_SETCURSOR, 0, 0) == 1);
 
+    // context menu: the returned command runs; dismissed (0) and "Property" do nothing
+    bool bName = pView->m_bShowName;
+    bool bCert = pView->m_bShowCert;
+    bool bCord = pView->m_bShowCord;
+    bool bDetail = pView->m_bShowDetail;
+    ExpectTrack(0);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CheckTracked();
+    CHECK(pView->m_bShowName == bName && pView->m_bShowCert == bCert
+          && pView->m_bShowCord == bCord && pView->m_bShowDetail == bDetail);
+    ExpectTrack(IDM_ARCH_SHOW_NAME);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CheckTracked();
+    CHECK(pView->m_bShowName == !bName && pView->m_bShowCert == bCert);
+    ExpectTrack(IDM_ARCH_SHOW_CERT);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(pView->m_bShowCert == !bCert && pView->m_bShowCord == bCord);
+    ExpectTrack(IDM_ARCH_SHOW_CORD);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(pView->m_bShowCord == !bCord && pView->m_bShowDetail == bDetail);
+    ExpectTrack(IDM_ARCH_SHOW_DETAIL);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(pView->m_bShowDetail == !bDetail);
+    pView->m_bShowName = bName;
+    pView->m_bShowCert = bCert;
+    pView->m_bShowCord = bCord;
+    pView->m_bShowDetail = bDetail;
+    pView->m_nOriginX = 3;
+    pView->m_nOriginY = 4;
+    ExpectTrack(IDM_ARCH_PROPERTY);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(pView->m_nOriginX == 3 && pView->m_nOriginY == 4 && pView->m_bShowName == bName);
+    pView->m_nOriginX = 0;
+    pView->m_nOriginY = 0;
+
     // paint into the back buffer: this server's label on yellow, cord 10 in white
     MoveWindow(pView->m_hWnd, 0, 0, 400, 300, FALSE);
     pView->m_bShowCert = true;
@@ -677,6 +764,15 @@ static void TestArchitectureView(CServerArchitectureView* pView)
     CHECK(GetPixel(pView->m_hMemDC, 80, (16 + 16) / 2) == 0xFFFFFF);
     pView->m_bShowDetail = true;
     SendMessageA(pView->m_hWnd, WM_PAINT, 0, 0);
+
+    // "Rearrange Items": tree layout again (node 2 moved back), origin reset
+    pView->m_nOriginX = 3;
+    pView->m_nOriginY = 4;
+    ExpectTrack(IDM_ARCH_REARRANGE);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CheckTracked();
+    CHECK(pView->m_nOriginX == 0 && pView->m_nOriginY == 0);
+    CHECK(SameRect(apEntry[2]->rc, 132, 0, 164, 32));
 
     // a second rebuild keeps the entries and appends the children again (FWUI-006)
     SendMessageA(pView->m_hWnd, WM_SERVER_ARCH_LOADED, 0, 0);
@@ -754,6 +850,43 @@ static void TestMoniterView(CServerMoniterView* pView)
     RECT rcClient;
     pView->GetClientRect(&rcClient);
     CHECK(pView->ValueToY(0.0f) == rcClient.bottom - 16);
+
+    // context menu: legend, hide/show all, one graph; start/stop/option and dismiss do nothing
+    ExpectTrack(IDM_MONITER_LEGEND);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CheckTracked();
+    CHECK(!pView->m_bShowLegend);
+    for (BOOL nCmd = 0; nCmd <= IDM_MONITER_OPTION; ++nCmd)
+    {
+        ExpectTrack(nCmd);
+        SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+        CheckTracked();
+        CHECK(!pView->m_bShowLegend && pGraph1->m_bVisible && pGraph2->m_bVisible);
+    }
+    ExpectTrack(IDM_MONITER_HIDE_ALL);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(!pGraph1->m_bVisible && !pGraph2->m_bVisible);
+    ExpectTrack(0x3010002);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(!pGraph1->m_bVisible && pGraph2->m_bVisible);
+    ExpectTrack(IDM_MONITER_SHOW_ALL);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(pGraph1->m_bVisible && pGraph2->m_bVisible);
+    ExpectTrack(IDM_MONITER_LEGEND);
+    SendMessageA(pView->m_hWnd, WM_RBUTTONUP, 0, 0);
+    CHECK(pView->m_bShowLegend);
+    // an ID that is no graph asserts and dereferences end(): the checked iterator throws
+    bool bMenuThrown = false;
+    ExpectTrack(0x7);
+    try
+    {
+        pView->OnRButtonUp(0, 0);
+    }
+    catch (std::exception&)
+    {
+        bMenuThrown = true;
+    }
+    CHECK(bMenuThrown);
 
     // remove: unknown IDs throw
     CHECK(pView->RemoveGraph(0x3010002));
@@ -899,6 +1032,24 @@ static void TestFrameWindow()
             GlobalUnlock(hData);
         CloseClipboard();
     }
+    // log list context menu: the returned command runs (dismissed and copy keep the lines)
+    NMHDR hdrClick;
+    hdrClick.hwndFrom = pFrame->m_hLogList;
+    hdrClick.idFrom = IDC_SERVER_LOG_LIST;
+    hdrClick.code = NM_RCLICK;
+    ExpectTrack(0);
+    CHECK(SendMessageA(pFrame->m_hWnd, WM_NOTIFY, IDC_SERVER_LOG_LIST, (LPARAM)&hdrClick) == 0);
+    CheckTracked();
+    CHECK(LogItemCount(pFrame) == 501);
+    ExpectTrack(IDM_LOG_COPY);
+    CHECK(SendMessageA(pFrame->m_hWnd, WM_NOTIFY, IDC_SERVER_LOG_LIST, (LPARAM)&hdrClick) == 0);
+    CheckTracked();
+    CHECK(LogItemCount(pFrame) == 501);
+    ExpectTrack(IDM_LOG_CLEAR);
+    CHECK(SendMessageA(pFrame->m_hWnd, WM_NOTIFY, IDC_SERVER_LOG_LIST, (LPARAM)&hdrClick) == 0);
+    CheckTracked();
+    CHECK(LogItemCount(pFrame) == 0);
+    LogView_AppendLine_wrap(0, "after clear");
     pFrame->ClearLog();
     CHECK(LogItemCount(pFrame) == 0);
 
@@ -1006,6 +1157,7 @@ int main()
     g_pServerApp = &app;
     g_pBSNet = &app.m_NetEngine;
     LogCapture_Start();
+    CHECK(HookImport("user32.dll", "TrackPopupMenu", (void*)TestTrackPopupMenu) == 1);
     Isolate();
     if (!s_bIsolated)
         printf("ServerUiTest: no own window station/desktop, clipboard checks skipped\n");

@@ -313,8 +313,7 @@ LRESULT CServerFrameWindow::OnNotify(WPARAM wParam, LPARAM lParam)
     }
 
 #ifdef JMX_FRAMEWORK_2011
-    // AgentServer 0x457aa0: the menu returns the command (TPM_RETURNCMD) and has three items
-    // for the server application.
+    // AgentServer 0x457aa0: three more items for the server application.
     if (pHdr->code == NM_RCLICK)
     {
         HMENU hMenu = CreatePopupMenu();
@@ -373,8 +372,7 @@ LRESULT CServerFrameWindow::OnNotify(WPARAM wParam, LPARAM lParam)
 #endif
         POINT pt;
         GetCursorPos(&pt);
-        // BUG(FWUI-001): no TPM_RETURNCMD; the result is TRUE/FALSE, so no item has an effect.
-        switch (TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, m_hLogList, NULL))
+        switch (TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, m_hLogList, NULL))
         {
         case IDM_LOG_SAVE_CLEAR:
             ReportLog_Save(this);

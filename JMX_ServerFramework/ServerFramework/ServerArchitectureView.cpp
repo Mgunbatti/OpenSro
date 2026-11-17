@@ -627,9 +627,7 @@ LRESULT CServerArchitectureView::OnRButtonUp(WPARAM /*wParam*/, LPARAM /*lParam*
         AppendMenuA(hMenu, MF_STRING, IDM_ARCH_PROPERTY, "Property");
     }
 
-    // BUG(FWUI-001): no TPM_RETURNCMD, so the result is TRUE/FALSE and not the command; every
-    // shown menu toggles "Show Server Module Name".
-    int nCmd = TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, ptScreen.x, ptScreen.y, 0, m_hWnd, NULL);
+    int nCmd = TrackPopupMenu(hMenu, TPM_RETURNCMD, ptScreen.x, ptScreen.y, 0, m_hWnd, NULL);
     if (nCmd <= IDM_ARCH_REARRANGE)
     {
         bool bRedraw = true;

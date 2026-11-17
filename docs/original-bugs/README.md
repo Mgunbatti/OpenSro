@@ -60,7 +60,7 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FWDATA-001](FWDATA-001.md) | Server data | minor | The second route map is freed only when it is already empty |
 | [FWDATA-002](FWDATA-002.md) | Server data | minor | Status broadcasts go to session 0 for notify bodies that are not connected |
 | [FWDATA-003](FWDATA-003.md) | Server data | minor | A duplicate privileged-IP group leaks its address set |
-| [FWUI-001](FWUI-001.md) | Monitor GUI | wrong | Popup menus are shown without `TPM_RETURNCMD`, so menu commands never run |
+| [FWUI-001](FWUI-001.md) | Monitor GUI | none | Withdrawn: the popup menus do pass `TPM_RETURNCMD` (0x100); not a bug |
 | [FWUI-002](FWUI-002.md) | Monitor GUI | crash | The monitor view is deleted while its window still exists (use after free at shutdown) |
 | [FWUI-003](FWUI-003.md) | Monitor GUI | crash | Graph names copied with a 256-character limit into a 64-byte field |
 | [FWUI-004](FWUI-004.md) | Monitor GUI | minor | Architecture view icons are freed with `DeleteObject`; overlay handle not cleared |

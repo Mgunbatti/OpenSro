@@ -51,7 +51,7 @@ enum
     IDI_ARCH_OVERLAY    = 0x6F,
 };
 
-// Popup menu command IDs (the menu is shown without TPM_RETURNCMD, see FWUI-001).
+// Popup menu command IDs (the menu returns them, TPM_RETURNCMD).
 enum
 {
     IDM_ARCH_SHOW_NAME      = 1,

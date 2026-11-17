@@ -30,7 +30,7 @@ enum
     IDM_FRAME_ARCH_VIEW     = 0xBB9,    // "ArchitectureView" of the MainView submenu
     IDM_FRAME_CHILD_VIEW    = 0xBBA,    // menu item of an added view
 
-    // log list popup (shown without TPM_RETURNCMD, see FWUI-001)
+    // log list popup (returned by TrackPopupMenu, TPM_RETURNCMD)
     IDM_LOG_SAVE_CLEAR      = 0x100,
     IDM_LOG_SAVE            = 0x101,
     IDM_LOG_CLEAR           = 0x102,

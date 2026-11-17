@@ -52,7 +52,7 @@ BOOL CWin32Control_PopupMenu::TrackAtCursor(HWND hOwner)
 {
     POINT pt;
     GetCursorPos(&pt);
-    return TrackPopupMenu(m_hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hOwner, NULL);
+    return TrackPopupMenu(m_hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hOwner, NULL);
 }
 
 BOOL CWin32Control_PopupMenu::AppendItemF(UINT uFlags, UINT_PTR uID, const char* pszFormat, ...)

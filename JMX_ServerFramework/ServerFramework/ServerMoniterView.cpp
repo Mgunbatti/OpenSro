@@ -516,8 +516,7 @@ LRESULT CServerMoniterView::OnRButtonUp(WPARAM /*wParam*/, LPARAM /*lParam*/)
 
     POINT pt;
     GetCursorPos(&pt);
-    // BUG(FWUI-001): no TPM_RETURNCMD; the result is TRUE/FALSE, so no item has an effect.
-    int nCmd = TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, m_hWnd, NULL);
+    int nCmd = TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, m_hWnd, NULL);
     switch (nCmd)
     {
     case 0:
@@ -538,10 +537,10 @@ LRESULT CServerMoniterView::OnRButtonUp(WPARAM /*wParam*/, LPARAM /*lParam*/)
         break;
     default:
         it = m_mapGraph.find((DWORD)nCmd);
+        // an unknown ID asserts and then dereferences end(), which throws
         if (it == m_mapGraph.end())
             BSAssertFail();
-        else
-            it->second->SetVisible(!it->second->m_bVisible);
+        it->second->SetVisible(!it->second->m_bVisible);
         break;
     }
     Redraw(RDW_INVALIDATE | RDW_INTERNALPAINT);

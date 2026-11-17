@@ -47,7 +47,7 @@ C_ASSERT(sizeof(CMoniterGraphData) == 0x68);
 
 typedef std::map<DWORD, CMoniterGraphData*> MoniterGraphMap;
 
-// Popup menu command IDs (the menu is shown without TPM_RETURNCMD, see FWUI-001).
+// Popup menu command IDs (the menu returns them, TPM_RETURNCMD).
 enum
 {
     IDM_MONITER_START       = 1,
