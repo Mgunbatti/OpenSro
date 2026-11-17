@@ -25,6 +25,9 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
 | [FILE-004](FILE-004.md) | Files | minor | Lower-casing reads past a string that ends with a DBCS lead byte |
 | [FILE-005](FILE-005.md) | Files | wrong | Cache purge subtracts files that were never counted, so cache usage is under-reported |
+| [FWDATA-001](FWDATA-001.md) | Server data | minor | The second route map is freed only when it is already empty |
+| [FWDATA-002](FWDATA-002.md) | Server data | minor | Status broadcasts go to session 0 for notify bodies that are not connected |
+| [FWDATA-003](FWDATA-003.md) | Server data | minor | A duplicate privileged-IP group leaks its address set |
 | [NET-001](NET-001.md) | NetEngine | minor | `Initialize` starts Winsock with the previous parameter block's version |
 | [NET-002](NET-002.md) | NetEngine | minor | `GetStatistics` reports the accepted-socket pool for the connect pool too |
 | [NET-003](NET-003.md) | NetEngine | wrong | `Connect` and `AddKeepAliveTarget` resolve the bind address but never use it |
