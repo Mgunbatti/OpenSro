@@ -44,6 +44,11 @@ BOOL BSAssertFail();
 // BSAssertFail followed by throw (int)0.
 __declspec(noreturn) void BSAssertFailAndThrow();
 
+// GatewayServer_RunWithSETranslator (GatewayServer 0x475af0): on the calling thread structured
+// exceptions are thrown as unsigned int (the exception code), invalid CRT parameters assert and
+// throw. Called by the modules' RegisterMainProcessTask.
+void BSInstallSETranslator();
+
 // Assert dialog. Returns FALSE when the caller should break into the debugger.
 bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...);
 

@@ -1,6 +1,7 @@
 #include "BSDebug.h"
 
 #include <dbghelp.h>
+#include <eh.h>
 #include <mbstring.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -303,6 +304,22 @@ void BSAssertFailAndThrow()
 {
     BSAssertFail();
     throw 0;
+}
+
+static void __cdecl BSSETranslator(unsigned int uCode, EXCEPTION_POINTERS*)
+{
+    throw uCode;
+}
+
+void BSInstallSETranslator()
+{
+    // C4535: the translator only reaches code built with /EHa; installed as the original does.
+#pragma warning(push)
+#pragma warning(disable : 4535)
+    _set_se_translator(BSSETranslator);
+#pragma warning(pop)
+    // The handler takes no arguments; the CRT's (cdecl) arguments are ignored.
+    _set_invalid_parameter_handler((_invalid_parameter_handler)BSAssertFailAndThrow);
 }
 
 bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...)

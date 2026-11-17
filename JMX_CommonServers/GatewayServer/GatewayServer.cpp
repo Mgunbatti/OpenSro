@@ -1,6 +1,5 @@
 #include "GatewayServer.h"
 
-#include <eh.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -69,22 +68,6 @@ void IPv4ToString(std::string* pstrOut, DWORD dwIP)
         BSAssertFail();
     }
     pstrOut->assign(szIP, strlen(szIP));
-}
-
-static void __cdecl GatewayServer_SETranslator(unsigned int uCode, EXCEPTION_POINTERS*)
-{
-    throw uCode;
-}
-
-void GatewayServer_RunWithSETranslator()
-{
-    // C4535: the translator only reaches code built with /EHa; installed as the original does.
-#pragma warning(push)
-#pragma warning(disable : 4535)
-    _set_se_translator(GatewayServer_SETranslator);
-#pragma warning(pop)
-    // The handler takes no arguments; the CRT's (cdecl) arguments are ignored.
-    _set_invalid_parameter_handler((_invalid_parameter_handler)BSAssertFailAndThrow);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -227,7 +210,7 @@ void CGatewayServer::SetDefaultEngineConfig()
 
 bool CGatewayServer::RegisterMainProcessTask()
 {
-    GatewayServer_RunWithSETranslator();
+    BSInstallSETranslator();
     return g_pBSNet->RegisterProactor(SERVER_TASK_MAIN, NULL,
                                       &CGatewayMainProcess::classCGatewayMainProcess, NULL)
         && g_pBSNet->StartProactorWorkers(SERVER_TASK_MAIN, 1, 0, 0, 0, NULL)

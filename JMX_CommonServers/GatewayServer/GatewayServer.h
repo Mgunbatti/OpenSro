@@ -152,7 +152,3 @@ void IPv4ToString(std::string* pstrOut, DWORD dwIP);
 // StringMap53B6BC_FindValueCStr (0x40b840): value of a key of the module's Server.cfg block,
 // NULL without one.
 const char* ServerConfig_FindExtraValue(const char* pszKey);
-
-// GatewayServer_RunWithSETranslator (0x475af0): on the calling thread structured exceptions are
-// thrown as unsigned int (the exception code), invalid CRT parameters assert and throw.
-void GatewayServer_RunWithSETranslator();
