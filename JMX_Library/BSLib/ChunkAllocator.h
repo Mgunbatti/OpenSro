@@ -2,12 +2,24 @@
 
 #include <windows.h>
 #include <list>
+#ifdef JMX_FRAMEWORK_2011
+#include <string.h>
+#include <string>
+#endif
 
 #include "BSLib/BSDebug.h"
 #include "BSLib/Que.h"
 #include "BSLib/thread/SynchObject.h"
 
 void NetEngineLog(DWORD dwFlags, const char* pszFormat, ...);
+
+// Flags of the AllocItemBlock failure log.
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x468170 (and the other instances)
+#define CHUNK_ALLOCATOR_LOG_FLAGS 0x2000000
+#else
+#define CHUNK_ALLOCATOR_LOG_FLAGS 0x2000001
+#endif
 
 // Pool that allocates T in arrays of m_nItemsPerBlock and hands them out from a free list.
 // m_pfnInit (may be NULL) runs on every object taken from the free list.
@@ -17,6 +29,29 @@ class CChunkAllocatorST
 public:
     typedef void (T::*PFN_INIT)(DWORD);
 
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x46f8d0: the pool has a name (m_strName), "Unknown" when none is given.
+    CChunkAllocatorST(PFN_INIT pfnInit = NULL, DWORD dwInitParam = 0, int nItemsPerBlock = 500,
+                      const char* pszName = NULL)
+    {
+        m_nItemsPerBlock = nItemsPerBlock;
+        m_nInUse = 0;
+        m_pfnInit = pfnInit;
+        m_dwInitParam = dwInitParam;
+        m_dw4 = 0;
+        m_nCapacity = 0;
+        SetName(pszName);
+    }
+
+    // 0x46e980: NULL or empty -> "Unknown".
+    void SetName(const char* pszName)
+    {
+        if (pszName && lstrlenA(pszName) > 0)
+            m_strName.assign(pszName, strlen(pszName));
+        else
+            m_strName.assign("Unknown", 7);
+    }
+#else
     CChunkAllocatorST(PFN_INIT pfnInit = NULL, DWORD dwInitParam = 0, int nItemsPerBlock = 500)
     {
         m_pfnInit = pfnInit;
@@ -26,6 +61,7 @@ public:
         m_nInUse = 0;
         m_nCapacity = 0;
     }
+#endif
 
     ~CChunkAllocatorST()
     {
@@ -74,7 +110,7 @@ public:
         T* pBlock = new T[n];
         if (!pBlock)
         {
-            NetEngineLog(0x2000001, "CChunkAllocatorST::AllocItemBlock() Failed");
+            NetEngineLog(CHUNK_ALLOCATOR_LOG_FLAGS, "CChunkAllocatorST::AllocItemBlock() Failed");
             return FALSE;
         }
         m_Blocks.push_back(pBlock);
@@ -109,6 +145,9 @@ public:
     DWORD         m_dwInitParam;        // +0x34
     DWORD         m_nInUse;             // +0x38
     DWORD         m_nCapacity;          // +0x3C
+#ifdef JMX_FRAMEWORK_2011
+    std::string   m_strName;            // +0x40
+#endif
 };
 
 // Same pool behind a critical section.
@@ -118,10 +157,19 @@ class CChunkAllocatorMT : public CChunkAllocatorST<T>
 public:
     typedef typename CChunkAllocatorST<T>::PFN_INIT PFN_INIT;
 
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x46dd20
+    CChunkAllocatorMT(PFN_INIT pfnInit = NULL, DWORD dwInitParam = 0, int nItemsPerBlock = 500,
+                      const char* pszName = NULL)
+        : CChunkAllocatorST<T>(pfnInit, dwInitParam, nItemsPerBlock, pszName)
+    {
+    }
+#else
     CChunkAllocatorMT(PFN_INIT pfnInit = NULL, DWORD dwInitParam = 0, int nItemsPerBlock = 500)
         : CChunkAllocatorST<T>(pfnInit, dwInitParam, nItemsPerBlock)
     {
     }
+#endif
 
     ~CChunkAllocatorMT()
     {
@@ -148,5 +196,5 @@ public:
     }
 
 public:
-    CCriticalSectionBS m_cs;            // +0x40
+    CCriticalSectionBS m_cs;            // +0x40 (+0x5C with JMX_FRAMEWORK_2011)
 };
