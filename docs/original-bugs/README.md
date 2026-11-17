@@ -94,6 +94,10 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [GWCERT-011](GWCERT-011.md) | Gateway cert | wrong | Captcha failure counts per address never reset |
 | [GWCERT-012](GWCERT-012.md) | Gateway cert | minor | Handlers read the result row when the query returned none |
 | [GWCERT-013](GWCERT-013.md) | Gateway cert | security | `_CertifyUser_SU` puts the unfiltered password into the SQL text (SQL injection) |
+| [MM-001](MM-001.md) | MachineManager | wrong | `PdhCloseQuery` gets the address of the query handle; the query is never closed |
+| [MM-002](MM-002.md) | MachineManager | minor | 0x6301 never closes the process and thread handles of a started module |
+| [MM-003](MM-003.md) | MachineManager | wrong | WM_CLOSE to a windowless module goes to MachineManager's own queue; the module is always killed after the timeout |
+| [MM-004](MM-004.md) | MachineManager | wrong | Windowless modules are found by exe-name prefix; a stop can terminate an unrelated program |
 | [NET-001](NET-001.md) | NetEngine | minor | `Initialize` starts Winsock with the previous parameter block's version |
 | [NET-002](NET-002.md) | NetEngine | minor | `GetStatistics` reports the accepted-socket pool for the connect pool too |
 | [NET-003](NET-003.md) | NetEngine | wrong | `Connect` and `AddKeepAliveTarget` resolve the bind address but never use it |
