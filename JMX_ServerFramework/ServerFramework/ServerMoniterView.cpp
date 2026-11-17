@@ -56,9 +56,17 @@ CMoniterGraphData::~CMoniterGraphData()
 
 void CMoniterGraphData::Init(const char* pszName, COLORREF clr, MONITOR_COUNTER* pCounter)
 {
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x45dfb0: a long name asserts and is cut to the field.
+    if (lstrlenA(pszName) >= 64)
+        BSAssertFail();
+    if (StringCchCopyA(m_szName, 64, pszName) != S_OK)
+        BSAssertFail();
+#else
     // BUG(FWUI-003): copied with a 256 character limit into the 64-byte name.
     if (StringCchCopyA(m_szName, 256, pszName) != S_OK)
         BSAssertFail();
+#endif
     m_pCounter = pCounter;
     pCounter->dwSampleCount = 0;
     m_clrLine = clr;
@@ -130,10 +138,18 @@ CServerMoniterView::CServerMoniterView()
     m_clrText = 0xFFFFFF;
     m_nGridStep = 50;
     m_bShowLegend = true;
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x45e2a0
+    if (StringCchCopyA(m_szValueLabel, 64, "value") != S_OK)
+        BSAssertFail();
+    if (StringCchCopyA(m_szTimeLabel, 64, "time") != S_OK)
+        BSAssertFail();
+#else
     if (StringCchCopyA(m_szValueLabel, 256, "value") != S_OK)
         BSAssertFail();
     if (StringCchCopyA(m_szTimeLabel, 256, "time") != S_OK)
         BSAssertFail();
+#endif
     m_hCursor = LoadCursorA(NULL, IDC_ARROW);
     m_dwScaleTick = 0;
     m_nNextColor = 0;
@@ -292,7 +308,10 @@ BOOL CServerMoniterView::RenderGridBackground()
     int nHeight = rc.bottom - rc.top;
     m_hFrontBitmap = CreateCompatibleBitmap(hDC, nWidth, nHeight);
     m_hGridBitmap = CreateCompatibleBitmap(hDC, nWidth, nHeight);
+#ifndef JMX_FRAMEWORK_2011
+    // (AgentServer 0x45eb00 leaves the unused call out)
     GetDeviceCaps(m_hFrontDC, NUMCOLORS);
+#endif
     SelectObject(m_hFrontDC, m_hFrontBitmap);
     SelectObject(m_hGridDC, m_hGridBitmap);
 
@@ -325,6 +344,14 @@ BOOL CServerMoniterView::RenderGridBackground()
             NetEngineLog(0x2000001,
                          "CLAMP() ==> min(%d) exceeded max(%d) value), File: %s, Line: %d",
                          0, nTop, ".\\ServerMoniterView.cpp", 421);
+#elif defined(JMX_FRAMEWORK_2011)
+            // AgentServer 0x45eb00
+            NetEngineLog(0x2000001,
+                         "CLAMP() ==> min(%.3f) exceeded max(%.3f) value), File: %s, Line: %d",
+                         0.0, (double)nTop,
+                         "D:\\WORK2005\\Source\\JMX_ServerFramework\\ServerFramework\\"
+                         "ServerMoniterView.cpp",
+                         439);
 #else
             NetEngineLog(0x2000001,
                          "CLAMP() ==> min(%.3f) exceeded max(%.3f) value), File: %s, Line: %d",

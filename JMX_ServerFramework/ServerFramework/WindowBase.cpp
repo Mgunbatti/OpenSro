@@ -232,6 +232,36 @@ void WindowHandlerMap_Insert(CWindowBase* pTarget, UINT uMsg, PFN_WINDOW_HANDLER
 void Win32_GetLocaleFontName(char* pszFace, size_t cchFace)
 {
     LANGID wLang = GetUserDefaultLangID();
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x450b60: Russian and Thai get their own fonts.
+    const char* pszName;
+    if (wLang > 0x419)
+    {
+        if (wLang == 0x41E)
+            pszName = "Microsoft Sans Serif";
+        else if (wLang == 0x804)
+            pszName = "SimSun";
+        else
+            pszName = "Gulim";
+    }
+    else if (wLang == 0x419)
+    {
+        pszName = "Tahoma";
+    }
+    else if (wLang == 0x404)
+    {
+        pszName = "PMingliu";
+    }
+    else if (wLang == 0x411)
+    {
+        pszName = "MS Gothic";
+    }
+    else
+    {
+        pszName = "Gulim";
+    }
+    sprintf_s(pszFace, cchFace, pszName);
+#else
     if (wLang > 0x412)
     {
         if (wLang == 0x804)
@@ -255,6 +285,7 @@ void Win32_GetLocaleFontName(char* pszFace, size_t cchFace)
     {
         sprintf_s(pszFace, cchFace, "Gulim");
     }
+#endif
 }
 
 LRESULT Win32Dialog_SetLocaleFont(HWND hWnd, int nHeight)
@@ -263,6 +294,18 @@ LRESULT Win32Dialog_SetLocaleFont(HWND hWnd, int nHeight)
     memset(szFace, 0, sizeof(szFace));
     Win32_GetLocaleFontName(szFace, sizeof(szFace));
     HFONT hFont = CreateFontA(nHeight, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, szFace);
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x450a50
+    if (!hFont)
+    {
+        char szText[0x400];
+        memset(szText, 0, sizeof(szText));
+        sprintf_s(szText, sizeof(szText),
+                  "Cannot find proper font (LangID : 0x%X, FontName : %s), please contact to "
+                  "Joymax", (DWORD)GetUserDefaultLangID(), szFace);
+        MessageBoxA(NULL, szText, "Error", MB_ICONWARNING);
+    }
+#endif
     return SendMessageA(hWnd, WM_SETFONT, (WPARAM)hFont, 0);
 }
 
