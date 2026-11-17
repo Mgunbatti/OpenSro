@@ -73,6 +73,12 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FWUTIL-005](FWUTIL-005.md) | Monitor | minor | The monitor thread handle is never closed; a stale stop event is kept |
 | [FWUTIL-006](FWUTIL-006.md) | Date/time | crash | `CDateTime` getters dereference NULL when `localtime` rejects the time |
 | [FWUTIL-007](FWUTIL-007.md) | Date/time | wrong | Local smalldatetime ignores daylight saving time |
+| [GW-001](GW-001.md) | Gateway | crash | Unknown shard ID in 0x6105 writes through a NULL pointer (any handshaked client) |
+| [GW-002](GW-002.md) | Gateway | wrong | One shard without an AgentServer ends the shard map build |
+| [GW-003](GW-003.md) | Gateway | crash | Failed `_PrivilegedIP` load frees the module version lists twice |
+| [GW-004](GW-004.md) | Gateway | security | Account database connection string, password included, written to the log |
+| [GW-005](GW-005.md) | Gateway | security | Quote filter of the login strings tests the wrong byte; quotes reach the certification SQL |
+| [GW-006](GW-006.md) | Gateway | minor | Notice count of 0xA104 wraps at 256 |
 | [NET-001](NET-001.md) | NetEngine | minor | `Initialize` starts Winsock with the previous parameter block's version |
 | [NET-002](NET-002.md) | NetEngine | minor | `GetStatistics` reports the accepted-socket pool for the connect pool too |
 | [NET-003](NET-003.md) | NetEngine | wrong | `Connect` and `AddKeepAliveTarget` resolve the bind address but never use it |
