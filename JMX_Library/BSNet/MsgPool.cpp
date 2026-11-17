@@ -54,7 +54,10 @@ CMsg* CMsgPool::AllocFromFreeQueue()
 
     pMsg->Reset(0);
     InterlockedExchange(&pMsg->m_lInUse, 1);
+#ifndef JMX_FRAMEWORK_2007
+    // FarmManager 0x4672b0 does not track the message.
     m_setInUse.insert(pMsg);
+#endif
     return pMsg;
 }
 
@@ -87,7 +90,10 @@ void CMsgPool::Free(CMsg* pMsg)
     InterlockedExchange(&pMsg->m_lInUse, 0);
     m_FreeQue.Push(pMsg);
     --m_nInUse;
+#ifndef JMX_FRAMEWORK_2007
+    // FarmManager 0x466220 does not track the message.
     std::set<CMsg*>::iterator it = m_setInUse.find(pMsg);
     if (it != m_setInUse.end())
         m_setInUse.erase(it);
+#endif
 }

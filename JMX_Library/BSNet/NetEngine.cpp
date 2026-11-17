@@ -579,11 +579,18 @@ void CNetEngine::CloseAllFiles()
     CFileSystem::GetInstance()->Cleanup();
 }
 
+#ifdef JMX_FRAMEWORK_2007
+// FarmManager 0x464800: empty.
+void CNetEngine::DumpMsgPool(BYTE, DWORD)
+{
+}
+#else
 void CNetEngine::DumpMsgPool(BYTE bFlags, DWORD)
 {
     if (bFlags & 1)
         m_MsgPool.DumpEntries();
 }
+#endif
 
 // The flag makes CSimpleThread::Close wait only 100 ms for a thread.
 void CNetEngine::SetDebugAsserted(BYTE bAsserted)

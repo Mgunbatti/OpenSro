@@ -27,7 +27,7 @@ private:
     CMsg* AllocFromFreeQueue();
 
 public:
-    std::set<CMsg*> m_setInUse;        // +0x7C
+    std::set<CMsg*> m_setInUse;        // +0x7C (present but never filled with JMX_FRAMEWORK_2007)
 };
 
 C_ASSERT(FIELD_OFFSET(CMsgPool, m_FreeQue) == 0x0C);

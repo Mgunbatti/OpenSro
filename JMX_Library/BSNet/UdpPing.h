@@ -11,7 +11,11 @@
 
 enum
 {
+#ifdef JMX_FRAMEWORK_2007
+    UDPPING_SERVER_PORT = 15850,    // FarmManager 0x459820
+#else
     UDPPING_SERVER_PORT = 15851,
+#endif
     UDPPING_PACKET_SIZE = 16,
     UDPPING_ID_ANY      = 0xFFFF,
     // High word of wParam of the client's window message when the target is unreachable
