@@ -4,8 +4,11 @@
 
 // Functions of the server application layer used by the server data code.
 
-// LogPrintf (0x41d790): formats into 8 KB and passes the line to the log / monitor window.
-void LogPrintf(DWORD dwFlags, const char* pszFormat, ...);
+// LogPrintf (0x41d790): formats into 8 KB and posts the line (SERVER_CONTROL_LOG) to the
+// application's completion port, from where it reaches the log receiver (server window, console,
+// event log). Dropped while there is no engine or neither window nor port. FALSE (after an
+// assert) when the text does not fit. The high byte of dwFlags is the level (LogLevel_ToString).
+int LogPrintf(DWORD dwFlags, const char* pszFormat, ...);
 
 // StrCmpI_Locale (0x41f430): CompareStringA(0x400, NORM_IGNORECASE | NORM_IGNOREKANATYPE)
 // minus 2, so 0 means equal. The length of psz2 is taken first.

@@ -10,6 +10,7 @@
 #include "BSLib/BSDebug.h"
 #include "BSNet/Msg.h"
 #include "ServerFramework/MassiveMsg.h"
+#include "ServerFramework/Trigger.h"
 
 // Server architecture known to every server module: the records of the certification
 // architecture (sent by the certification server in 0xA003) and the cords (connections) between
@@ -147,13 +148,9 @@ enum
     SERVER_STATUS_OPCODE        = 0x2005,
 };
 
-// Receiver of body state changes (registered by CServerProcessMain; slot 1 is called).
-class IServerBodyStateObserver
-{
-public:
-    virtual void vf00() = 0;
-    virtual void OnServerBodyStateChanged(SERVER_BODY* pBody, int nOldState) = 0;
-};
+// Receiver of body state changes: the trigger of CServerProcessMain. OnTrigger is called with
+// (SERVER_BODY*, previous state).
+typedef ServerFramework::CTrigger IServerBodyStateObserver;
 
 // Globals of the architecture (0x4F9CA8..0x4F9CCC). The lists own their records.
 extern SERVER_BODY*             g_pSelfBody;            // 0x4F9CA8 first body of the list

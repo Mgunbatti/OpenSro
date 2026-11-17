@@ -195,7 +195,7 @@ bool ServerBody_SetStateAndBroadcast2005(int nState, WORD wBodyID, DWORD dwExclu
     BOOL bChanged = nOldState != nState;
     pBody->nState = nState;
     if (g_pServerBodyStateObserver)
-        g_pServerBodyStateObserver->OnServerBodyStateChanged(pBody, nOldState);
+        g_pServerBodyStateObserver->OnTrigger((DWORD)pBody, (DWORD)nOldState);
     if (g_hServerArchView)
         PostMessageA(g_hServerArchView, WM_SERVER_BODY_CHANGED, 0, (LPARAM)pBody);
 

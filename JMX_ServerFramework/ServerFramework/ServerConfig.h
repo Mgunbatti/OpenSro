@@ -17,7 +17,7 @@ struct SERVER_GLOBALS
     char        szServiceName[64];              // +008 0x53B408
     char        szCommandLine[MAX_PATH];        // +048 0x53B448
     char        szModuleDir[MAX_PATH];          // +14C 0x53B54C drive and directory of the
-                                                //      exe, ending in '\'
+                                                //      exe without the final '\'
     DWORD       dwPublicIP;                     // +250 0x53B650
     char        szPublicIP[16];                 // +254 0x53B654
     DWORD       dwProcessorCount;               // +264 0x53B664
