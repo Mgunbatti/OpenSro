@@ -26,7 +26,11 @@ BIN = $(OUT)\bin
 
 BSLIB_OBJS = \
 	$(OBJ)\BSLib\BSDebug.obj \
-	$(OBJ)\BSLib\SynchObject.obj
+	$(OBJ)\BSLib\SynchObject.obj \
+	$(OBJ)\BSLib\SimpleThread.obj \
+	$(OBJ)\BSLib\ThreadManager.obj \
+	$(OBJ)\BSLib\Task.obj \
+	$(OBJ)\BSLib\System.obj
 
 BSNET_OBJS = \
 	$(OBJ)\BSNet\Msg.obj \
@@ -43,7 +47,8 @@ SRVFW_OBJS = \
 
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
 TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
-        $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe
+        $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
+        $(BIN)\ThreadTest.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -89,6 +94,7 @@ $(BIN)\PoolTest.exe: $(OBJ)\test\PoolTest.obj
 $(BIN)\QueTest.exe: $(OBJ)\test\QueTest.obj
 $(BIN)\MassiveMsgTest.exe: $(OBJ)\test\MassiveMsgTest.obj
 $(BIN)\SecurityTest.exe: $(OBJ)\test\SecurityTest.obj
+$(BIN)\ThreadTest.exe: $(OBJ)\test\ThreadTest.obj
 
 test: all
 	$(BIN)\MsgTest.exe
@@ -98,6 +104,7 @@ test: all
 	$(BIN)\QueTest.exe
 	$(BIN)\MassiveMsgTest.exe
 	$(BIN)\SecurityTest.exe
+	$(BIN)\ThreadTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
