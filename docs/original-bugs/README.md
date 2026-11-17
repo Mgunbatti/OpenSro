@@ -32,6 +32,8 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [DB-010](DB-010.md) | Database | crash | Columns without a format text crash the describe step (`strlen(NULL)`) |
 | [DB-011](DB-011.md) | Database | minor | Trailing blanks trimmed past the end of a truncated value |
 | [DB-012](DB-012.md) | Database | crash | Bound fetch loops never end on a fetch error |
+| [DL-001](DL-001.md) | DownloadServer | minor | An empty patch relay names its directory from uninitialised bytes |
+| [DL-002](DL-002.md) | DownloadServer | wrong | `USER_LIMIT` counts every engine session, server connections included |
 | [FILE-001](FILE-001.md) | Files | wrong | `CFileMem::Open` allocates a new buffer on every open; the old one leaks |
 | [FILE-002](FILE-002.md) | Files | wrong | `CFileMM` opens for reading with `OPEN_ALWAYS`: missing files are created empty; error paths leak handles |
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
