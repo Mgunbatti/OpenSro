@@ -148,7 +148,8 @@ public:
     SECURITY_STATE      m_Security;             // +158
     CKeySender          m_KeySender;            // +170 server role
     CKeyRepicient       m_KeyRecipient;         // +1B8 client role
-    BYTE                m_bHandshakeState;      // +200 SECURITY_HS_* (server role)
+    // BUG(SOCK-010): never initialised by the constructor or ResetState.
+    BYTE                m_bHandshakeState;      // +0x200 SECURITY_HS_* (server role)
     PFN_IO              m_apfnIo[10];           // +204 indexed by 2 * type + dw18
     PFN_MSG             m_pfnOnMsg;             // +22C
     PFN_MSG             m_pfnSend;              // +230
