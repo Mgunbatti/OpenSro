@@ -64,6 +64,8 @@ bool CertData_BuildPrivilegedIPMaps(CertDataGroupList* pGroups, CertDataSettingL
 bool CertData_SerializeRecordListsToMsg(ServerFramework::CMassiveMsg* pMsg);
 bool CertData_ReadRecordLists(ServerFramework::CMassiveMsg* pMsg);
 bool PrivIPMap_ContainsIP(BYTE byGroupID, DWORD dwIP);
+// Value of the setting with the name (case-insensitive), 0 without one.
+DWORD CertData_GetSettingValue(const char* pszName);
 // Value of the "Ignore_Shard_MaxUser" setting, 0 without one.
 DWORD CertData_GetIgnoreShardMaxUserValue();
 

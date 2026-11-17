@@ -166,17 +166,24 @@ bool PrivIPMap_ContainsIP(BYTE byGroupID, DWORD dwIP)
     return pSet->find(dwIP) != pSet->end();
 }
 
-DWORD CertData_GetIgnoreShardMaxUserValue()
+// NameList4D2494_FindIdByName (DownloadServer 0x437b50, unreferenced there); GatewayServer only
+// has the copy for "Ignore_Shard_MaxUser" (0x44ced0).
+DWORD CertData_GetSettingValue(const char* pszName)
 {
     CSingleLockBS lock(&g_csCertData, TRUE);
     for (CertDataSettingList::iterator it = g_pCertDataSettingList->begin();
          it != g_pCertDataSettingList->end(); ++it)
     {
         CERT_DATA_SETTING* pSetting = *it;
-        if (CompareNoCase(pSetting->szName, "Ignore_Shard_MaxUser") == CSTR_EQUAL)
+        if (CompareNoCase(pSetting->szName, pszName) == CSTR_EQUAL)
             return pSetting->dwValue;
     }
     return 0;
+}
+
+DWORD CertData_GetIgnoreShardMaxUserValue()
+{
+    return CertData_GetSettingValue("Ignore_Shard_MaxUser");
 }
 
 // Map53B958_FindValueLocked (0x44d040). Unreferenced in GatewayServer.
