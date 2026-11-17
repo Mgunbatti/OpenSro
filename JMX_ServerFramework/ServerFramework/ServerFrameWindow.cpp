@@ -296,7 +296,10 @@ LRESULT CServerFrameWindow::OnNotify(WPARAM wParam, LPARAM lParam)
         AppendMenuA(hMenu, MF_SEPARATOR, 0, NULL);
         AppendMenuA(hMenu, MF_STRING, IDM_LOG_SAVE, "Save");
         AppendMenuA(hMenu, MF_STRING, IDM_LOG_CLEAR, "Clear");
+#ifndef JMX_FRAMEWORK_2007
+        // FarmManager 0x446e20 has no copy item.
         AppendMenuA(hMenu, MF_STRING, IDM_LOG_COPY, "Copy SelectedItem To Clipboard");
+#endif
         POINT pt;
         GetCursorPos(&pt);
         // BUG(FWUI-001): no TPM_RETURNCMD; the result is TRUE/FALSE, so no item has an effect.
@@ -312,9 +315,11 @@ LRESULT CServerFrameWindow::OnNotify(WPARAM wParam, LPARAM lParam)
         case IDM_LOG_CLEAR:
             ClearLog();
             break;
+#ifndef JMX_FRAMEWORK_2007
         case IDM_LOG_COPY:
             CopySelectedLogToClipboard();
             break;
+#endif
         }
         DestroyMenu(hMenu);
     }

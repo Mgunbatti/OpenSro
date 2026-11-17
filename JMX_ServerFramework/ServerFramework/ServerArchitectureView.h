@@ -29,7 +29,11 @@ typedef std::map<DWORD, SERVER_CORD*>   ArchViewCordMap;
 enum
 {
     ARCH_VIEW_ZOOM_LEVELS = 30,
+#ifdef JMX_FRAMEWORK_2007
+    ARCH_VIEW_ICON_COUNT  = 8,      // FarmManager 0x441790: no icon 0x71 of state 7
+#else
     ARCH_VIEW_ICON_COUNT  = 9,      // one per body state
+#endif
 };
 
 // Resource IDs of the icons the application must provide (ServerFrameworkRes.dll).
@@ -136,8 +140,13 @@ C_ASSERT(FIELD_OFFSET(CServerArchitectureView, m_nOriginX) == 188);
 C_ASSERT(FIELD_OFFSET(CServerArchitectureView, m_bPanning) == 204);
 C_ASSERT(FIELD_OFFSET(CServerArchitectureView, m_pSelected) == 220);
 C_ASSERT(FIELD_OFFSET(CServerArchitectureView, m_ahStateIcon) == 224);
+#ifdef JMX_FRAMEWORK_2007
+C_ASSERT(FIELD_OFFSET(CServerArchitectureView, m_hOverlayIcon) == 256);
+C_ASSERT(sizeof(CServerArchitectureView) == 0x180);
+#else
 C_ASSERT(FIELD_OFFSET(CServerArchitectureView, m_nZoom) == 264);
 C_ASSERT(sizeof(CServerArchitectureView) == 0x184);
+#endif
 
 // Cord drawing style by cord status (0x4F88F0).
 struct ARCH_CORD_STYLE

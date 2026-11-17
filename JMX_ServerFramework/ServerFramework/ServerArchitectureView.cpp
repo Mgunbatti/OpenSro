@@ -157,8 +157,13 @@ bool CServerArchitectureView::Create(HINSTANCE hInstance, HWND hParent, RECT rc,
     m_ahStateIcon[4] = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_STATE4));
     m_ahStateIcon[5] = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_STATE5));
     m_ahStateIcon[6] = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_STATE6));
+#ifdef JMX_FRAMEWORK_2007
+    // FarmManager 0x441790: the icon of state 8 is the eighth.
+    m_ahStateIcon[7] = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_STATE8));
+#else
     m_ahStateIcon[7] = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_STATE7));
     m_ahStateIcon[8] = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_STATE8));
+#endif
     m_hOverlayIcon = LoadIconA(g_hServerFrameworkRes, MAKEINTRESOURCEA(IDI_ARCH_OVERLAY));
     g_hServerArchView = m_hWnd;
     return true;
