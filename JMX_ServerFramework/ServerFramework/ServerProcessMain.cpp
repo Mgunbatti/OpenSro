@@ -103,7 +103,9 @@ void CServerProcessMain::InitMsgHandlers()
     RegisterHandler(0x6303, &CServerProcessMain::OnMsg_6303);
     RegisterHandler(MASSIVE_MSG_OPCODE, &CServerProcessMain::OnMsg_600D);
     RegisterHandler(0x2311, &CServerProcessMain::OnMsg_2311);
+#if SERVER_MAIN_PROCESS_631D
     RegisterHandler(0x631D, &CServerProcessMain::OnMsg_631D);
+#endif
 }
 
 void CServerProcessMain::OnMsg_2001(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
@@ -746,10 +748,12 @@ void CServerProcessMain::OnMsg_2311(CMsg* pMsg, DWORD, DWORD, CMassiveMsg*)
     }
 }
 
+#if SERVER_MAIN_PROCESS_631D
 void CServerProcessMain::OnMsg_631D(CMsg*, DWORD, DWORD, CMassiveMsg*)
 {
     g_pServerApp->SetServerState(7);
 }
+#endif
 
 void CServerProcessMain::OnCordEstablished(SERVER_CORD*, SERVER_BODY*)
 {

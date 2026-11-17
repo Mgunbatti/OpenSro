@@ -4,6 +4,15 @@
 #include "ServerFramework/ServerProcess.h"
 #include "ServerFramework/Trigger.h"
 
+// 1: CServerProcessMain has the 0x631D handler (virtual slot 40) and registers it, as in the 2008
+// framework of GatewayServer, DownloadServer and MachineManager. 0: the older framework of
+// FarmManager without that slot; the hooks from OnCordEstablished on are one slot lower. A
+// compile-time setting of the module like SERVER_MODULE_NAME: ServerProcessMain.cpp and every
+// file that derives from CServerProcessMain must be compiled with the same value.
+#ifndef SERVER_MAIN_PROCESS_631D
+#define SERVER_MAIN_PROCESS_631D 1
+#endif
+
 namespace ServerFramework
 {
 
@@ -26,7 +35,8 @@ public:
     virtual ~CServerProcessMain();                                              // 1
 
     // Base handlers plus the framework opcodes 0x1001..0x1006, 0x2001, 0x2002, 0x6003, 0xA003,
-    // 0x6004, 0xA004, 0x2005, 0x6005, 0x6006, 0xA006, 0x6300, 0x6303, 0x600D, 0x2311, 0x631D.
+    // 0x6004, 0xA004, 0x2005, 0x6005, 0x6006, 0xA006, 0x6300, 0x6303, 0x600D, 0x2311, 0x631D (with
+    // SERVER_MAIN_PROCESS_631D).
     virtual void InitMsgHandlers();                                             // 6
 
     // 0x2001 {string module, BYTE not certified}: a peer server introduces itself.
@@ -87,11 +97,13 @@ public:
     // forwarded to the bodies this server certifies.
     virtual void OnMsg_2311(CMsg* pMsg, DWORD dwRelayID, DWORD dwContext,
                             CMassiveMsg* pMassive);                             // 39
+#if SERVER_MAIN_PROCESS_631D
     // 0x631D: state 7.
     virtual void OnMsg_631D(CMsg* pMsg, DWORD dwRelayID, DWORD dwContext,
                             CMassiveMsg* pMassive);                             // 40
+#endif
 
-    // Hooks, empty here.
+    // Hooks, empty here (slots 40..47 without SERVER_MAIN_PROCESS_631D).
     virtual void OnCordEstablished(SERVER_CORD* pCord, SERVER_BODY* pPeer);    // 41
     virtual void OnCordClosed(SERVER_CORD* pCord, SERVER_BODY* pPeer);         // 42
     virtual void OnServerBodyStateChanged(SERVER_BODY* pBody, int nOldState);  // 43
