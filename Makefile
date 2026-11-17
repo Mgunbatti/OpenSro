@@ -207,6 +207,14 @@ GLOBAL_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\global\Serv
 GLOBAL_LIBS = $(GLOBAL_LIBDIR)\ServerFramework.lib $(GLOBAL_LIBDIR)\BSNet.lib \
               $(GLOBAL_LIBDIR)\BSLib.lib
 
+# GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS. There is
+# no exe target yet (parts of the module are still being ported); GlobalManagerTest links these
+# objects with its own stand-ins.
+GLOBAL_OBJS = \
+	$(OBJ)\GlobalManager\ContentUser.obj \
+	$(OBJ)\GlobalManager\GlobalManagerJobs.obj \
+	$(OBJ)\GlobalManager\GlobalManagerDB.obj
+
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
 # 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
 # the 2011 build of the libraries.
@@ -240,7 +248,7 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe \
         $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe \
         $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe \
-        $(BIN)\Framework201101Test.exe
+        $(BIN)\Framework201101Test.exe $(BIN)\GlobalManagerTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -334,6 +342,12 @@ $(FARM_LIBDIR)\BSNet.lib: $(FARM_OBJ)\BSNet $(FARM_LIBDIR) $(FARM_BSNET_OBJS)
 $(FARM_LIBDIR)\ServerFramework.lib: $(FARM_OBJ)\ServerFramework $(FARM_LIBDIR) $(FARM_SRVFW_OBJS)
 	lib $(LIBFLAGS) /out:$@ $(FARM_SRVFW_OBJS)
 
+$(OBJ)\GlobalManager:
+	@if not exist $@ mkdir $@
+
+{JMX_CommonServers\GlobalManager}.cpp{$(OBJ)\GlobalManager}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\GlobalManager\ $<
+
 $(AGENT_OBJ)\BSLib $(AGENT_OBJ)\BSNet $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDIR):
 	@if not exist $@ mkdir $@
 
@@ -420,6 +434,10 @@ $(OBJ)\test\Framework2011Test.obj: test\Framework2011Test.cpp
 $(OBJ)\test\Framework201101Test.obj: test\Framework201101Test.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201101Test.cpp
 
+# GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
+$(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
+
 # AgentTest and its two stand-ins for XTrap4Server.dll.
 $(OBJ)\test\AgentTest.obj: test\AgentTest.cpp
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\AgentTest.cpp
@@ -503,6 +521,12 @@ $(BIN)\Framework2011Test.exe: $(OBJ)\test\Framework2011Test.obj $(AGENT_LIBS)
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIBS) $(SYSLIBS)
+
+# Linked with the January 2011 builds of the libraries.
+$(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
+                             $(GLOBAL_OBJS) $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerTest.obj $(GLOBAL_OBJS) \
+	    $(GLOBAL_LIBS) $(SYSLIBS)
 
 # Linked with the 2011 builds of the libraries; the stand-in DLLs are copied by the test.
 $(BIN)\AgentTest.exe: $(OBJ)\AgentServer $(OBJ)\test\AgentTest.obj $(AGENT_OBJS) $(AGENT_LIBS) \
@@ -595,6 +619,7 @@ test: all
 	$(BIN)\AgentTestNoDetect.exe
 	$(BIN)\Framework2011Test.exe
 	$(BIN)\Framework201101Test.exe
+	$(BIN)\GlobalManagerTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
