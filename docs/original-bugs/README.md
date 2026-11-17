@@ -28,6 +28,13 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FWDATA-001](FWDATA-001.md) | Server data | minor | The second route map is freed only when it is already empty |
 | [FWDATA-002](FWDATA-002.md) | Server data | minor | Status broadcasts go to session 0 for notify bodies that are not connected |
 | [FWDATA-003](FWDATA-003.md) | Server data | minor | A duplicate privileged-IP group leaks its address set |
+| [FWUTIL-001](FWUTIL-001.md) | Server config | crash | Server.cfg certification addresses copied with a 256-character limit into 16-byte fields |
+| [FWUTIL-002](FWUTIL-002.md) | Server config | crash | Server.cfg tokenizer copies tokens into a 1 KB stack buffer without a size limit |
+| [FWUTIL-003](FWUTIL-003.md) | Server config | minor | The Server.cfg text buffer is never freed |
+| [FWUTIL-004](FWUTIL-004.md) | Monitor | wrong | Net engine counters are registered with a sample limit of 0, so their graphs stay empty |
+| [FWUTIL-005](FWUTIL-005.md) | Monitor | minor | The monitor thread handle is never closed; a stale stop event is kept |
+| [FWUTIL-006](FWUTIL-006.md) | Date/time | crash | `CDateTime` getters dereference NULL when `localtime` rejects the time |
+| [FWUTIL-007](FWUTIL-007.md) | Date/time | wrong | Local smalldatetime ignores daylight saving time |
 | [NET-001](NET-001.md) | NetEngine | minor | `Initialize` starts Winsock with the previous parameter block's version |
 | [NET-002](NET-002.md) | NetEngine | minor | `GetStatistics` reports the accepted-socket pool for the connect pool too |
 | [NET-003](NET-003.md) | NetEngine | wrong | `Connect` and `AddKeepAliveTarget` resolve the bind address but never use it |
