@@ -1147,3 +1147,5 @@ GatewayServer	0x4481d0	ServerFramework::COverlapJob::scalar_deleting_dtor	Server
 GatewayServer	0x4440a0	CServerProcessBase DeleteObject	ServerFramework::CServerProcessBase::DeleteObject
 GatewayServer	0x43f020	CServerProcessMain DeleteObject	ServerFramework::CServerProcessMain::DeleteObject
 GatewayServer	0x452c90	CServerProcessOverlap DeleteObject	ServerFramework::CServerProcessOverlap::DeleteObject
+GatewayServer	0x44d040	Map53B958_FindValueLocked	CertData_FindSettingLocked
+GatewayServer	0x44d160	Map53B964_FindValueLocked	CertData_FindGroupLocked
