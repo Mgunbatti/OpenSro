@@ -664,3 +664,87 @@ GatewayServer	0x44ced0	CertData_GetIgnoreShardMaxUserValue	CertData_GetIgnoreSha
 GatewayServer	0x424970	CertModule_FindByName	CertModule_FindByName
 GatewayServer	0x424910	Map53B750_GetCheckedIter	CertModule_FindById
 GatewayServer	0x4243b0	Map53B774_GetCheckedIter	CertMachine_FindById
+GatewayServer	0x40bcf0	Cfg_InitDefaultsFromFlags_40BCF0	Cfg_InitDefaultsFromFlags
+GatewayServer	0x41d0a0	DynInit_ServerConfigExtraMap	g_ServerGlobals (SERVER_GLOBALS constructor)
+GatewayServer	0x41d0f0	ServerConfigMap_AtexitTidy	g_ServerGlobals (SERVER_GLOBALS destructor)
+GatewayServer	0x41d910	ServerConfig_Load	ServerConfig_Load
+GatewayServer	0x446820	MonitorGraph_StartUpdateThread	MonitorGraph_StartUpdateThread
+GatewayServer	0x446870	MonitorGraph_StopUpdateThreadAndFreeCounters	MonitorGraph_StopUpdateThreadAndFreeCounters
+GatewayServer	0x446960	MonitorGraph_UpdateThreadProc	MonitorGraph_UpdateThreadProc
+GatewayServer	0x446ab0	MonitorGraph_AddCounterLocked	MonitorGraph_AddCounterLocked
+GatewayServer	0x446bf0	MonitorGraph_RemoveCounterLocked	MonitorGraph_RemoveCounterLocked
+GatewayServer	0x446d10	MonitorGraph_RegisterNetEngineCounter	MonitorGraph_RegisterNetEngineCounter
+GatewayServer	0x446ed0	MonitorGraph_ReadNetEngineCounter	MonitorGraph_ReadNetEngineCounter
+GatewayServer	0x453d40	Cfg_ReadNextToken	Cfg_ReadNextToken
+GatewayServer	0x45a1e0	FileXfer_InitEngineAndName	FileXfer_InitEngineAndName
+GatewayServer	0x45ab40	CFileTransMgr_CUncompDummy_CPackerDummy::dtor	CFileTransMgr<CUncompDummy, CPackerDummy>::~CFileTransMgr
+GatewayServer	0x45aba0	CFileTransMgr_ResetQueueAndState	CFileTransMgr<CUncompDummy, CPackerDummy>::Reset
+GatewayServer	0x45ad70	ServerProcessMain_HandleFileXferEvent1005	CFileTransMgr<CUncompDummy, CPackerDummy>::OnFileDone
+GatewayServer	0x45ae70	FileXfer_ClearSendQueue_Notify	CFileTransMgr<CUncompDummy, CPackerDummy>::OnFileFailed
+GatewayServer	0x45b140	FileXfer_SendFrontQueuedFile	CFileTransMgr<CUncompDummy, CPackerDummy>::SendFrontQueuedFile
+GatewayServer	0x45b2a0	FileXfer_CheckQueueFrontValid	CFileTransMgr<CUncompDummy, CPackerDummy>::CheckQueueFront
+GatewayServer	0x466dc0	DateTimePicker_FormatDateTimeString	DateTimePicker_FormatDateTimeString
+GatewayServer	0x466f10	Dlg_SetDateTimePickers	Dlg_SetDateTimePickers
+GatewayServer	0x466f50	Dlg_GetDateTimeFromPickers	Dlg_GetDateTimeFromPickers
+GatewayServer	0x466fb0	Time_FormatLocalDateTime	Time_FormatLocalDateTime
+GatewayServer	0x4671c0	Time_DHMSToSeconds	CTimeSpan::CTimeSpan(LONG, int, int, int)
+GatewayServer	0x467210	TimeSpan_GetDays	CTimeSpan::GetDays
+GatewayServer	0x467230	TimeSpan_GetHours	CTimeSpan::GetTotalHours
+GatewayServer	0x467270	TimeSpan_GetMinutes	CTimeSpan::GetTotalMinutes
+GatewayServer	0x467560	DateTime_SetFromComponents	CDateTime::CDateTime(int, int, int, int, int, int, int)
+GatewayServer	0x4675f0	DateTime_SetFromDosDateTime	CDateTime::CDateTime(WORD, WORD, int)
+GatewayServer	0x467670	DateTime_FromSystemTime	CDateTime::CDateTime(const SYSTEMTIME&, int)
+GatewayServer	0x4676e0	DateTime_FromFileTime	CDateTime::CDateTime(const FILETIME&, int)
+GatewayServer	0x47b660	GetLocalTimeAsSmallDateTime	GetLocalTimeAsSmallDateTime
+GatewayServer	0x45a230	FileXfer_ResetQueueAndState_Global	FileXfer_ResetQueueAndState_Global
+GatewayServer	0x45a490	PathList53B9D0_Rebuild	CFileTransMgr<CUncompDummy, CPackerDummy>::BuildRecvQueueAndStart
+GatewayServer	0x45aac0	DynInit_CFileTransMgr_53B9AC	CFileTransMgr<CUncompDummy, CPackerDummy>::CFileTransMgr (g_FileTransMgr)
+GatewayServer	0x45abe0	sub_45abe0	CFileTransMgr<CUncompDummy, CPackerDummy>::Init
+GatewayServer	0x45ac10	sub_45ac10	CFileTransMgr<CUncompDummy, CPackerDummy>::StartRecv
+GatewayServer	0x45ac70	sub_45ac70	CFileTransMgr<CUncompDummy, CPackerDummy>::SendNextQueuedFile
+GatewayServer	0x45af30	CFileTransMgr_CUncompDummy_CPackerDummy::vf00	CFileTransMgr<CUncompDummy, CPackerDummy>::~CFileTransMgr (scalar deleting)
+GatewayServer	0x4d56a0	sub_4d56a0	CFileTransMgr<CUncompDummy, CPackerDummy>::~CFileTransMgr (g_FileTransMgr)
+GatewayServer	0x4671b0	sub_4671b0	CTimeSpan::CTimeSpan(LONG)
+GatewayServer	0x4671f0	sub_4671f0	CTimeSpan::CTimeSpan(const CTimeSpan&)
+GatewayServer	0x467200	sub_467200	CTimeSpan::operator=
+GatewayServer	0x467250	sub_467250	CTimeSpan::GetHours
+GatewayServer	0x467290	sub_467290	CTimeSpan::GetMinutes
+GatewayServer	0x4672b0	sub_4672b0	CTimeSpan::GetTotalSeconds
+GatewayServer	0x4672c0	sub_4672c0	CTimeSpan::GetSeconds
+GatewayServer	0x4672e0	sub_4672e0	CTimeSpan::operator-
+GatewayServer	0x4672f0	sub_4672f0	CTimeSpan::operator+
+GatewayServer	0x467300	sub_467300	CTimeSpan::operator+=
+GatewayServer	0x467310	sub_467310	CTimeSpan::operator-=
+GatewayServer	0x467320	sub_467320	CTimeSpan::operator==
+GatewayServer	0x467330	sub_467330	CTimeSpan::operator!=
+GatewayServer	0x467340	sub_467340	CTimeSpan::operator<
+GatewayServer	0x467350	sub_467350	CTimeSpan::operator>
+GatewayServer	0x467360	sub_467360	CTimeSpan::operator<=
+GatewayServer	0x467370	sub_467370	CTimeSpan::operator>=
+GatewayServer	0x467380	sub_467380	CDateTime::CDateTime()
+GatewayServer	0x467390	sub_467390	CDateTime::CDateTime(__time32_t)
+GatewayServer	0x4673a0	sub_4673a0	CDateTime::CDateTime(const CDateTime&)
+GatewayServer	0x4673b0	CopyField24_4673B0	CDateTime::operator=(const CDateTime&)
+GatewayServer	0x4673c0	sub_4673c0	CDateTime::operator=(__time32_t)
+GatewayServer	0x4673d0	sub_4673d0	CDateTime::GetTime
+GatewayServer	0x4673e0	sub_4673e0	CDateTime::GetYear
+GatewayServer	0x4673f0	sub_4673f0	CDateTime::GetMonth
+GatewayServer	0x467400	sub_467400	CDateTime::GetDay
+GatewayServer	0x467410	sub_467410	CDateTime::GetHour
+GatewayServer	0x467420	sub_467420	CDateTime::GetMinute
+GatewayServer	0x467430	sub_467430	CDateTime::GetSecond
+GatewayServer	0x467440	sub_467440	CDateTime::GetDayOfWeek
+GatewayServer	0x467450	sub_467450	CDateTime::operator-(CDateTime)
+GatewayServer	0x467460	sub_467460	CDateTime::operator-(CTimeSpan)
+GatewayServer	0x467470	sub_467470	CDateTime::operator+(CTimeSpan)
+GatewayServer	0x467480	sub_467480	CDateTime::operator+=
+GatewayServer	0x467490	sub_467490	CDateTime::operator-=
+GatewayServer	0x4674a0	sub_4674a0	CDateTime::operator==
+GatewayServer	0x4674b0	sub_4674b0	CDateTime::operator!=
+GatewayServer	0x4674c0	sub_4674c0	CDateTime::operator<
+GatewayServer	0x4674d0	sub_4674d0	CDateTime::operator>
+GatewayServer	0x4674e0	sub_4674e0	CDateTime::operator<=
+GatewayServer	0x4674f0	sub_4674f0	CDateTime::operator>=
+GatewayServer	0x467500	sub_467500	CDateTime::GetLocalTm
+GatewayServer	0x467540	sub_467540	CDateTime::GetCurrent
+GatewayServer	0x467740	sub_467740	CDateTime::GetAsSystemTime
