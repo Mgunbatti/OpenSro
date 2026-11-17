@@ -15,8 +15,18 @@ static void ClampLog(int nMin, int nMax, int nLine)
 }
 #else
 // The CLAMP() log names the original source file.
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x48a100: the 2011 source tree, lines 94 / 95.
+static const char s_szThreadManagerFile[] =
+    "D:\\WORK2005\\Source\\JMX_Library\\BSLib\\thread\\threadmanager.cpp";
+#define THREADMANAGER_CLAMP_LINE_MIN 94
+#define THREADMANAGER_CLAMP_LINE_MAX 95
+#else
 static const char s_szThreadManagerFile[] =
     "D:\\WORK2005\\JMX_Library\\BSLib\\thread\\threadmanager.cpp";
+#define THREADMANAGER_CLAMP_LINE_MIN 92
+#define THREADMANAGER_CLAMP_LINE_MAX 93
+#endif
 
 static void ClampLog(double dMin, double dMax, int nLine)
 {
@@ -192,7 +202,8 @@ BOOL CThreadManager::CreateThreads(THREAD_AFFINITY* pAffinity, int nCount, DWORD
 #ifdef JMX_FRAMEWORK_2007
                 ClampLog(0, nMax, 92);
 #else
-                ClampLog(0.0, (double)(int)si.dwNumberOfProcessors - 1.0, 92);
+                ClampLog(0.0, (double)(int)si.dwNumberOfProcessors - 1.0,
+                         THREADMANAGER_CLAMP_LINE_MIN);
 #endif
                 pAffinity->nMinCPU = 0;
             }
@@ -208,7 +219,8 @@ BOOL CThreadManager::CreateThreads(THREAD_AFFINITY* pAffinity, int nCount, DWORD
 #ifdef JMX_FRAMEWORK_2007
                 ClampLog(0, nMax, 93);
 #else
-                ClampLog(0.0, (double)(int)si.dwNumberOfProcessors - 1.0, 93);
+                ClampLog(0.0, (double)(int)si.dwNumberOfProcessors - 1.0,
+                         THREADMANAGER_CLAMP_LINE_MAX);
 #endif
                 pAffinity->nMaxCPU = 0;
             }
