@@ -61,6 +61,7 @@ public:
     void WriteBytes(const void* pSrc, WORD wLen);
     void ReadBytes(void* pDst, WORD wLen);
 
+    // BUG(BSNET-002): a short packet crashes the process here and in PopBack.
     template <typename T> CMsg& Read(T& v)
     {
         if (m_bReadForward)

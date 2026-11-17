@@ -14,6 +14,8 @@ CMsg::CMsg()
     m_wWritePos = 0;
     m_dw4160 = 0;
     m_lRefCount = 0;
+    // BUG(BSNET-004): the original copies m_pData into m_WsaBuf.buf before it is set; not
+    // reproduced (AttachBuffer overwrites it anyway).
     m_pData = NULL;
     AttachBuffer(m_InlineBuf, MSG_INLINE_BUF_SIZE);
     m_pExtBuf = NULL;
@@ -110,6 +112,8 @@ void CMsg::ReadBytes(void* pDst, WORD wLen)
     m_wReadPos += wLen;
 }
 
+// BUG(BSNET-001): the three string writers clamp without counting the 2-byte length word, so a
+// string near the end of the buffer makes WriteBytes throw instead of being truncated.
 CMsg& CMsg::operator<<(const char* psz)
 {
     WORD wLen = psz ? (WORD)lstrlenA(psz) : 0;
@@ -143,6 +147,7 @@ CMsg& CMsg::operator<<(const std::string& s)
     return *this;
 }
 
+// BUG(BSNET-003): in pop-back mode both string readers return without reading.
 CMsg& CMsg::operator>>(std::string& s)
 {
     WORD wLen = 0;
