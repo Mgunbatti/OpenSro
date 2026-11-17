@@ -25,6 +25,11 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
 | [FILE-004](FILE-004.md) | Files | minor | Lower-casing reads past a string that ends with a DBCS lead byte |
 | [FILE-005](FILE-005.md) | Files | wrong | Cache purge subtracts files that were never counted, so cache usage is under-reported |
+| [PROACT-001](PROACT-001.md) | Proactor | crash | A failed completion of a pooled message is released twice |
+| [PROACT-002](PROACT-002.md) | Proactor | crash | Event proactor leaves NULL handles in its wait array; the worker exits |
+| [PROACT-003](PROACT-003.md) | Proactor | minor | Failed stop packets are never detected |
+| [PROACT-004](PROACT-004.md) | Proactor | crash | `Proactor_Create` initializes the created job without a NULL check |
+| [PROACT-005](PROACT-005.md) | Proactor | wrong | Stopping the overlapped peer process does not drain its send queue; messages leak |
 | [SEC-001](SEC-001.md) | Security | wrong | Blowfish encryption does not pad buffers shorter than 7 bytes and reads 8 source bytes |
 | [SEC-002](SEC-002.md) | Security | crash | Random prime search can divide by zero or return 1 for small start values |
 | [THREAD-001](THREAD-001.md) | Threads | crash | Thread start thunk runs from heap memory; faults when DEP is enforced |
