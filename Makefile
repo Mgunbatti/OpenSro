@@ -152,6 +152,23 @@ MACHINE_FW_DEFS = /DSERVER_MODULE_NAME=\"MachineManager\" \
 MACHINE_SYSLIBS = kernel32.lib advapi32.lib iphlpapi.lib user32.lib ws2_32.lib ole32.lib \
                   gdi32.lib comctl32.lib pdh.lib
 
+# FarmManager application (JMX_CommonServers\FarmManager), built by "nmake farm". FarmManager is
+# built on the 2007 framework whose CServerProcessMain has no 0x631D handler (one virtual slot
+# less): ServerProcessMain.cpp is compiled again with the framework files that name the module,
+# and the FarmManager sources and test with the same defines.
+FARM_OBJS = \
+	$(OBJ)\FarmManager\FarmManager.obj \
+	$(OBJ)\FarmManager\FarmManagerMainProcess.obj
+FARM_FW_OBJS = \
+	$(OBJ)\FarmManager\fw\CertArch.obj \
+	$(OBJ)\FarmManager\fw\ServerApp.obj \
+	$(OBJ)\FarmManager\fw\ServerConfig.obj \
+	$(OBJ)\FarmManager\fw\ServerProcessMain.obj
+FARM_FW_DEFS = /DSERVER_MODULE_NAME=\"FarmManager\" \
+               /DSERVER_CONFIG_MODULE_NAME=\"FarmManager\" \
+               /DSERVER_MAIN_PROCESS_631D=0
+FARM_SYSLIBS = $(DOWNLOAD_SYSLIBS)
+
 TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
@@ -159,12 +176,13 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ServerDataTest.exe $(BIN)\ServerUtilTest.exe \
         $(BIN)\ServerUiTest.exe $(BIN)\ServerAppTest.exe \
         $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe \
-        $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe
+        $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe
 
 all: $(LIBS) $(TESTS)
 
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
-$(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw:
+$(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
+$(OBJ)\FarmManager $(OBJ)\FarmManager\fw:
 	@if not exist $@ mkdir $@
 
 {JMX_Library\BSLib}.cpp{$(OBJ)\BSLib}.obj:
@@ -205,6 +223,16 @@ $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\Mach
 
 {JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\MachineManager\fw}.obj:
 	cl $(CFLAGS) $(MACHINE_FW_DEFS) /Fo$@ /Fd$(OBJ)\MachineManager\fw\ $<
+
+{JMX_CommonServers\FarmManager}.cpp{$(OBJ)\FarmManager}.obj:
+	cl $(CFLAGS) $(FARM_FW_DEFS) /Fo$@ /Fd$(OBJ)\FarmManager\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\FarmManager\fw}.obj:
+	cl $(CFLAGS) $(FARM_FW_DEFS) /Fo$@ /Fd$(OBJ)\FarmManager\fw\ $<
+
+# FarmTest derives from the FarmManager classes and needs their defines.
+$(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
+	cl $(CFLAGS) $(FARM_FW_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\FarmTest.cpp
 
 {test}.cpp{$(OBJ)\test}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\test\ $<
@@ -265,6 +293,12 @@ $(BIN)\MachineTest.exe: $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTest.obj $(MACHINE_OBJS) \
 	    $(MACHINE_FW_OBJS) $(LIBS) $(SYSLIBS) pdh.lib
 
+# The FarmManager variants of the framework files come before the libraries.
+$(BIN)\FarmTest.exe: $(OBJ)\FarmManager $(OBJ)\FarmManager\fw $(OBJ)\test\FarmTest.obj \
+                     $(FARM_OBJS) $(FARM_FW_OBJS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(FARM_FW_OBJS) $(LIBS) \
+	    $(SYSLIBS)
+
 $(BIN)\MachineTestChild.exe: $(OBJ)\test $(BIN) $(OBJ)\test\MachineTestChild.obj
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\MachineTestChild.obj user32.lib
 
@@ -285,6 +319,15 @@ $(BIN)\MachineManager.exe: $(BIN) $(LIBS) $(OBJ)\MachineManager $(OBJ)\MachineMa
 	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
 	    /out:$@ $(OBJ)\MachineManager\WinMain.obj $(MACHINE_OBJS) $(MACHINE_FW_OBJS) $(LIBS) \
 	    $(MACHINE_SYSLIBS)
+
+farm: $(BIN)\FarmManager.exe
+
+# GUI exe like the original; it keeps the framework's NT service code as well.
+$(BIN)\FarmManager.exe: $(BIN) $(LIBS) $(OBJ)\FarmManager $(OBJ)\FarmManager\fw $(FARM_OBJS) \
+                        $(OBJ)\FarmManager\WinMain.obj $(FARM_FW_OBJS)
+	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
+	    /out:$@ $(OBJ)\FarmManager\WinMain.obj $(FARM_OBJS) $(FARM_FW_OBJS) $(LIBS) \
+	    $(FARM_SYSLIBS)
 
 gateway: $(BIN)\GatewayServer.exe
 
@@ -315,6 +358,7 @@ test: all
 	$(BIN)\GatewayCertTest.exe
 	$(BIN)\DownloadTest.exe
 	$(BIN)\MachineTest.exe
+	$(BIN)\FarmTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
