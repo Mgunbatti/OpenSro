@@ -1,8 +1,9 @@
 // FarmManager application: CFarmManager on the real network engine, which connects to itself. A
 // client task of the same engine plays the GlobalManager; packets are built byte by byte and the
-// answers compared byte by byte. The test links the FarmManager variants of the framework files
-// (SERVER_MODULE_NAME "FarmManager", SERVER_MAIN_PROCESS_631D=0) and is compiled with the same
-// defines. The UDP ping service binds the loopback address only (bind is redirected).
+// answers compared byte by byte. The test links the 2007 builds of the libraries
+// (JMX_FRAMEWORK_2007, SERVER_MODULE_NAME "FarmManager") and is compiled with the same defines;
+// it checks the 2007 behaviour of the framework (the other tests check the 2008 one). The UDP
+// ping service binds the loopback address only (bind is redirected).
 
 #include "BSLib/BSDebug.h"
 #include "BSNet/NetEngine.h"
@@ -10,8 +11,12 @@
 #include "BSNet/UdpPing.h"
 #include "FarmManager/FarmManager.h"
 #include "FarmManager/FarmManagerMainProcess.h"
+#include "BSNet/MsgPool.h"
 #include "ServerFramework/CertArch.h"
+#include "ServerFramework/LogQueue.h"
+#include "ServerFramework/ServerUiExtern.h"
 #include "ServerFramework/ModuleVersion.h"
+#include "ServerFramework/ServerArchitectureView.h"
 #include "ServerFramework/ServerBody.h"
 #include "ServerFramework/ServerConfig.h"
 #include "ServerFramework/ServerDataExtern.h"
@@ -27,8 +32,8 @@
 
 using namespace ServerFramework;
 
-#if SERVER_MAIN_PROCESS_631D
-#error FarmTest is compiled with SERVER_MAIN_PROCESS_631D=0 (see the Makefile)
+#if !defined(JMX_FRAMEWORK_2007) || SERVER_MAIN_PROCESS_631D
+#error FarmTest is compiled with JMX_FRAMEWORK_2007 (see the Makefile)
 #endif
 
 typedef std::vector<BYTE> Bytes;
@@ -256,6 +261,68 @@ static void SendPacket(DWORD dwSession, WORD wOpcode, const Bytes& data)
     g_pBSNet->ReleaseMsg(pMsg);
 }
 
+// The data of the next massive message (0x600D header {1, WORD parts, WORD opcode}, then the
+// parts {0, data}) with the inner opcode wOpcode on the session.
+static bool TakeMassive(DWORD dwSession, WORD wOpcode, Bytes* pData)
+{
+    DWORD dwStart = GetTickCount();
+    for (;;)
+    {
+        EnterCriticalSection(&s_cs);
+        size_t nHeader = s_queIn.size();
+        size_t nParts = 0;
+        std::vector<size_t> vecParts;
+        for (size_t i = 0; i < s_queIn.size(); ++i)
+        {
+            const PACKET& packet = s_queIn[i];
+            if (packet.dwSession != dwSession || packet.wOpcode != MASSIVE_MSG_OPCODE
+                || packet.data.empty())
+            {
+                continue;
+            }
+            if (nHeader == s_queIn.size())
+            {
+                if (packet.data[0] == 1 && packet.data.size() == 5
+                    && *(const WORD*)&packet.data[3] == wOpcode)
+                {
+                    nHeader = i;
+                    nParts = *(const WORD*)&packet.data[1];
+                }
+            }
+            else if (packet.data[0] == 0 && vecParts.size() < nParts)
+            {
+                vecParts.push_back(i);
+            }
+            else if (packet.data[0] == 1)
+            {
+                break;
+            }
+        }
+        if (nHeader != s_queIn.size() && vecParts.size() == nParts)
+        {
+            pData->clear();
+            for (size_t i = 0; i < vecParts.size(); ++i)
+            {
+                const Bytes& part = s_queIn[vecParts[i]].data;
+                pData->insert(pData->end(), part.begin() + 1, part.end());
+            }
+            // erase back to front so the indices stay valid
+            for (size_t i = vecParts.size(); i > 0; --i)
+                s_queIn.erase(s_queIn.begin() + vecParts[i - 1]);
+            s_queIn.erase(s_queIn.begin() + nHeader);
+            LeaveCriticalSection(&s_cs);
+            return true;
+        }
+        LeaveCriticalSection(&s_cs);
+        if (GetTickCount() - dwStart > 3000)
+        {
+            printf("  no massive 0x%04x on session %u\n", wOpcode, dwSession);
+            return false;
+        }
+        Sleep(5);
+    }
+}
+
 static u_short s_wPort;
 
 struct CLIENT
@@ -356,10 +423,15 @@ static void SetUpArchitecture()
     std::vector<SERVER_BODY> bodies;
     bodies.push_back(Body(1, MOD_FARM_MANAGER, 15881, 3));
     bodies.push_back(Body(2, MOD_GLOBAL_MANAGER, 15882, 5));
-    std::vector<SERVER_CORD> cords(1, Zero<SERVER_CORD>());
+    bodies.push_back(Body(3, MOD_AGENT, 15883, 5));
+    // the GlobalManager connects to this farm manager; the AgentServer is behind it
+    std::vector<SERVER_CORD> cords(2, Zero<SERVER_CORD>());
     cords[0].dwID = 50;
-    cords[0].wFromID = 1;
-    cords[0].wToID = 2;
+    cords[0].wFromID = 2;
+    cords[0].wToID = 1;
+    cords[1].dwID = 51;
+    cords[1].wFromID = 3;
+    cords[1].wToID = 2;
 
     CMassiveMsg* p = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);
     p->SetOpcode(0xA003);
@@ -378,6 +450,59 @@ static void SetUpArchitecture()
     CHECK(CServerProcessMain_ParseA003CertArchAndBuildTargets(p));
     p->Free();
     CHECK(g_pSelfBody && g_pSelfBody->wID == 1);
+    CHECK(ServerBody_Find(2) == ServerCordMap_FindById(50));
+    CHECK(ServerBody_Find(3) == ServerCordMap_FindById(50));
+}
+
+// Records the body state changes (instead of the main process's trigger).
+struct STATE_CHANGE
+{
+    WORD    wBody;
+    int     nState;
+    int     nOldState;
+};
+
+static std::vector<STATE_CHANGE> s_vecStates;
+
+class CStateRecorder : public CTrigger
+{
+public:
+    virtual int OnTrigger(DWORD dwParam1, DWORD dwParam2)
+    {
+        SERVER_BODY* pBody = (SERVER_BODY*)dwParam1;
+        STATE_CHANGE change = { pBody->wID, pBody->nState, (int)dwParam2 };
+        EnterCriticalSection(&s_cs);
+        s_vecStates.push_back(change);
+        LeaveCriticalSection(&s_cs);
+        return 0;
+    }
+
+    virtual int OnTrigger2(DWORD, DWORD)
+    {
+        return 0;
+    }
+};
+
+static CStateRecorder s_StateRecorder;
+
+static size_t StateCount()
+{
+    EnterCriticalSection(&s_cs);
+    size_t n = s_vecStates.size();
+    LeaveCriticalSection(&s_cs);
+    return n;
+}
+
+static bool WaitStates(size_t nCount)
+{
+    DWORD dwStart = GetTickCount();
+    while (StateCount() < nCount)
+    {
+        if (GetTickCount() - dwStart > 3000)
+            return false;
+        Sleep(5);
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -421,16 +546,44 @@ static void TestConfig()
     delete pBase;
     g_pServerBodyStateObserver = NULL;
 
-    // Server.cfg: only the "FarmManager" block counts
+    // 2007 framework: UDP ping port 15850 (0x459820), 8 state icons (0x441790)
+    CHECK(UDPPING_SERVER_PORT == 15850);
+    CHECK(ARCH_VIEW_ICON_COUNT == 8 && sizeof(CServerArchitectureView) == 0x180);
+
+    // Net_IsPrivateIPv4 (0x40a4d0): 10/8 and 172.16/12 only (addresses in network order)
+    CHECK(Net_IsPrivateIPv4(0x0403020A));
+    CHECK(Net_IsPrivateIPv4(0x02011FAC));
+    CHECK(!Net_IsPrivateIPv4(0x0201A8C0));
+    CHECK(!Net_IsPrivateIPv4(0x0100007F));
+
+    // LogLevel_ToString (0x409220): levels above 3 are "unknown"
+    CHECK(strcmp(LogLevel_ToString(0x0000000), "notify") == 0);
+    CHECK(strcmp(LogLevel_ToString(0x2000001), "fatal") == 0);
+    CHECK(strcmp(LogLevel_ToString(0x4000000), "unknown") == 0);
+    CHECK(strcmp(LogLevel_ToString(0xFF000000), "unknown") == 0);
+
+    // LogPrintf (0x40a630): a 0x2800 buffer, so 0x27FF characters fit (without an engine the
+    // line only goes to the thread trace); 0x2800 do not
+    CHECK(g_pBSNet == NULL);
+    std::string strLong(0x27FF, 'x');
+    CHECK(LogPrintf(0, "%s", strLong.c_str()) == TRUE);
+    strLong += 'y';
+    CHECK(LogPrintf(0, "%s", strLong.c_str()) == FALSE);
+
+    // Server.cfg: only the "FarmManager" block counts; there is no WritePerfLogToText option
+    // (0x40a7b0), the key is kept like any unknown one
     std::string strCfg = s_strDir + "\\Server.cfg";
     WriteDiskFile(strCfg,
                   "common { DumpMsgPool 0 }\r\n"
                   "GatewayServer { ReportConnectionLog 0 FARM_KEY 1 }\r\n"
-                  "FarmManager { ReportConnectionLog 1 FARM_KEY 2 }\r\n");
+                  "FarmManager { ReportConnectionLog 1 FARM_KEY 2 WritePerfLogToText 1 }\r\n");
     g_ServerGlobals.bReportConnectionLog = FALSE;
+    g_ServerGlobals.bWritePerfLogToText = FALSE;
     CHECK(ServerConfig_Load());
     CHECK(g_ServerGlobals.bReportConnectionLog == TRUE);
-    CHECK(g_ServerGlobals.mapExtra.size() == 1 && g_ServerGlobals.mapExtra["FARM_KEY"] == "2");
+    CHECK(g_ServerGlobals.bWritePerfLogToText == FALSE);
+    CHECK(g_ServerGlobals.mapExtra.size() == 2 && g_ServerGlobals.mapExtra["FARM_KEY"] == "2");
+    CHECK(g_ServerGlobals.mapExtra["WritePerfLogToText"] == "1");
     g_ServerGlobals.mapExtra.clear();
     DeleteFileA(strCfg.c_str());
 
@@ -498,6 +651,67 @@ static void TestStartup()
     SetUpArchitecture();
     CHECK(g_FarmManager.OnLocalDataInitialized());
     CHECK(g_pSelfBody->nState == 5);
+
+    // the message pool does not track the messages (0x4672b0 / 0x466220)
+    CMsgPool* pPool = g_pBSNet->GetMsgPool();
+    CMsg* pMsg = g_pBSNet->AllocMsg(FALSE);
+    CHECK(pMsg->m_lInUse == 1 && pPool->m_setInUse.empty());
+    g_pBSNet->ReleaseMsg(pMsg);
+    CHECK(pMsg->m_lInUse == 0 && pPool->m_setInUse.empty());
+}
+
+static std::vector<std::pair<DWORD, std::string> > s_vecShown;
+
+static int __cdecl ShowLog(DWORD dwFlags, const char* pszText)
+{
+    s_vecShown.push_back(std::make_pair(dwFlags, std::string(pszText)));
+    return 0;
+}
+
+static std::string ReadDiskFile(const std::string& strPath)
+{
+    std::string str;
+    FILE* pFile = NULL;
+    if (fopen_s(&pFile, strPath.c_str(), "rb") || !pFile)
+        return str;
+    char buf[512];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), pFile)) > 0)
+        str.append(buf, n);
+    fclose(pFile);
+    return str;
+}
+
+// OnControlMsg 0x200A (0x409b50): only 0x2000001 goes to the fatal log; every line is shown.
+static void TestControlLog()
+{
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    char szFatal[MAX_PATH];
+    sprintf_s(szFatal, "%s\\%04d-%02d-%02d_FatalLog.txt", s_strDir.c_str(), st.wYear, st.wMonth,
+              st.wDay);
+    DeleteFileA(szFatal);
+    PFN_SERVER_LOG pfnSaved = g_FarmManager.m_pfnLog;
+    g_FarmManager.m_pfnLog = ShowLog;
+    const DWORD adwFlags[3] = { 0x3000000, 0x2000001, 0 };
+    const char* apszText[3] = { "perf line", "fatal line", "notify line" };
+    for (int i = 0; i < 3; ++i)
+    {
+        CMsg* pMsg = g_pBSNet->AllocMsg(FALSE);
+        pMsg->SetOpcode(SERVER_CONTROL_LOG);
+        pMsg->WriteBytes(&adwFlags[i], 4);
+        *pMsg << apszText[i];
+        g_FarmManager.OnControlMsg(pMsg);
+    }
+    g_FarmManager.m_pfnLog = pfnSaved;
+    CHECK(s_vecShown.size() == 3);
+    for (size_t i = 0; i < s_vecShown.size() && i < 3; ++i)
+        CHECK(s_vecShown[i].first == adwFlags[i] && s_vecShown[i].second == apszText[i]);
+    std::string strFatal = ReadDiskFile(szFatal);
+    CHECK(strFatal.find("\tfatal line\r\n") != std::string::npos);
+    CHECK(strFatal.find("perf line") == std::string::npos);
+    CHECK(strFatal.find("notify line") == std::string::npos);
+    DeleteFileA(szFatal);
 }
 
 static Bytes RelayAck(DWORD dwRelayID, WORD wOpcode)
@@ -579,13 +793,119 @@ static void TestCordEstablished(const CLIENT& gm)
     CHECK(TakePacket(gm.dwClient, FARM_MSG_PATCH_RESET, &reset));
 }
 
-static void TestShutdown(const CLIENT& gm)
+static Bytes Introduction(const char* pszModule)
 {
+    Bytes v;
+    PutW(v, (WORD)strlen(pszModule));
+    Put(v, pszModule, strlen(pszModule));
+    PutB(v, 0);
+    return v;
+}
+
+// The cord to the GlobalManager through the 2007 ServerCord_OnEstablished / OnClosed and the
+// 0x6005 query of OnMsg_2001 (0x4134f0, 0x4138b0, 0x4029c0).
+static void TestCords(const CLIENT& gm)
+{
+    SERVER_CORD* pCord = ServerCordMap_FindById(50);
+    CHECK(pCord->dwSessionID == 0);
+
+    // 0x2001 {"GlobalManager", 0} on the accepted session binds cord 50
+    SendPacket(gm.dwClient, 0x2001, Introduction("GlobalManager"));
+    std::string strLine;
+    char szPrefix[160];
+    sprintf_s(szPrefix, "server cord established : %u (127.0.0.1:", gm.dwServer);
+    CHECK(WaitLog(szPrefix, 0, &strLine));
+    CHECK(pCord->dwSessionID == gm.dwServer);
+    Bytes data;
+    CHECK(TakePacket(gm.dwClient, 0x2001, &data));
+    CHECK(Same(data, Introduction("FarmManager")));
+    CHECK(TakePacket(gm.dwClient, FARM_MSG_PATCH_RESET, &data));
+    // this server's state (after a cord status record, if the session gets those)
+    for (int i = 0; i < 3; ++i)
+    {
+        CHECK(TakeMassive(gm.dwClient, SERVER_STATUS_OPCODE, &data));
+        if (data.empty() || data[0] == 1)
+            break;
+    }
+    Bytes want;
+    PutB(want, 1);
+    PutB(want, 0);
+    PutB(want, 1);
+    PutW(want, 1);
+    PutD(want, (DWORD)g_pSelfBody->nState);
+    PutB(want, 2);
+    CHECK(Same(data, want));
+    // the query: bodies 2 and 3 (both routed through cord 50), then their cords
+    CHECK(TakeMassive(gm.dwClient, 0x6005, &data));
+    want.clear();
+    PutB(want, 3);
+    PutB(want, 0);
+    PutB(want, 1);
+    PutW(want, 2);
+    PutB(want, 1);
+    PutW(want, 3);
+    PutB(want, 2);
+    PutB(want, 0);
+    PutB(want, 1);
+    PutD(want, 50);
+    PutB(want, 1);
+    PutD(want, 51);
+    PutB(want, 1);
+    PutD(want, 51);
+    PutB(want, 2);
+    CHECK(Same(data, want));
+
+    // a second GlobalManager session for the same cord: the NEW one is disconnected, the cord
+    // keeps the first; FM-001: the cord is still treated as established (0x6306 again on the
+    // first session)
+    CLIENT second = Connect();
+    SendPacket(second.dwClient, 0x2001, Introduction("GlobalManager"));
+    sprintf_s(szPrefix, "server cord already established : created session overlapped : %u, "
+              "127.0.0.1(", second.dwServer);
+    CHECK(WaitLog(szPrefix, 0x1000000, &strLine));
+    unsigned nPort = 0;
+    CHECK(sscanf_s(strLine.c_str() + strlen(szPrefix), "%u)", &nPort) == 1 && nPort != 0);
+    CHECK(TakePacket(second.dwClient, 0x1002, NULL));
+    CHECK(pCord->dwSessionID == gm.dwServer);
+    CHECK(g_mapSessionCord.count(gm.dwServer) == 1 && g_mapSessionCord.count(second.dwServer) == 0);
+    CHECK(TakePacket(gm.dwClient, FARM_MSG_PATCH_RESET, NULL));
+
+    // the cord closes: every body routed through it goes down (2 and 3, not only the peer)
+    IServerBodyStateObserver* pSaved = g_pServerBodyStateObserver;
+    s_vecStates.clear();
+    g_pServerBodyStateObserver = &s_StateRecorder;
     g_pBSNet->DisconnectSession(gm.dwClient, 1);
     CHECK(TakePacket(gm.dwClient, 0x1002, NULL));
+    sprintf_s(szPrefix, "server cord closed : %u", gm.dwServer);
+    CHECK(WaitLog(szPrefix, 0));
+    CHECK(WaitStates(2));
+    EnterCriticalSection(&s_cs);
+    CHECK(s_vecStates.size() == 2);
+    if (s_vecStates.size() == 2)
+    {
+        CHECK(s_vecStates[0].wBody == 2 && s_vecStates[0].nState == 0
+              && s_vecStates[0].nOldState == 5);
+        CHECK(s_vecStates[1].wBody == 3 && s_vecStates[1].nState == 0
+              && s_vecStates[1].nOldState == 5);
+    }
+    LeaveCriticalSection(&s_cs);
+    CHECK(pCord->dwSessionID == 0 && pCord->dwStatus == 0);
+    CHECK(ServerCordMap_FindById(51)->dwStatus == 0);
+    CHECK(g_mapSessionCord.empty());
+    g_pServerBodyStateObserver = pSaved;
+}
+
+// Shutdown (0x409a10) sets state 7.
+static void TestShutdown()
+{
     DrainLogs();
+    s_vecStates.clear();
+    g_pServerBodyStateObserver = &s_StateRecorder;
     CHECK(g_FarmManager.Shutdown());
     CHECK(g_pBSNet == NULL && g_pServerBodyList == NULL);
+    CHECK(s_vecStates.size() >= 1);
+    if (!s_vecStates.empty())
+        CHECK(s_vecStates[0].wBody == 1 && s_vecStates[0].nState == 7);
     g_pSelfBody = NULL;
     g_pServerBodyStateObserver = NULL;
 }
@@ -623,10 +943,12 @@ int main()
                                      NULL));
     CHECK(g_pBSNet->StartProactorWorkers(TEST_TASK_CLIENT, 1, 0, 0, 0, NULL));
 
+    TestControlLog();
     CLIENT gm = Connect();
     TestHandlers(gm);
     TestCordEstablished(gm);
-    TestShutdown(gm);
+    TestCords(gm);
+    TestShutdown();
     CloseHandle(g_hServerIOCP);
     g_hServerIOCP = NULL;
 
