@@ -25,6 +25,22 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
 | [FILE-004](FILE-004.md) | Files | minor | Lower-casing reads past a string that ends with a DBCS lead byte |
 | [FILE-005](FILE-005.md) | Files | wrong | Cache purge subtracts files that were never counted, so cache usage is under-reported |
+| [FWAPP-001](FWAPP-001.md) | Server app | wrong | Message handler table is one entry short; the last handler overwrites the timer handle |
+| [FWAPP-002](FWAPP-002.md) | Server app | minor | Crash-dump error file name misses the `\` after the module directory |
+| [FWAPP-003](FWAPP-003.md) | Server app | wrong | Private-address test compares bit subsets instead of prefixes |
+| [FWAPP-004](FWAPP-004.md) | Server app | crash | Overlap job pools and the ID pool are used from several threads without a lock |
+| [FWAPP-005](FWAPP-005.md) | Server app | crash | A lost session walks the overlap job map without its lock |
+| [FWAPP-006](FWAPP-006.md) | Server app | minor | A 0x6009 message leaks when the target queue refuses it |
+| [FWAPP-007](FWAPP-007.md) | Server app | minor | A massive relay leaves its job registered when the copy fails |
+| [FWAPP-008](FWAPP-008.md) | Server app | crash | The lost-session log indexes the error name table without bounds |
+| [FWAPP-009](FWAPP-009.md) | Server app | crash | The body-state observer keeps pointing to the deleted trigger |
+| [FWAPP-010](FWAPP-010.md) | Server app | crash | The frame window pointer dangles when the window cannot be created |
+| [FWAPP-011](FWAPP-011.md) | Server app | wrong | The patch-file directory is formatted but never appended |
+| [FWAPP-012](FWAPP-012.md) | Server app | crash | The file-transfer error log passes a `std::string` object for `%s` |
+| [FWAPP-013](FWAPP-013.md) | Server app | crash | The service name is copied with a 256-character limit into 64 bytes |
+| [FWAPP-014](FWAPP-014.md) | Server app | minor | A second instance writes its startup error file to the drive root |
+| [FWAPP-015](FWAPP-015.md) | Server app | wrong | The quit request never reaches the console and service loops |
+| [FWAPP-016](FWAPP-016.md) | Server app | minor | Service uninstall leaks handles and always reports failure |
 | [FWDATA-001](FWDATA-001.md) | Server data | minor | The second route map is freed only when it is already empty |
 | [FWDATA-002](FWDATA-002.md) | Server data | minor | Status broadcasts go to session 0 for notify bodies that are not connected |
 | [FWDATA-003](FWDATA-003.md) | Server data | minor | A duplicate privileged-IP group leaks its address set |
