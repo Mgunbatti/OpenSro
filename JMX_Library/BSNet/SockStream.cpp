@@ -560,7 +560,12 @@ int CSockStream::SendQueuedWithLimit(CMsg* pMsg)
         {
             // BUG(SOCK-003): the reference taken by PrepareOutgoingMsg (or the encrypted copy)
             // is never released, so the message never returns to the pool.
+#ifdef JMX_FRAMEWORK_2011
+            // AgentServer 0x464ef0
+            NetEngineLog(0x2000001, "NERR_PEER_DOESNT_RESPONSE - %d:%d", m_nRole, nLimit);
+#else
             NetEngineLog(0x1000000, "NERR_PEER_DOESNT_RESPONSE - %d:%d", m_nRole, nLimit);
+#endif
             return SOCK_ERR_PEER_NOT_RESPONDING;
         }
     }
