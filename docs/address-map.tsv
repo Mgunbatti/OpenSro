@@ -1,0 +1,40 @@
+module	address	ida_name	rewrite
+GatewayServer	0x475a10	AssertFail	BSAssertFail
+GatewayServer	0x475ab0	AssertFailAndThrowInt	BSAssertFailAndThrow
+GatewayServer	0x47f7b0	CMsg::InitFields	CMsg::CMsg
+GatewayServer	0x47f830	CMsg::FreeExtBuffer	CMsg::~CMsg / CMsg::FreeExtBuffer
+GatewayServer	0x47f8e0	CMsg::Reset	CMsg::Reset
+GatewayServer	0x46d5d0	CMsg::AttachHeaderBuffer	CMsg::AttachBuffer
+GatewayServer	0x46d630	CMsg_AllocLargeBuffer	CMsg::AllocLargeBuffer
+GatewayServer	0x40ac00	CMsg_SetHeaderPayloadSize	CMsg::SetPayloadSize
+GatewayServer	0x422550	CMsg::PtrAt	CMsg::PtrAt
+GatewayServer	0x40b720	CMsg::SetOpcode	CMsg::SetOpcode
+GatewayServer	0x41b550	CMsg::GetOpcode	CMsg::GetOpcode
+GatewayServer	0x46d6a0	CMsg::SetCrcByte	CMsg::SetCrcByte
+GatewayServer	0x46d6b0	CMsg::SetCountByte	CMsg::SetCountByte
+GatewayServer	0x46d6c0	CMsg::GetCrcByte	CMsg::GetCrcByte
+GatewayServer	0x46d6d0	CMsg::GetCountByte	CMsg::GetCountByte
+GatewayServer	0x47f8b0	CMsg::SetEncryptFlag	CMsg::SetEncryptFlag
+GatewayServer	0x46d740	CMsg::ClearEncryptFlag	CMsg::ClearEncryptFlag
+GatewayServer	0x40b810	CMsg::SkipRemaining	CMsg::SkipRemaining
+GatewayServer	0x40c8b0	CMsg::WriteBytes	CMsg::WriteBytes
+GatewayServer	0x40b3d0	CMsg::ReadBytes	CMsg::ReadBytes
+GatewayServer	0x40a3a0	CMsg::ReadByte	CMsg::Read<BYTE>
+GatewayServer	0x40a470	CMsg::ReadWord	CMsg::Read<WORD>
+GatewayServer	0x40a3f0	CMsg::ReadDword	CMsg::Read<DWORD>
+GatewayServer	0x4731b0	CMsg::ReadQword	CMsg::Read<unsigned __int64>
+GatewayServer	0x473240	CMsg::ReadChallenge	CMsg::Read<12-byte block>
+GatewayServer	0x473690	CMsg::Read12Bytes	CMsg::Read<12-byte block> (forward branch)
+GatewayServer	0x40a9c0	CMsg::PopByteBack	CMsg::PopBack<BYTE>
+GatewayServer	0x40ab50	CMsg::PopWordBack	CMsg::PopBack<WORD>
+GatewayServer	0x40aa80	CMsg::PopDwordBack	CMsg::PopBack<DWORD>
+GatewayServer	0x473530	CMsg::PopQwordFromTail_impl	CMsg::PopBack<unsigned __int64>
+GatewayServer	0x4736e0	CMsg::PopBlock12	CMsg::PopBack<12-byte block>
+GatewayServer	0x473610	CMsg::PopBlock20	CMsg::PopBack<20-byte block>
+GatewayServer	0x40b660	CMsg_ReadByte	CMsg::Read<BYTE> (forward-only copy)
+GatewayServer	0x40b6b0	CMsg::WriteString	CMsg::operator<<(const char*)
+GatewayServer	0x41b690	CMsg_WriteWStringClamped	CMsg::operator<<(const wchar_t*)
+GatewayServer	0x443d70	CMsg::WriteString_2	CMsg::operator<<(const std::string&)
+GatewayServer	0x40b730	CMsg::ReadString	CMsg::operator>>(std::string&)
+GatewayServer	0x40b430	CMsg_ReadWString	CMsg::operator>>(std::wstring&)
+GatewayServer	0x443e40	CMsg_FormatDebugString	CMsg::FormatDebugString
