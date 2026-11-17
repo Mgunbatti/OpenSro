@@ -1640,3 +1640,13 @@ AgentServer	0x409bf0	CTokenManager::scalar_deleting_dtor	CTokenManager::~CTokenM
 AgentServer	0x40bac0	sub_40BAC0	UserPool_Alloc
 AgentServer	0x40bb80	CUserManager::scalar_deleting_dtor	CUserManager::~CUserManager
 AgentServer	0x40bdc0	ShardMap_Find	CUserManager::Find
+GlobalManager	0x4869e0	sub_4869E0	CDBQuery::Execute
+GlobalManager	0x4b5310	sub_4B5310	CDateTime::Format
+GlobalManager	0x4c8590	sub_4C8590	CDBSessionMgr::Open
+GlobalManager	0x4c8720	sub_4C8720	CDatabase::InitEnvironment
+GlobalManager	0x4c8810	sub_4C8810	CDatabase::DestroyAllSessions
+GlobalManager	0x4c8980	sub_4C8980	CDatabase::CreateSession
+GlobalManager	0x4c8a40	sub_4C8A40	CDatabase::DestroySession
+GlobalManager	0x4c9a10	sub_4C9A10	CDatabase::ExecDirectWithParams
+GlobalManager	0x4caa70	sub_4CAA70	CDBTable::DescribeColumns
+GlobalManager	0x4cce90	sub_4CCE90	CDatabase::HandleSQLError
