@@ -173,6 +173,22 @@ FARM_BSNET_OBJS = $(BSNET_OBJS:build\obj\BSNet=build\obj\farm\BSNet)
 FARM_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\farm\ServerFramework)
 FARM_LIBS = $(FARM_LIBDIR)\ServerFramework.lib $(FARM_LIBDIR)\BSNet.lib $(FARM_LIBDIR)\BSLib.lib
 
+# The 2011 framework of AgentServer (JMX_ServerFramework\FRAMEWORK_2011.md): the blocks under
+# JMX_FRAMEWORK_2011 in the library sources, several of which change class layouts. Like the farm
+# build, the three libraries are built a second time from the same sources with AGENT_DEFS into
+# build\obj\agent and build\lib\agent (AGENT_LIBS); everything linked with them is compiled with
+# AGENT_DEFS too.
+AGENT_DEFS = /DJMX_FRAMEWORK_2011 \
+             /DSERVER_MODULE_NAME=\"AgentServer\" \
+             /DSERVER_CONFIG_MODULE_NAME=\"AgentServer\"
+AGENT_OBJ = $(OBJ)\agent
+AGENT_LIBDIR = $(LIBDIR)\agent
+AGENT_BSLIB_OBJS = $(BSLIB_OBJS:build\obj\BSLib=build\obj\agent\BSLib)
+AGENT_BSNET_OBJS = $(BSNET_OBJS:build\obj\BSNet=build\obj\agent\BSNet)
+AGENT_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\agent\ServerFramework)
+AGENT_LIBS = $(AGENT_LIBDIR)\ServerFramework.lib $(AGENT_LIBDIR)\BSNet.lib \
+             $(AGENT_LIBDIR)\BSLib.lib
+
 TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
         $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe \
@@ -264,6 +280,43 @@ $(FARM_LIBDIR)\BSNet.lib: $(FARM_OBJ)\BSNet $(FARM_LIBDIR) $(FARM_BSNET_OBJS)
 
 $(FARM_LIBDIR)\ServerFramework.lib: $(FARM_OBJ)\ServerFramework $(FARM_LIBDIR) $(FARM_SRVFW_OBJS)
 	lib $(LIBFLAGS) /out:$@ $(FARM_SRVFW_OBJS)
+
+$(AGENT_OBJ)\BSLib $(AGENT_OBJ)\BSNet $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDIR):
+	@if not exist $@ mkdir $@
+
+{JMX_Library\BSLib}.cpp{$(AGENT_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\thread}.cpp{$(AGENT_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\file}.cpp{$(AGENT_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\Util}.cpp{$(AGENT_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\DB}.cpp{$(AGENT_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
+
+{JMX_Library\BSNet}.cpp{$(AGENT_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSNet\ $<
+
+{JMX_Library\BSNet\security}.cpp{$(AGENT_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSNet\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(AGENT_OBJ)\ServerFramework}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\ServerFramework\ $<
+
+$(AGENT_LIBDIR)\BSLib.lib: $(AGENT_OBJ)\BSLib $(AGENT_LIBDIR) $(AGENT_BSLIB_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(AGENT_BSLIB_OBJS)
+
+$(AGENT_LIBDIR)\BSNet.lib: $(AGENT_OBJ)\BSNet $(AGENT_LIBDIR) $(AGENT_BSNET_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(AGENT_BSNET_OBJS)
+
+$(AGENT_LIBDIR)\ServerFramework.lib: $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDIR) \
+                                     $(AGENT_SRVFW_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(AGENT_SRVFW_OBJS)
 
 # FarmTest uses the FarmManager classes and the 2007 framework and needs their defines.
 $(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
