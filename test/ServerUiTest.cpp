@@ -1,6 +1,7 @@
 #include "BSLib/BSDebug.h"
 #include "ServerFramework/GdiUtil.h"
 #include "ServerFramework/MassiveMsg.h"
+#include "ServerFramework/ServerApp.h"
 #include "ServerFramework/ServerArchitectureView.h"
 #include "ServerFramework/ServerBody.h"
 #include "ServerFramework/ServerConfig.h"
@@ -21,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "LogCapture.h"
 #include "TestCheck.h"
 
 #pragma comment(lib, "comctl32.lib")
@@ -31,48 +33,33 @@ using namespace ServerFramework;
 // ---------------------------------------------------------------------------------------------
 // Parts of the server application the tested code calls
 
-HMODULE g_hServerFrameworkRes = NULL;
-
 static std::vector<std::string> s_Log;
-static int s_nReportSaves;
 static int s_nCustomDumps;
 static LPARAM s_lParam9000;
 
-void LogPrintf(DWORD, const char* pszFormat, ...)
+// Application object: counts the custom dumps and records what the window passes for 0x9000.
+// Its (not initialised) engine provides the messages LogPrintf posts.
+class CUiTestApp : public CServerApp
 {
-    char szText[8192];
-    va_list args;
-    va_start(args, pszFormat);
-    _vsnprintf_s(szText, sizeof(szText), _TRUNCATE, pszFormat, args);
-    va_end(args);
-    s_Log.push_back(szText);
-}
+public:
+    virtual void CustomDump()
+    {
+        ++s_nCustomDumps;
+    }
 
-int StrCmpI_Locale(const char* psz1, const char* psz2)
-{
-    return CompareNoCase(psz1, psz2) - 2;
-}
+    virtual LONG OnControlMsg(CMsg* pMsg)
+    {
+        s_lParam9000 = (LPARAM)pMsg;
+        return 0;
+    }
+};
 
-const char* LogLevel_ToString(DWORD dwFlags)
+// Moves the lines LogPrintf posted so far to s_Log.
+static void DrainLog()
 {
-    static const char* const s_apsz[5] = { "Info", "Warning", "Error", "Debug", "Unknown" };
-    DWORD dwLevel = dwFlags >> 24;
-    return s_apsz[dwLevel > 3 ? 4 : dwLevel];
-}
-
-void ReportLog_Save(CServerFrameWindow*)
-{
-    ++s_nReportSaves;
-}
-
-void ServerApp_CustomDump()
-{
-    ++s_nCustomDumps;
-}
-
-void ServerApp_OnFrameMessage9000(LPARAM lParam)
-{
-    s_lParam9000 = lParam;
+    std::vector<CAPTURED_LOG> v = LogCapture_Drain();
+    for (size_t i = 0; i < v.size(); ++i)
+        s_Log.push_back(v[i].strText);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -730,6 +717,7 @@ static void TestMoniterView(CServerMoniterView* pView)
 
     // timer: one sample per graph, scale 9/8 of the largest maximum, at least 120
     g_ServerGlobals.bWritePerfLogToText = TRUE;
+    DrainLog();
     s_Log.clear();
     counter1.fValue = 5.0f;
     counter2.fValue = 200.0f;
@@ -737,8 +725,10 @@ static void TestMoniterView(CServerMoniterView* pView)
     CHECK(pGraph1->m_listSample.size() == 1 && pGraph1->m_fCurrent == 5.0f);
     CHECK(counter1.dwSampleCount == 1);
     CHECK(pView->m_fMaxValue == 225.0f && pView->m_nGridStep == 75);
+    DrainLog();
     CHECK(s_Log.size() == 1 && s_Log[0] == "PERFMON >> , Msg: 5.00, Job: 200.00");
     g_ServerGlobals.bWritePerfLogToText = FALSE;
+    DrainLog();
     s_Log.clear();
 
     counter1.fValue = 2.0f;
@@ -747,6 +737,7 @@ static void TestMoniterView(CServerMoniterView* pView)
     SendMessageA(pView->m_hWnd, WM_TIMER, MONITER_TIMER_ID, 0);
     counter1.fValue = 7.0f;
     SendMessageA(pView->m_hWnd, WM_TIMER, MONITER_TIMER_ID, 0);
+    DrainLog();
     CHECK(s_Log.empty());
     // three samples kept, oldest dropped
     CHECK(pGraph1->m_listSample.size() == 3 && pGraph1->m_listSample.front() == 2.0f);
@@ -843,7 +834,7 @@ static void TestFrameWindow()
     // log lines: level, text, time; at most 501 lines
     LogView_AppendLine_wrap(0x01000000, "hello");
     CHECK(LogItemCount(pFrame) == 1);
-    CHECK(ListView_GetItemTextString(pFrame->m_hLogList, 0, 0) == "Warning");
+    CHECK(ListView_GetItemTextString(pFrame->m_hLogList, 0, 0) == "warnning");
     CHECK(ListView_GetItemTextString(pFrame->m_hLogList, 0, 1) == "hello");
     std::string strTime = ListView_GetItemTextString(pFrame->m_hLogList, 0, 2);
     CHECK(strTime.size() == 23 && strTime[4] == '-' && strTime[13] == ':' && strTime[19] == ' ');
@@ -915,9 +906,11 @@ static void TestFrameWindow()
     CHECK(SendMessageA(pFrame->m_hWnd, WM_SERVER_FRAME_9000, 0, 1234) == 0);
     CHECK(s_lParam9000 == 1234);
     CHECK(SendMessageA(pFrame->m_hWnd, WM_ERASEBKGND, 0, 0) == 1);
+    DrainLog();
     s_Log.clear();
     pFrame->m_dwDumpFlags = SERVER_DUMP_CUSTOM;
     CHECK(SendMessageA(pFrame->m_hWnd, WM_COMMAND, IDM_FRAME_DUMP, 0) == 0);
+    DrainLog();
     CHECK(s_nCustomDumps == 1 && s_Log.size() == 1
           && s_Log[0] == "============== Custom Dump ================");
     pFrame->m_dwDumpFlags = 0;
@@ -1009,6 +1002,10 @@ static void TestFrameWindow()
 int main()
 {
     BSDebugSetFlags(0, 0);
+    CUiTestApp app;
+    g_pServerApp = &app;
+    g_pBSNet = &app.m_NetEngine;
+    LogCapture_Start();
     Isolate();
     if (!s_bIsolated)
         printf("ServerUiTest: no own window station/desktop, clipboard checks skipped\n");
@@ -1032,5 +1029,8 @@ int main()
         TestFrameWindow();
     else
         printf("ServerUiTest: server window tests skipped (they would show windows)\n");
+    LogCapture_Stop();
+    g_pBSNet = NULL;
+    g_pServerApp = NULL;
     return TEST_RESULT("ServerUiTest");
 }

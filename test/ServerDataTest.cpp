@@ -10,30 +10,19 @@
 #include <string>
 #include <vector>
 
+#include "LogCapture.h"
 #include "TestCheck.h"
 
 using namespace ServerFramework;
 
-// Application layer functions the server data code uses.
-static std::string g_strLastLog;
-static int g_nLogLines = 0;
-
-void LogPrintf(DWORD, const char* pszFormat, ...)
+// The last line LogPrintf posted so far.
+static std::string LastLog()
 {
-    char sz[1024];
-    va_list args;
-    va_start(args, pszFormat);
-    _vsnprintf_s(sz, sizeof(sz), _TRUNCATE, pszFormat, args);
-    va_end(args);
-    g_strLastLog = sz;
-    ++g_nLogLines;
-}
-
-int StrCmpI_Locale(const char* psz1, const char* psz2)
-{
-    int n2 = lstrlenA(psz2);
-    int n1 = lstrlenA(psz1);
-    return CompareStringA(0x400, NORM_IGNORECASE | NORM_IGNOREKANATYPE, psz1, n1, psz2, n2) - 2;
+    static std::string s_strLastLog;
+    std::vector<CAPTURED_LOG> v = LogCapture_Drain();
+    if (!v.empty())
+        s_strLastLog = v.back().strText;
+    return s_strLastLog;
 }
 
 struct SENT
@@ -167,12 +156,16 @@ class CObserver : public IServerBodyStateObserver
 {
 public:
     CObserver() : m_nCalls(0), m_pBody(NULL), m_nOld(0) {}
-    virtual void vf00() {}
-    virtual void OnServerBodyStateChanged(SERVER_BODY* pBody, int nOldState)
+    virtual int OnTrigger(DWORD dwBody, DWORD dwOldState)
     {
         ++m_nCalls;
-        m_pBody = pBody;
-        m_nOld = nOldState;
+        m_pBody = (SERVER_BODY*)(DWORD_PTR)dwBody;
+        m_nOld = (int)dwOldState;
+        return 0;
+    }
+    virtual int OnTrigger2(DWORD, DWORD)
+    {
+        return 0;
     }
     int m_nCalls;
     SERVER_BODY* m_pBody;
@@ -474,7 +467,7 @@ static void TestCertificationRequest()
     BYTE byCode;
     CMassiveMsg* pIn = RequestCertification("AgentServer", "10.0.0.250", &bResult, &byCode);
     CHECK(!bResult && byCode == 2 && pIn->GetUnreadSize() == 0);
-    CHECK(g_strLastLog == "cannot certify server body : [AgentServer][10.0.0.250]");
+    CHECK(LastLog() == "cannot certify server body : [AgentServer][10.0.0.250]");
     pIn->Free();
 
     pIn = RequestCertification("gatewayserver", "10.0.0.101", &bResult, &byCode);
@@ -532,7 +525,7 @@ static void TestCords()
     CHECK(ServerCord_OnEstablished(77, "FARMMANAGER") == pCord4);
     CHECK(pCord4->dwSessionID == 77 && g_mapSessionCord[77] == pCord4);
     CHECK(g_Net.m_Excluded.size() == 1 && g_Net.m_Excluded[0] == 77);
-    CHECK(g_strLastLog == "server cord established : 77 (10.0.0.100:15882)");
+    CHECK(LastLog() == "server cord established : 77 (10.0.0.100:15882)");
 
     // wrong port or module: no cord
     g_Net.m_wPeerPort = 1;
@@ -622,7 +615,7 @@ static void TestCords()
     CHECK(pCord4->dwSessionID == 0 && pCord4->dwStatus == 0);
     CHECK(ServerBodyInfo_Find(4)->nState == 0);
     CHECK(g_mapSessionCord.count(78) == 0 && g_mapSessionCord.size() == 1);
-    CHECK(g_strLastLog == "server cord closed : 78");
+    CHECK(LastLog() == "server cord closed : 78");
     // cord status 7 -> 0 (to 7 via 90, 500; to 4: cord without session, session 0 == excluded 0)
     // then the body state (same targets)
     CHECK(g_Net.m_Sent.size() == 8);
@@ -755,6 +748,7 @@ static void TestModuleVersion()
 int main()
 {
     g_pBSNet = &g_Net;
+    LogCapture_Start();
 
     CHECK(ServerName_CompareCertification() != 0);
 

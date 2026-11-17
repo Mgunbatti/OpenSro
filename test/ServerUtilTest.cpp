@@ -6,6 +6,7 @@
 #include "ServerFramework/FileTransMgr.h"
 #include "ServerFramework/MassiveMsg.h"
 #include "ServerFramework/MonitorGraph.h"
+#include "ServerFramework/OverlapJob.h"
 #include "ServerFramework/ServerConfig.h"
 
 #include <commctrl.h>
@@ -40,10 +41,8 @@ struct GRAPH_CALL
 static CCriticalSectionBS s_csCalls;
 static std::vector<GRAPH_CALL> s_GraphCalls;
 
-ServerFramework::CServerMoniterView* ServerFrameWindow_GetMonitorView()
-{
-    return s_pFakeView;
-}
+// Stands in for the server window: only the monitor view pointer (+0xBC) is read.
+static CServerMoniterView* s_apFakeFrame[0xC8 / sizeof(CServerMoniterView*)];
 
 void MonitorView_AddGraph(CServerMoniterView* pView, DWORD dwID, const char* pszName,
                           MONITOR_COUNTER* pCounter)
@@ -60,20 +59,6 @@ void MonitorView_RemoveGraph(CServerMoniterView* pView, DWORD dwID)
     s_GraphCalls.push_back(call);
 }
 
-void IdPool_GetUsageCounters(DWORD* pdwFirst, DWORD* pdwSecond, DWORD* pdwThird)
-{
-    *pdwFirst = 1;
-    *pdwSecond = 42;
-    *pdwThird = 3;
-}
-
-int StrCmpI_Locale(const char* psz1, const char* psz2)
-{
-    int n2 = lstrlenA(psz2);
-    int n1 = lstrlenA(psz1);
-    return CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE | NORM_IGNOREKANATYPE, psz1, n1,
-                          psz2, n2) - 2;
-}
 
 // ---------------------------------------------------------------------------------------------
 // Engine stand-in: messages from a CMsgPool, sends and file calls are recorded.
@@ -622,7 +607,12 @@ static void TestMonitorGraph(CFakeNet& net)
     MonitorGraph_AddCounterLocked(0x9000, "Custom", &custom);
     CHECK(s_GraphCalls.empty() && custom.dwMaxSamples == 0);
 
-    g_pServerFrameWindow = (CServerFrameWindow*)&s_nViewDummy;
+    s_apFakeFrame[0xBC / sizeof(CServerMoniterView*)] = s_pFakeView;
+    g_pServerFrameWindow = (CServerFrameWindow*)s_apFakeFrame;
+    // the overlap job ID counters the graph reads
+    ServerFramework::g_OverlapJobIDPool.m_dwStatNextID = 1;
+    ServerFramework::g_OverlapJobIDPool.m_dwInUse = 42;
+    ServerFramework::g_OverlapJobIDPool.m_dwStatFree = 3;
     // the view is only known once the update thread was started
     MonitorGraph_RegisterNetEngineCounter(MONITOR_COUNTER_MSG);
     CHECK(s_GraphCalls.empty());
