@@ -1,0 +1,55 @@
+"""Generate JMX_Library/BSNet/security/SecurityConstants.inl from your own GatewayServer.exe.
+
+The CRC seed table and the default count seed of the security layer are not part of this
+repository. Build with `nmake SECURITY_CONSTANTS=1` after running:
+
+    py tools\gen_security_constants.py <path to GatewayServer.exe>
+
+Only the vSRO 1.188 GatewayServer.exe the addresses were taken from is accepted.
+"""
+import hashlib
+import os
+import struct
+import sys
+
+EXPECTED_SHA256 = 'f7a7770b074f880885e7f43274362107a1d07338949c7c5b68e32a5c7df391cc'
+CRC_SEEDS_VA = 0x4F6CD0
+COUNT_SEED_VA = 0x46ECBF
+
+
+def va_to_offset(data, va):
+    pe = struct.unpack_from('<I', data, 0x3C)[0]
+    nsec = struct.unpack_from('<H', data, pe + 6)[0]
+    opt = struct.unpack_from('<H', data, pe + 20)[0]
+    base = struct.unpack_from('<I', data, pe + 52)[0]
+    for i in range(nsec):
+        sec = pe + 24 + opt + 40 * i
+        vsize, vaddr, rsize, raddr = struct.unpack_from('<IIII', data, sec + 8)
+        rva = va - base
+        if vaddr <= rva < vaddr + max(vsize, rsize):
+            return raddr + rva - vaddr
+    raise ValueError('address 0x%X not in any section' % va)
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    data = open(sys.argv[1], 'rb').read()
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != EXPECTED_SHA256:
+        sys.exit('unexpected GatewayServer.exe (sha256 %s)' % digest)
+
+    off = va_to_offset(data, CRC_SEEDS_VA)
+    seeds = struct.unpack_from('<256I', data, off)
+    count_seed = struct.unpack_from('<I', data, va_to_offset(data, COUNT_SEED_VA))[0]
+
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'JMX_Library', 'BSNet',
+                       'security', 'SecurityConstants.inl')
+    with open(out, 'w') as f:
+        f.write('#define SECURITY_CRC_SEEDS { %s }\n' % ', '.join('0x%08X' % s for s in seeds))
+        f.write('#define SECURITY_DEFAULT_COUNT_SEED 0x%08X\n' % count_seed)
+    print('wrote', os.path.normpath(out))
+
+
+if __name__ == '__main__':
+    main()

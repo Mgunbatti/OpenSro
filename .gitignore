@@ -9,3 +9,5 @@ build/
 *.ilk
 *.map
 *.lib
+# generated from the original binary by tools/gen_security_constants.py
+JMX_Library/BSNet/security/SecurityConstants.inl
