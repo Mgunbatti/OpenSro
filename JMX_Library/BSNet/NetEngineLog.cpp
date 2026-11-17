@@ -1,13 +1,16 @@
 #include "NetEngineLog.h"
 
+#include "BSNet/NetEngine.h"
+
 #include <stdarg.h>
 #include <strsafe.h>
 
-PFN_NETENGINE_LOG g_pfnNetEngineLog = NULL;
-
 void NetEngineLog(DWORD dwFlags, const char* pszFormat, ...)
 {
-    if (!g_pfnNetEngineLog)
+    // BUG(NET-005): no check for a missing engine; logging before the engine exists or after
+    // Shutdown reads address 0x24.
+    PFN_NETENGINE_LOG pfnLog = NetEngine_Cast(g_pNetEngine)->m_Config.pfnLog;
+    if (!pfnLog)
         return;
 
     char szText[1024];
@@ -15,5 +18,5 @@ void NetEngineLog(DWORD dwFlags, const char* pszFormat, ...)
     va_start(args, pszFormat);
     StringCchVPrintfA(szText, 0x400, pszFormat, args);
     va_end(args);
-    g_pfnNetEngineLog(dwFlags, "%s", szText);
+    pfnLog(dwFlags, "%s", szText);
 }
