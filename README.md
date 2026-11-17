@@ -47,3 +47,14 @@ Origin and checks (the toolchain is a community redistribution, not an official 
 - Static CRT check: 209 of 245 `libcmt` functions linked into the smoke test occur byte-identically
   (relocations masked) in `GatewayServer.exe`; most of the rest are not used by the server
   (`printf`, `mainCRTStartup`) or straddle the 64-byte comparison window.
+
+## Disclaimer
+
+This project is for educational and research purposes: studying how a mid-2000s MMO server was
+built and keeping it interoperable for private study. It is not affiliated with or endorsed by
+Joymax or any publisher of Silkroad Online. "Silkroad Online" and related names are trademarks of
+their respective owners.
+
+The repository contains only original code written for this project. No original binaries, game
+data, client files or database content are included, and none will be accepted. To run anything
+built from here you need your own legitimately obtained copy of the game files.
