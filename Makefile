@@ -10,7 +10,14 @@ CFLAGS  = /nologo /c /O2 /MT /EHsc /GS /W3 /Zi /DWIN32 /DNDEBUG /D_WINDOWS \
           /D_WIN32_WINNT=0x0500 /DWIN32_LEAN_AND_MEAN /D_SECURE_SCL_THROWS=1 \
           /IJMX_Library /IJMX_ServerFramework
 LIBFLAGS = /nologo
-SYSLIBS = ws2_32.lib user32.lib
+SYSLIBS = ws2_32.lib user32.lib ole32.lib
+
+# nmake SECURITY_CONSTANTS=1 compiles in the protocol tables generated from your own copy of
+# the original binaries (see tools\gen_security_constants.py); without them the security layer
+# only talks to other rebuilt peers.
+!IFDEF SECURITY_CONSTANTS
+CFLAGS = $(CFLAGS) /DBSNET_SECURITY_CONSTANTS
+!ENDIF
 
 OUT = build
 OBJ = $(OUT)\obj
@@ -24,14 +31,19 @@ BSLIB_OBJS = \
 BSNET_OBJS = \
 	$(OBJ)\BSNet\Msg.obj \
 	$(OBJ)\BSNet\MsgPool.obj \
-	$(OBJ)\BSNet\NetEngineLog.obj
+	$(OBJ)\BSNet\NetEngineLog.obj \
+	$(OBJ)\BSNet\BlowFish.obj \
+	$(OBJ)\BSNet\MD5.obj \
+	$(OBJ)\BSNet\KeyExchange.obj \
+	$(OBJ)\BSNet\Security.obj \
+	$(OBJ)\BSNet\SecurityConstants.obj
 
 SRVFW_OBJS = \
 	$(OBJ)\ServerFramework\MassiveMsg.obj
 
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
 TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
-        $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe
+        $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -45,6 +57,9 @@ $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\test $(LIBDIR) $(BIN):
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
 
 {JMX_Library\BSNet}.cpp{$(OBJ)\BSNet}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSNet\ $<
+
+{JMX_Library\BSNet\security}.cpp{$(OBJ)\BSNet}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSNet\ $<
 
 {JMX_ServerFramework\ServerFramework}.cpp{$(OBJ)\ServerFramework}.obj:
@@ -73,6 +88,7 @@ $(BIN)\DebugTest.exe: $(OBJ)\test\DebugTest.obj
 $(BIN)\PoolTest.exe: $(OBJ)\test\PoolTest.obj
 $(BIN)\QueTest.exe: $(OBJ)\test\QueTest.obj
 $(BIN)\MassiveMsgTest.exe: $(OBJ)\test\MassiveMsgTest.obj
+$(BIN)\SecurityTest.exe: $(OBJ)\test\SecurityTest.obj
 
 test: all
 	$(BIN)\MsgTest.exe
@@ -81,6 +97,7 @@ test: all
 	$(BIN)\PoolTest.exe
 	$(BIN)\QueTest.exe
 	$(BIN)\MassiveMsgTest.exe
+	$(BIN)\SecurityTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
