@@ -153,6 +153,21 @@ SERVER_BODY* ServerBodyInfo_Find(WORD wBodyID)
     return it->second;
 }
 
+SERVER_BODY* ServerBody_FindByPortAndPublicIP(const char* pszPublicIP, WORD wPort)
+{
+    for (ServerBodyList::iterator it = g_pServerBodyList->begin(); it != g_pServerBodyList->end();
+         ++it)
+    {
+        SERVER_BODY* pBody = *it;
+        if (pBody->wPort == wPort
+            && CompareNoCase(pBody->pMachine->szPublicIP, pszPublicIP) == CSTR_EQUAL)
+        {
+            return pBody;
+        }
+    }
+    return NULL;
+}
+
 SERVER_BODY* ServerCord_FindPeerBody(SERVER_CORD* pCord, SERVER_BODY* pBody)
 {
     if (pCord->wFromID != pBody->wID && pCord->wToID != pBody->wID)

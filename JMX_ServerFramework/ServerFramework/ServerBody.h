@@ -191,6 +191,9 @@ DWORD ServerCord_FindRouteRecursive(SERVER_BODY* pFrom, WORD wTargetID, DWORD dw
 bool ServerBody_BuildRouteTable();
 
 SERVER_BODY* ServerBodyInfo_Find(WORD wBodyID);
+// ServerList4F9CC4_FindByIdAndName (0x424460, not referenced): the body listening on wPort of the
+// machine with the public address pszPublicIP (compared ignoring case), NULL if none.
+SERVER_BODY* ServerBody_FindByPortAndPublicIP(const char* pszPublicIP, WORD wPort);
 // The other end of a cord that touches pBody.
 SERVER_BODY* ServerCord_FindPeerBody(SERVER_CORD* pCord, SERVER_BODY* pBody);
 SERVER_BODY* ServerBody_FindSelf(SERVER_CORD* pCord);
