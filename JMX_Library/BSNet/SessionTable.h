@@ -54,5 +54,11 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CSessionTable, m_IDPool) == 0x3C);
 C_ASSERT(FIELD_OFFSET(CSessionTable, m_SessionPool) == 0x5C);
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x46b080: the session pool is 0x5C bytes.
+C_ASSERT(FIELD_OFFSET(CSessionTable, m_vecSessions) == 0xB8);
+C_ASSERT(sizeof(CSessionTable) == 0xC8);
+#else
 C_ASSERT(FIELD_OFFSET(CSessionTable, m_vecSessions) == 0x9C);
 C_ASSERT(sizeof(CSessionTable) == 0xAC);
+#endif

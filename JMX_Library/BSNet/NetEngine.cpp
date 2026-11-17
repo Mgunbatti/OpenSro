@@ -14,6 +14,9 @@
 #include "BSNet/SockPool.h"
 #include "BSNet/SockSystem.h"
 #include "BSNet/security/Security.h"
+#ifdef JMX_FRAMEWORK_2011
+#include "BSLib/Util/Registry.h"
+#endif
 
 const GUID IID_IBSNet =
     { 0xA4AF69F3, 0xC8B3, 0x4242, { 0x9A, 0x96, 0x07, 0x8F, 0xF2, 0x7E, 0xB1, 0xF8 } };
@@ -75,8 +78,16 @@ BOOL CNetEngineDatagram::RegisterPeerProcessClass(DWORD dwTaskIDArg)
 // ---------------------------------------------------------------------------------------------
 // CNetEngine
 
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x46b510: the socket pools have names (the datagram pool is "Unknown").
+CNetEngine::CNetEngine()
+    : m_ConnectPool(NULL, 0, 500, "NetEngine::ActiveSocketPool"),
+      m_AcceptPool(NULL, 0, 500, "NetEngine::PassiveSocketPool")
+{
+#else
 CNetEngine::CNetEngine()
 {
+#endif
     g_pNetEngine = this;
     m_dw4 = 0;
     m_pListener = NULL;
@@ -175,6 +186,10 @@ BOOL CNetEngine::Initialize(BSNET_INIT_PARAM param)
         InterlockedExchange((volatile LONG*)&m_AcceptPool.m_nItemsPerBlock, 5000);
         InterlockedExchange((volatile LONG*)&m_ConnectPool.m_nItemsPerBlock, 50);
         InterlockedExchange((volatile LONG*)&m_MsgPool.m_nItemsPerBlock, 3000);
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x46b920: the message pool of a server is named after the parameter.
+        m_MsgPool.SetName(param.szMsgPoolName);
+#endif
     }
     else
     {
@@ -474,6 +489,11 @@ CMsg* CNetEngine::AllocMsg(BOOL bEncrypted)
 {
     CSingleLockBS lock(&m_csMsg, TRUE);
     CMsg* pMsg = m_MsgPool.Alloc();
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x46c110
+    if (!pMsg)
+        return NULL;
+#endif
     if (bEncrypted == TRUE)
         pMsg->SetEncryptFlag();
     InterlockedIncrement(&pMsg->m_lRefCount);
@@ -584,11 +604,50 @@ void CNetEngine::CloseAllFiles()
 void CNetEngine::DumpMsgPool(BYTE, DWORD)
 {
 }
+#elif defined(JMX_FRAMEWORK_2011)
+// AgentServer 0x46c6c0: the second argument is the threshold of the dump.
+void CNetEngine::DumpMsgPool(BYTE bFlags, DWORD dwThreshold)
+{
+    if (bFlags & 1)
+        m_MsgPool.DumpEntries((int)dwThreshold);
+}
 #else
 void CNetEngine::DumpMsgPool(BYTE bFlags, DWORD)
 {
     if (bFlags & 1)
         m_MsgPool.DumpEntries();
+}
+#endif
+
+#ifdef JMX_FRAMEWORK_2011
+bool NetEngine_SetWinInetMaxConnections(const char* pszSubKey)
+{
+    CRegistry reg;
+    if (!reg.Open(pszSubKey))
+        return false;
+
+    const char* apszName[2] = { "MaxConnectionsPerServer", "MaxConnectionsPer1_OServer" };
+    for (DWORD i = 0; i < 2; ++i)
+    {
+        DWORD dwValue = 0;
+        reg.QueryDword(apszName[i], &dwValue);
+        if (dwValue != 100)
+        {
+            dwValue = 100;
+            if (!reg.SetDword(apszName[i], dwValue))
+                return false;
+        }
+    }
+    reg.Close();
+    return true;
+}
+
+// AgentServer 0x46d380
+bool CNetEngine::SetWinInetMaxConnections(DWORD)
+{
+    char szKey[60];
+    memcpy(szKey, "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", 60);
+    return NetEngine_SetWinInetMaxConnections(szKey);
 }
 #endif
 

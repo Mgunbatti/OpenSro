@@ -75,6 +75,10 @@ struct BSNET_INIT_PARAM
             c.dwSessionParam = 0;
             c.dwSendMode = 1;
         }
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x430f40
+        memset(szMsgPoolName, 0, sizeof(szMsgPoolName));
+#endif
     }
 
     BYTE                        bSecurityMode;      // +0   SECURITY_MODE_*
@@ -97,13 +101,23 @@ struct BSNET_INIT_PARAM
     NETENGINE_SOCKET_CONFIG     aSocket[2];         // +44
     DWORD                       dw8C;               // +8C  not initialised
     DWORD                       dw90;               // +90  not initialised
+#ifdef JMX_FRAMEWORK_2011
+    // Name of the message pool of a server engine (CNetEngine::Initialize); "Unknown" when
+    // empty. CServerApp::InitNetEngine puts the service name here.
+    char                        szMsgPoolName[0x80];    // +94
+#endif
 };
 
 C_ASSERT(FIELD_OFFSET(BSNET_INIT_PARAM, dwFlags) == 0x4);
 C_ASSERT(FIELD_OFFSET(BSNET_INIT_PARAM, pfnLog) == 0x1C);
 C_ASSERT(FIELD_OFFSET(BSNET_INIT_PARAM, Maintainer) == 0x24);
 C_ASSERT(FIELD_OFFSET(BSNET_INIT_PARAM, aSocket) == 0x44);
+#ifdef JMX_FRAMEWORK_2011
+C_ASSERT(FIELD_OFFSET(BSNET_INIT_PARAM, szMsgPoolName) == 0x94);
+C_ASSERT(sizeof(BSNET_INIT_PARAM) == 0x114);
+#else
 C_ASSERT(sizeof(BSNET_INIT_PARAM) == 0x94);
+#endif
 
 // Bits of the GetStatistics flags.
 enum
@@ -205,6 +219,7 @@ public:
                                               const char* pszBindIP, DWORD dwTaskID,
                                               DWORD dwSessionID) = 0;                   // 28
     virtual void __stdcall CloseAllFiles() = 0;                                         // 29
+    // 2011: dwReserved is the threshold of CMsgPool::DumpEntries.
     virtual void __stdcall DumpMsgPool(BYTE bFlags, DWORD dwReserved) = 0;              // 30
     virtual void __stdcall SetDebugAsserted(BYTE bAsserted) = 0;                        // 31
     virtual void __stdcall CleanupDisconnectedSessions() = 0;                           // 32
@@ -216,4 +231,8 @@ public:
     virtual int __stdcall OpenDatagramSocket(WORD wPort) = 0;                           // 38
     virtual int __stdcall SendDatagram(const sockaddr* pTo, CMsg* pMsg) = 0;            // 39
     virtual ~IBSNet() {}                                                                // 40
+#ifdef JMX_FRAMEWORK_2011
+    // Raises the WinINet connection limits of the current user to 100 (AgentServer 0x46d380).
+    virtual bool __stdcall SetWinInetMaxConnections(DWORD dwUnused) = 0;                // 41
+#endif
 };

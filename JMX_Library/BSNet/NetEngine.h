@@ -32,7 +32,8 @@ extern int g_nNetIoModel;
 // Task ID of the datagram peer process (0x4F841C, NETENGINE_TASK_DATAGRAM).
 extern DWORD g_dwNetDatagramTaskID;
 
-// The datagram socket and the task ID of its received datagrams (CNetEngine +0x338).
+// The datagram socket and the task ID of its received datagrams (CNetEngine +0x338, 2011
+// +0x428).
 struct NETENGINE_DATAGRAM
 {
     CSockDatagram*  pSocket;    // +0
@@ -125,6 +126,10 @@ public:
     virtual BOOL __stdcall RegisterDatagramProactor(DWORD dwTaskID);                    // 37
     virtual int __stdcall OpenDatagramSocket(WORD wPort);                               // 38
     virtual int __stdcall SendDatagram(const sockaddr* pTo, CMsg* pMsg);                // 39
+#ifdef JMX_FRAMEWORK_2011
+    // NetEngine_SetWinInetMaxConnections with the WinINet key; not called in AgentServer.
+    virtual bool __stdcall SetWinInetMaxConnections(DWORD dwUnused);                    // 41
+#endif
 
     // keep-alive list (KeepAlive.cpp), all under m_csKeepAlive
     void AddKeepAliveEntry(const KEEPALIVE_ENTRY* pEntry);
@@ -135,6 +140,8 @@ public:
     void ClearKeepAliveSession(DWORD dwSessionID);
 
 public:
+    // Offsets of 2008; the 2011 framework (bigger engine parameters and chunk allocators) in
+    // the C_ASSERTs below.
     DWORD                   m_dw4;              // +4    0
     BSNET_INIT_PARAM        m_Config;           // +8
     CCriticalSectionBS      m_csKeepAlive;      // +9C   keep-alive list, session cleanup
@@ -149,6 +156,27 @@ public:
     KeepAliveList           m_listKeepAlive;    // +3C8
 };
 
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x46b510
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_Config) == 0x8);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_csKeepAlive) == 0x11C);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_csMsg) == 0x158);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_pListener) == 0x194);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_ConnectPool) == 0x198);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_AcceptPool) == 0x230);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_DatagramPool) == 0x2C8);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_SessionTable) == 0x360);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_Datagram) == 0x428);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_MsgPool) == 0x430);
+C_ASSERT(FIELD_OFFSET(CNetEngine, m_listKeepAlive) == 0x4D4);
+C_ASSERT(sizeof(CNetEngine) == 0x4E0);
+
+// Body of CNetEngine::SetWinInetMaxConnections (AgentServer 0x46d380) with the key as parameter:
+// under HKEY_CURRENT_USER\pszSubKey "MaxConnectionsPerServer" and "MaxConnectionsPer1_OServer"
+// (sic, letter O) are set to 100 unless they are 100 already. False when the key cannot be
+// opened or a value cannot be written.
+bool NetEngine_SetWinInetMaxConnections(const char* pszSubKey);
+#else
 C_ASSERT(FIELD_OFFSET(CNetEngine, m_Config) == 0x8);
 C_ASSERT(FIELD_OFFSET(CNetEngine, m_csKeepAlive) == 0x9C);
 C_ASSERT(FIELD_OFFSET(CNetEngine, m_csMsg) == 0xD8);
@@ -161,6 +189,7 @@ C_ASSERT(FIELD_OFFSET(CNetEngine, m_Datagram) == 0x338);
 C_ASSERT(FIELD_OFFSET(CNetEngine, m_MsgPool) == 0x340);
 C_ASSERT(FIELD_OFFSET(CNetEngine, m_listKeepAlive) == 0x3C8);
 C_ASSERT(sizeof(CNetEngine) == 0x3D4);
+#endif
 
 // ---------------------------------------------------------------------------------------------
 // What the sockets, proactors and the maintainer read from the engine. They take the IBSNet

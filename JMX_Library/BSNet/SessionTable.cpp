@@ -8,9 +8,17 @@
 typedef CClassLink<CSession> CSessionLink;
 
 // CNetEngine_SessionTable_ctor (0x47fe70).
+#ifdef JMX_FRAMEWORK_2011
+// AgentServer 0x46b080
+CSessionTable::CSessionTable()
+    : m_SessionPool(NULL, 0, 500, "NetEngine::SessionPool")
+{
+}
+#else
 CSessionTable::CSessionTable()
 {
 }
+#endif
 
 // CNetEngine_SessionTable_dtor (0x47fef0).
 CSessionTable::~CSessionTable()
