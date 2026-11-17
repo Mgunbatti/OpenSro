@@ -12,6 +12,14 @@
 
 class CMsg;
 
+// Value ServerApp_Startup gives g_ServerGlobals.dw2B4: with 1 the certification server is
+// reached through a keep-alive target (reconnected by the engine) instead of a single connect
+// (RequestServerCertification). A compile-time setting of the module like SERVER_MODULE_NAME:
+// 0 in GatewayServer and DownloadServer, 1 in MachineManager.
+#ifndef SERVER_CERTIFICATION_KEEP_ALIVE
+#define SERVER_CERTIFICATION_KEEP_ALIVE 0
+#endif
+
 // Server application: the object every server module derives its application class from
 // (CGatewayServer, CMachineManager, ...). The module's WinMain stores its single instance in
 // g_pServerApp and calls ServerApp_Startup.
@@ -145,6 +153,10 @@ bool Net_GetPublicIPv4Address(char* pszIP, DWORD* pdwIP);
 HANDLE SingleInstance_CreateSemaphore();
 // CloseHandle_wrap (0x452f60)
 void SingleInstance_Close(HANDLE* phSemaphore);
+// NamedSemaphore_Exists (MachineManager 0x42d400, not linked into GatewayServer): TRUE when a
+// semaphore with the name exists, i.e. the server module of that name is running (see
+// SingleInstance_CreateSemaphore). A missing semaphore is created and closed again.
+BOOL SingleInstance_Exists(const char* pszName);
 // FindOtherProcessByExeName (0x4278e0, not referenced): ID of another process whose exe name
 // starts with pszExeName, 0 if none.
 DWORD FindOtherProcessByExeName(const char* pszExeName);

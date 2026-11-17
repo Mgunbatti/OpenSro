@@ -37,7 +37,7 @@ struct SERVER_GLOBALS
     BOOL        bReportConnectionLog;           // +2A8 0x53B6A8
     LONG        nMaxSendQueDepth;               // +2AC 0x53B6AC default -1
     BOOL        bPromptAtClose;                 // +2B0 0x53B6B0
-    DWORD       dw2B4;                          // +2B4 0x53B6B4 cleared by ServerApp_Startup
+    DWORD       dw2B4;                          // +2B4 0x53B6B4 SERVER_CERTIFICATION_KEEP_ALIVE
     BOOL        bWritePerfLogToText;            // +2B8 0x53B6B8
     // Keys of the module's Server.cfg block that are not options above, with their value.
     std::map<std::string, std::string> mapExtra;    // +2BC 0x53B6BC

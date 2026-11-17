@@ -108,6 +108,20 @@ void SingleInstance_Close(HANDLE* phSemaphore)
     }
 }
 
+BOOL SingleInstance_Exists(const char* pszName)
+{
+    HANDLE hSemaphore = CreateSemaphoreA(NULL, 0, 1, pszName);
+    if (!hSemaphore)
+        return FALSE;
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    {
+        CloseHandle(hSemaphore);
+        return TRUE;
+    }
+    CloseHandle(hSemaphore);
+    return FALSE;
+}
+
 DWORD FindOtherProcessByExeName(const char* pszExeName)
 {
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -638,7 +652,7 @@ int ServerApp_Startup(HINSTANCE hInstance, const char* pszCmdLine)
     g_ServerGlobals.bDumpMsgPool = FALSE;
     g_ServerGlobals.nMaxSendQueDepth = -1;
     g_ServerGlobals.bPromptAtClose = FALSE;
-    g_ServerGlobals.dw2B4 = 0;
+    g_ServerGlobals.dw2B4 = SERVER_CERTIFICATION_KEEP_ALIVE;
     g_ServerGlobals.bWritePerfLogToText = FALSE;
     g_hServerFrameworkRes = LoadLibraryA("ServerFrameworkRes.dll");
     if (!g_hServerFrameworkRes)
