@@ -122,3 +122,61 @@ GatewayServer	0x41fbd0	CMassiveMsg::WriteFromMsgList	CMassiveMsg::AppendFrom
 GatewayServer	0x443ee0	CMassiveMsg_FormatDesc	CMassiveMsg::FormatDesc
 GatewayServer	0x41fcc0	CMsg_PeekHeaderWords	GetMassiveOpcode
 GatewayServer	0x420630	DynInit_Que_CMassiveMsg_53B6C8	g_MassiveMsgPool
+GatewayServer	0x46da60	Security_LFSR32	Security_LFSR32
+GatewayServer	0x46daa0	CKeySender::dtor	CKeySender::~CKeySender
+GatewayServer	0x46daf0	CKeySender::scalar_deleting_dtor	CKeySender::~CKeySender (scalar deleting)
+GatewayServer	0x46db50	CKeyRepicient::dtor	CKeyRepicient::~CKeyRepicient
+GatewayServer	0x46dba0	CKeyRepicient::scalar_deleting_dtor	CKeyRepicient::~CKeyRepicient (scalar deleting)
+GatewayServer	0x46ec80	Security_ApplyHandshakeFlags	Security_ApplyHandshakeFlags
+GatewayServer	0x4703d0	Security_ModeCheck	Security_ModeCheck
+GatewayServer	0x487ce0	CMD5::ctor	CMD5::CMD5
+GatewayServer	0x487cf0	CMD5::scalar_deleting_dtor	CMD5::~CMD5 (scalar deleting)
+GatewayServer	0x487d10	CMD5::dtor	CMD5::~CMD5
+GatewayServer	0x487d40	CMD5::Compute	CMD5::Compute
+GatewayServer	0x487d50	CMD5::GetHexDigest	CMD5::GetHexDigest
+GatewayServer	0x487d60	CMD5::ComputeHexDigest	CMD5::ComputeHexDigest
+GatewayServer	0x488010	CKeyExchangeBase::ctor	CKeyExchangeBase::CKeyExchangeBase
+GatewayServer	0x4880a0	CKeyExchangeBase::scalar_deleting_dtor	CKeyExchangeBase::~CKeyExchangeBase (scalar deleting)
+GatewayServer	0x4880c0	CKeyExchangeBase::dtor	CKeyExchangeBase::~CKeyExchangeBase
+GatewayServer	0x488110	CKeyExchange::TransformKey	CKeyExchangeBase::TransformKey
+GatewayServer	0x488190	CKeyExchange::DeriveKey	CKeyExchangeBase::DeriveKey
+GatewayServer	0x4881e0	CKeyExchange::ComputeValue	CKeyExchangeBase::ComputeValue
+GatewayServer	0x488210	CKeyExchange::CheckValue	CKeyExchangeBase::CheckValue
+GatewayServer	0x4882f0	CKeyExchange::GetFinalKey	CKeyExchangeBase::GetFinalKey
+GatewayServer	0x488310	CKeySender::ctor	CKeySender::CKeySender
+GatewayServer	0x488370	CKeyExchange::GenerateServerParams	CKeySender::GenerateServerParams
+GatewayServer	0x488400	CKeyExchange::VerifyChallenge	CKeySender::VerifyChallenge
+GatewayServer	0x488450	CKeyExchange::MakeChallenge	CKeySender::MakeChallenge
+GatewayServer	0x488470	CKeyRepicient::ctor	CKeyRepicient::CKeyRepicient
+GatewayServer	0x4884d0	CKeyExchange::AcceptServerParams	CKeyRepicient::AcceptServerParams
+GatewayServer	0x488530	CKeyExchange::MakeResponse	CKeyRepicient::MakeResponse
+GatewayServer	0x488550	CKeyExchange::CheckPeerValue	CKeyRepicient::CheckPeerValue
+GatewayServer	0x492f30	CBlowFish::ctor	CBlowFish::CBlowFish
+GatewayServer	0x492f60	CBlowFish::scalar_deleting_dtor	CBlowFish::~CBlowFish (scalar deleting)
+GatewayServer	0x492f80	CBlowFish::dtor	CBlowFish::~CBlowFish
+GatewayServer	0x492fa0	CBlowFish::EncryptBlock	CBlowFish::EncryptBlock
+GatewayServer	0x493360	CBlowFish::DecryptBlock	CBlowFish::DecryptBlock
+GatewayServer	0x493720	CBlowFish::Initialize	CBlowFish::Initialize
+GatewayServer	0x493b40	AlignUp8	CBlowFish::AlignUp8
+GatewayServer	0x493b50	CBlowFish::Encrypt	CBlowFish::Encrypt
+GatewayServer	0x493ca0	CBlowFish::Decrypt	CBlowFish::Decrypt
+GatewayServer	0x493d30	Security_BuildCrcTable	Security_BuildCrcTable
+GatewayServer	0x493df0	Security_InitCrcSeed	Security_InitCrcSeed
+GatewayServer	0x493e10	Security_ComputeCrcByte	Security_ComputeCrcByte
+GatewayServer	0x499980	CMD5::Init	CMD5::Init
+GatewayServer	0x4999b0	CMD5::Update	CMD5::Update
+GatewayServer	0x499a50	CMD5::Final	CMD5::Final
+GatewayServer	0x499ad0	CMD5::Transform	CMD5::Transform
+GatewayServer	0x49a170	CMD5::Encode	CMD5::Encode
+GatewayServer	0x49a1b0	CMD5::Decode	CMD5::Decode
+GatewayServer	0x49a1f0	CMD5::MemCopy	CMD5::MemCopy
+GatewayServer	0x49a230	Struct7_ZeroInit_49A230	KEYEXCHANGE_DH::KEYEXCHANGE_DH
+GatewayServer	0x49a250	KeyExchange_ModPow	KeyExchange_ModPow
+GatewayServer	0x49a2f0	KeyExchange_RandomPrime	KeyExchange_RandomPrime
+GatewayServer	0x49a360	KeyExchange_ModPow_wrap	KeyExchange_FermatWitness
+GatewayServer	0x49a380	KeyExchange_IsPrime	KeyExchange_IsPrime
+GatewayServer	0x49a3c0	CKeyExchange::GenerateBaseModulus	KEYEXCHANGE_DH::GenerateBaseModulus
+GatewayServer	0x49a3f0	CKeyExchange::GenerateServerPublic	KEYEXCHANGE_DH::GenerateServerPublic
+GatewayServer	0x49a440	CKeyExchange::ComputeSharedSecret	KEYEXCHANGE_DH::ComputeServerSecret
+GatewayServer	0x49a460	CKeyExchange::GeneratePrivateAndPublicKey	KEYEXCHANGE_DH::GenerateClientPublic
+GatewayServer	0x49a4c0	CKeyExchange::ComputeValue_2	KEYEXCHANGE_DH::ComputeClientSecret
