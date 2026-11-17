@@ -507,6 +507,19 @@ void OverlapJob_SetupQueryPunishment(CTask* pTask, SM_JOB* pJob, const char* psz
 {
     Describe(pJob, pTask, " %s %u", pszUserID, S(dwSessionID));
 }
+SM_JOB* OverlapJob_AllocPunishmentJob() { return NewJob("Punishment"); }
+void OverlapJob_SetupPunishmentJob(CTask* pTask, SM_JOB* pJob, const char* psz1,
+                                   const char* psz2, DWORD dwSessionID, BYTE byJob,
+                                   DWORD dwSerial, DWORD dwJID, BYTE byType, WORD wShardID,
+                                   const char* psz3, const char* psz4, const char* psz5,
+                                   const char* psz6, SYSTEMTIME t1, SYSTEMTIME t2,
+                                   SYSTEMTIME t3, SYSTEMTIME t4)
+{
+    Describe(pJob, pTask, " %s %s %u %u %u %u %u %u %s %s %s %s %u/%u %u/%u %u/%u %u/%u", psz1,
+             psz2, S(dwSessionID), byJob, dwSerial, dwJID, byType, wShardID, psz3, psz4, psz5,
+             psz6, t1.wYear, t1.wSecond, t2.wYear, t2.wSecond, t3.wYear, t3.wSecond, t4.wYear,
+             t4.wSecond);
+}
 SM_JOB* OverlapJob_AllocQueryCharOwnedUser() { return NewJob("QueryCharOwnedUser"); }
 void OverlapJob_SetupQueryCharOwnedUser(CTask* pTask, SM_JOB* pJob, const char* pszUserID,
                                         DWORD dwSessionID)
@@ -663,6 +676,7 @@ static SERVER_CORD s_CordUp;
 static SERVER_CORD s_CordDown;
 static CERT_SHARD s_Shard;
 static ServerBodyList s_listBody;
+static CertShardList s_listShard;
 
 static void AddModule(int i, BYTE byID, const char* pszName, const char* pszLower)
 {
@@ -712,6 +726,8 @@ static void SetupArchitecture()
     strcpy_s((char*)s_Shard.ab3 + 1, 32, "Alpha");
     s_Shard.w548 = 1000;
     g_mapCertShard[10] = &s_Shard;
+    s_listShard.push_back(&s_Shard);
+    g_pCertShardList = &s_listShard;
 }
 
 static CServiceManagerProcess* s_pSM;
@@ -1192,6 +1208,599 @@ static void TestShardService()
     CHECK(NoPackets());
 }
 
+// ---------------------------------------------------------------------------------------------
+// Accounts, architecture, content users, security descriptions, queries
+
+static CERT_DIVISION s_Division;
+static CERT_DATA_SETTING s_SettingLogin;
+static CertDataGroupList s_listGroup;
+static CertDataSettingList s_listSetting;
+static CertDataGroupIPList s_listGroupIP;
+static PrivIPSet s_setPrivIP;
+
+static void SetupCertData()
+{
+    s_Division.byID = 3;
+    s_aBody[0].byDivisionID = 7;
+    s_aBody[0].pDivision = &s_Division;
+    s_SettingLogin.dwValue = 0x77;
+    strcpy_s(s_SettingLogin.szName, "SMC_Login");
+    s_listSetting.push_back(&s_SettingLogin);
+    g_pCertDataGroupList = &s_listGroup;
+    g_pCertDataSettingList = &s_listSetting;
+    g_pCertDataGroupIPList = &s_listGroupIP;
+    s_setPrivIP.insert(0x77);
+    g_hmapPrivIP[3] = &s_setPrivIP;
+}
+
+static CMsg* LoginRequest(DWORD dwVersion, bool bVersion = true)
+{
+    Bytes v;
+    PutS(v, "smc");
+    PutS(v, "pw");
+    PutS(v, "key");
+    if (bVersion)
+        PutD(v, dwVersion);
+    return Req(0x7001, v);
+}
+
+static void TestLogin()
+{
+    CMsg* p = LoginRequest(0, false);
+    s_pSM->OnMsg_7001(p, 0, 0, NULL);
+    Done(p);
+    Bytes got;
+    CHECK(TakeMassive(s_dwClient, 0xB001, &got) && Same(got, B("02")));
+    p = LoginRequest(23);
+    s_pSM->OnMsg_7001(p, 0, 0, NULL);
+    Done(p);
+    CHECK(TakeMassive(s_dwClient, 0xB001, &got) && Same(got, B("02 01")));
+    CHECK(s_vecCall.empty());
+
+    struct CASE
+    {
+        int         nResult;
+        const char* pszRow;
+        const char* pszWant;
+    };
+    static const CASE s_aCase[] =
+    {
+        { -2, "05 00 00 00 03 00 00 00", "02 03" },
+        { 0, "00 00 00 00 03 00 00 00", "02 02" },
+        { 0, "05 00 00 00 04 00 00 00", "02 04" },
+    };
+    for (size_t i = 0; i < sizeof(s_aCase) / sizeof(s_aCase[0]); ++i)
+    {
+        Answer(s_aCase[i].nResult, B(s_aCase[i].pszRow));
+        p = LoginRequest(24);
+        s_pSM->OnMsg_7001(p, 0, 0, NULL);
+        Done(p);
+        CHECK(Query("exec _CertifyUser 'smc','pw','key'", DEFAULT_DB, 8));
+        CHECK(TakeMassive(s_dwClient, 0xB001, &got) && Same(got, B(s_aCase[i].pszWant)));
+    }
+    CHECK(s_pSM->m_mapUser.empty() && s_vecLog.empty());
+
+    // Logged in: {1, security, division, certification data (groups, settings, addresses)}.
+    s_aBody[0].byDivisionID = 29;
+    Answer(0, B("05 00 00 00 03 00 00 00"));
+    p = LoginRequest(24);
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    s_aBody[0].byDivisionID = 7;
+    CHECK(Query("exec _CertifyUser_For_SMC 'smc','pw','key'", DEFAULT_DB, 8));
+    Bytes want = B("01 03 03 00 02 00 01");
+    Put(want, &s_SettingLogin, sizeof(s_SettingLogin));
+    Put(want, "\x02\x00\x02", 3);
+    CHECK(TakeMassive(s_dwClient, 0xB001, &got) && Same(got, want));
+    CHECK(TakeLog("log 1 9 Login : smc"));
+    sServiceManagerUser* pUser = s_pSM->FindUser(s_dwServer);
+    CHECK(pUser && pUser->dwID == 5 && pUser->strID == "smc" && pUser->strPassword == "pw");
+    CHECK(pUser && pUser->bySecurity == 3 && pUser->dwSessionID == s_dwServer);
+    CHECK(g_setNotifySession.count(s_dwServer) == 1);
+    g_setNotifySession.clear();
+    CHECK(NoPackets());
+}
+
+static void TestArchitecture()
+{
+    CertModuleList modules;
+    modules.push_back(&s_aModule[0]);
+    modules.push_back(&s_aModule[1]);
+    CertContentList contents;
+    CertDivisionList divisions;
+    divisions.push_back(&s_Division);
+    CertFarmList farms;
+    CertFarmContentList farmContents;
+    CertShardList shards;
+    shards.push_back(&s_Shard);
+    CertMachineList machines;
+    machines.push_back(&s_aMachine[0]);
+    ServerCordList cords;
+    cords.push_back(&s_CordUp);
+    g_pCertModuleList = &modules;
+    g_pCertContentList = &contents;
+    g_pCertDivisionList = &divisions;
+    g_pCertFarmList = &farms;
+    g_pCertFarmContentList = &farmContents;
+    g_pCertShardList = &shards;
+    g_pCertMachineList = &machines;
+    g_pServerCordList = &cords;
+    CMsg* p = Req(0x7002, Bytes());
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    Bytes want;
+    for (int i = 0; i < 2; ++i)
+    {
+        PutB(want, 1);
+        Put(want, &s_aModule[i], 65);
+    }
+    want.push_back(0);
+    want.push_back(0);
+    PutB(want, 1);
+    Put(want, &s_Division, 291);
+    want.push_back(0);
+    want.push_back(0);
+    want.push_back(0);
+    PutB(want, 1);
+    Put(want, &s_Shard, 559);
+    want.push_back(0);
+    PutB(want, 1);
+    Put(want, &s_aMachine[0], 71);
+    want.push_back(0);
+    for (ServerBodyList::iterator it = s_listBody.begin(); it != s_listBody.end(); ++it)
+    {
+        PutB(want, 1);
+        Put(want, *it, 40);
+    }
+    want.push_back(0);
+    PutB(want, 1);
+    Put(want, &s_CordUp, 17);
+    want.push_back(0);
+    Bytes got;
+    CHECK(TakeMassive(s_dwClient, 0xB002, &got) && Same(got, want));
+    g_pCertModuleList = NULL;
+    g_pCertContentList = NULL;
+    g_pCertDivisionList = NULL;
+    g_pCertFarmList = NULL;
+    g_pCertFarmContentList = NULL;
+    g_pCertShardList = &s_listShard;
+    g_pCertMachineList = NULL;
+    g_pServerCordList = NULL;
+    CHECK(NoPackets());
+}
+
+// The handlers that only post a job.
+static void TestJobHandlers()
+{
+    struct CASE
+    {
+        WORD        wOpcode;
+        const char* pszData;
+        const char* pszJob;
+        const char* pszLog;
+    };
+    static const CASE s_aCase[] =
+    {
+        { 0x7003, "", "ModuleVersion 1", NULL },
+        { 0x7004, "04 09", "ModuleVersionFile 1 4 9", NULL },
+        { 0x7400, "02 00 61 62", "QueryUser ab 1", "log 1 12 Query User REQ : ab" },
+        { 0x7404, "01 00 2d 02 01 00 62 01 00 65", "QuerySMLog b e 1 [] 2",
+          "log 1 23 Query SMLog REQ : User_ID[] Begin[b] End[e]" },
+        { 0x7404, "01 00 78 02 01 00 62 01 00 65", "QuerySMLog b e 1 [x] 2",
+          "log 1 23 Query SMLog REQ : User_ID[x] Begin[b] End[e]" },
+        { 0x7405, "01 01 00 71", "QueryContentUserAccount [q] 1 1",
+          "log 1 24 Query Content User Account REQ : Query String [q]" },
+        { 0x7405, "02", "QueryContentUserAccount [] 1 2",
+          "log 1 24 Query Content User Account REQ : Query Blocked User" },
+        { 0x7407, "01 00 75", "QueryPunishment u 1",
+          "log 1 24 Query Punishment REQ : User ID[ u]" },
+        { 0x7409, "01 00 75", "QueryCharOwnedUser u 1", "query 1 Query Char Owned By User [u]" },
+        { 0x7410, "01 00 75", "QueryUserByUserID u 1", "query 1 Query User By User ID [u]" },
+        { 0x7412, "0a 00 03 01 00 62 01 00 65", "ConcurrentUserLog 1 10 3 b e", NULL },
+        { 0x7206, "05", "Article 0 [(null)] 1 5 0 [(null)]", NULL },
+        { 0x7207, "05 01 00 74 01 00 78", "Article 1 [t] 1 5 0 [x]", "log 1 11 Add Article t" },
+        { 0x7208, "09 00 00 00", "Article 2 [(null)] 1 0 9 [(null)]",
+          "log 1 11 Delete Article 9" },
+        { 0x7209, "09 00 00 00 01 00 74 01 00 78", "Article 3 [t] 1 0 9 [x]",
+          "log 1 11 Edit Article" },
+    };
+    for (size_t i = 0; i < sizeof(s_aCase) / sizeof(s_aCase[0]); ++i)
+    {
+        const CASE& c = s_aCase[i];
+        CMsg* p = Req(c.wOpcode, B(c.pszData));
+        CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+        CHECK(p->GetUnreadSize() == 0);
+        Done(p);
+        CHECK(PostedJob(c.pszJob));
+        if (c.pszLog)
+            CHECK(TakeLog(c.pszLog));
+        CHECK(s_vecLog.empty());
+    }
+
+    // 0x7408 (massive): the punishment job.
+    CMassiveMsg* pMassive = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);
+    pMassive->SetOpcode(0x7408);
+    Bytes v = B("02 07 00 00 00 64 00 00 00 03");
+    PutS(v, "s1");
+    PutW(v, 10);
+    PutS(v, "s2");
+    PutS(v, "s3");
+    PutS(v, "s4");
+    PutS(v, "s5");
+    PutS(v, "s6");
+    SYSTEMTIME at[4];
+    memset(at, 0, sizeof(at));
+    for (int i = 0; i < 4; ++i)
+    {
+        at[i].wYear = (WORD)(2011 + i);
+        at[i].wSecond = (WORD)i;
+    }
+    Put(v, at, sizeof(at));
+    pMassive->Write(&v[0], (int)v.size());
+    pMassive->m_nMode = MASSIVE_MODE_READ;
+    pMassive->BeginRead();
+    pMassive->m_dw36 = s_dwServer;
+    CHECK(s_pSM->Dispatch(NULL, pMassive, 0, 0));
+    pMassive->Free();
+    CHECK(PostedJob("Punishment s1 s2 1 2 7 100 3 10 s3 s4 s5 s6 2011/0 2012/1 2013/2 2014/3"));
+    CHECK(TakeLog("log 1 24 Punishment Job REQ : Job[ 2], Serial No[ 7], User ID[ 100]"));
+
+    // Automated punishments; the posting result is returned.
+    std::string str("victim");
+    CHECK(s_pSM->RegisterAutomatedPunishment(&str, 5, 10, 2, 9));
+    CHECK(PostedJob("AutomatedPunishment victim 5 10 2 9"));
+    s_pMain->m_bAcceptJobs = false;
+    s_pSM->RegisterAutomatedPunishment(&str, 5, 10, 2, 9);
+    s_pMain->m_bAcceptJobs = true;
+    CHECK(PostedJob("AutomatedPunishment victim 5 10 2 9"));
+    CHECK(s_pMain->m_vecJobs.empty());
+    CHECK(NoPackets());
+}
+
+static void TestSecurityDescriptions()
+{
+    struct CASE
+    {
+        WORD        wOpcode;
+        const char* pszData;
+        const char* pszSQL;
+        const char* pszLog;
+    };
+    static const CASE s_aCase[] =
+    {
+        { 0x7300, "01 00 6e 01 00 64", "insert _SecurityDescription values( 'n', 'd')",
+          "log 1 12 Add Security Description REQ : Name[n], Desc[d]" },
+        { 0x7301, "08 00 00 00", "delete _SecurityDescription where nID = 8",
+          "log 1 12 Delete Security Description REQ : ID[8] Name[SMC_Login]" },
+        { 0x7302, "01 00 6e 01 00 64", "insert _SecurityDescriptionGroup values( 'n', 'd')",
+          "log 1 12 Add Security Description Group REQ : Name[n] Description[d]" },
+        { 0x7303, "09", "delete _SecurityDescriptionGroup where nID = '9'", NULL },
+        { 0x7304, "03 08 00 00 00", "insert _SecurityDescriptionGroupAssign values( '3', '8')",
+          "log 1 12 Add Security Descrition Group Assign : Group_ID[3] Description_ID[8]" },
+        { 0x7305, "03 08 00 00 00",
+          "delete _SecurityDescriptionGroupAssign where nGroupID = 3 and nDescriptionID = 8",
+          "log 1 12 Delete Security Description Group Assign : Group_ID[3] Description_ID[8]" },
+        { 0x7307, "08 00 00 00 01 00 64",
+          "update _SecurityDescription set szDesc = 'd' where nID = 8",
+          "log 1 12 Modify Security Description : ID[8] Description[d]" },
+    };
+    g_mapCertDataSetting[8] = &s_SettingLogin;
+    for (size_t i = 0; i < sizeof(s_aCase) / sizeof(s_aCase[0]); ++i)
+    {
+        const CASE& c = s_aCase[i];
+        Answer(0);
+        CMsg* p = Req(c.wOpcode, B(c.pszData));
+        CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+        Done(p);
+        CHECK(Query(c.pszSQL, DEFAULT_DB, 0));
+        CHECK(Reply((WORD)(c.wOpcode + 0x4000), B("01")));
+        CHECK(PostedJob("RefreshSecurityData 1"));
+        if (c.pszLog)
+            CHECK(TakeLog(c.pszLog));
+        Answer(-2);
+        p = Req(c.wOpcode, B(c.pszData));
+        CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+        Done(p);
+        CHECK(Query(c.pszSQL, DEFAULT_DB, 0));
+        CHECK(Reply((WORD)(c.wOpcode + 0x4000), B("02 00")));
+        CHECK(s_pMain->m_vecJobs.empty());
+        s_vecLog.clear();
+    }
+    // a known group is logged with the address of its name
+    CERT_DATA_GROUP group;
+    group.byID = 9;
+    g_mapCertDataGroup[9] = &group;
+    Answer(0);
+    CMsg* p = Req(0x7303, B("09"));
+    s_pSM->OnMsg_7303(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Query("delete _SecurityDescriptionGroup where nID = '9'", DEFAULT_DB, 0));
+    CHECK(Reply(0xB303, B("01")) && PostedJob("RefreshSecurityData 1"));
+    char sz[128];
+    sprintf_s(sz, "log 1 12 Delete Security Description Group REQ : ID[9] Name[%d]", group.ab1);
+    CHECK(TakeLog(sz));
+    g_mapCertDataGroup.clear();
+    g_mapCertDataSetting.clear();
+    CHECK(NoPackets());
+}
+
+static void TestUserAccounts()
+{
+    SM_USER_RECORD rec;
+    memset(&rec, 0, sizeof(rec));
+    rec.dwID = 12;
+    strcpy_s(rec.szUserID, "user");
+    memset(rec.szPassword, 'p', 32);
+    strcpy_s(rec.szName, "name");
+    memset(rec.szA, 'a', 32);
+    memset(rec.szB, 'b', 32);
+    strcpy_s(rec.szC, "c");
+    strcpy_s(rec.szD, "d");
+    rec.by1F4 = 4;
+    rec.by1F5 = 5;
+    strcpy_s(rec.sz1F6, "z");
+    std::string strP(32, 'p');
+    std::string strA(32, 'a');
+    std::string strB(32, 'b');
+    std::string strFields = "'" + strP + "','name','" + strA + "','" + strB + "','c','d',4,5,'z'";
+    Bytes v;
+    Put(v, &rec, sizeof(rec));
+
+    Answer(0);
+    CMsg* p = Req(0x7401, v);
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(Query(("exec _AddUser 'user'," + strFields).c_str(), DEFAULT_DB, 0));
+    CHECK(Reply(0xB401, B("01")));
+    CHECK(TakeLog("log 1 12 Add User REQ : user"));
+    Answer(-2);
+    p = Req(0x7401, v);
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(Query(("exec _AddUser 'user'," + strFields).c_str(), DEFAULT_DB, 0));
+    CHECK(Reply(0xB401, B("02 01")));
+    s_vecLog.clear();
+
+    Answer(0);
+    p = Req(0x7403, v);
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(Query(("exec _EditUser 12," + strFields).c_str(), DEFAULT_DB, 0));
+    CHECK(Reply(0xB403, B("01")));
+    CHECK(s_vecLog.size() == 1
+          && s_vecLog[0].compare(0, 42, "log 1 12 Modify User REQ : ID[12] User_ID[") == 0);
+    s_vecLog.clear();
+
+    Answer(0);
+    p = Req(0x7402, B("0c 00 00 00"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(Query("exec _DeleteUser 12", DEFAULT_DB, 0));
+    CHECK(Reply(0xB402, B("01")));
+    CHECK(TakeLog("log 1 12 Delete User REQ : ID[12]"));
+    Answer(-2);
+    p = Req(0x7402, B("0c 00 00 00"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(Query("exec _DeleteUser 12", DEFAULT_DB, 0));
+    CHECK(Reply(0xB402, B("02 01")));
+    s_vecLog.clear();
+
+    // 0x7411: the JID of a game account; the query depends on the division.
+    struct CASE
+    {
+        BYTE        byDivision;
+        const char* pszSQL;
+    };
+    static const CASE s_aCase[] =
+    {
+        { 1, "select sr_code from sr_member1 with (nolock) where sr_id = 'acc'" },
+        { 2, "select sr_code from sr_member1 with (nolock) where sr_id = 'acc'" },
+        { 3, "select JID from TB_User with (nolock) where strUserID = 'acc'" },
+        { 4, "select nID from sr_member1 with (nolock) where sr_id = 'acc'" },
+        { 18, "select nID from _User with (nolock) where szUserID = 'acc'" },
+        { 19, "select JID from TB_User with (nolock) where strUserID = 'acc'" },
+    };
+    for (size_t i = 0; i < sizeof(s_aCase) / sizeof(s_aCase[0]); ++i)
+    {
+        s_Division.byID = s_aCase[i].byDivision;
+        Answer(0, B("21 43 00 00"));
+        p = Req(0x7411, B("03 00 61 63 63"));
+        CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+        Done(p);
+        CHECK(Query(s_aCase[i].pszSQL, ACCOUNT_DB, 4));
+        CHECK(Reply(0xB411, B("01 21 43 00 00")));
+    }
+    Answer(0);
+    p = Req(0x7411, B("03 00 61 63 63"));
+    s_pSM->OnMsg_7411(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Query("select JID from TB_User with (nolock) where strUserID = 'acc'", ACCOUNT_DB, 4));
+    CHECK(Reply(0xB411, B("02 01")));
+    Answer(-1);
+    p = Req(0x7411, B("03 00 61 63 63"));
+    s_pSM->OnMsg_7411(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Query("select JID from TB_User with (nolock) where strUserID = 'acc'", ACCOUNT_DB, 4));
+    CHECK(Reply(0xB411, B("02 00")));
+    s_Division.byID = 3;
+    CHECK(NoPackets());
+}
+
+static void TestContentUsers()
+{
+    sContentUser tmp;
+    tmp.dwIP = 0x0100000A;
+    tmp.dwJID = 0x11;
+    tmp.strID = "player";
+    tmp.byContentID = 22;
+    tmp.wShardID = 10;
+    tmp.wAgentBodyID = 2;
+    tmp.strMAC = "00-11-22-33-44-55";
+    tmp.PlayTime.Clear();
+    CHECK(g_ContentUserManager.Register(&tmp) == 0);
+
+    // 0x7200: 0xB200 (massive) {1, users}
+    CMsg* p = Req(0x7200, B("01 00 2a"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CMassiveMsg* pWant = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);
+    pWant->SetOpcode(0xB200);
+    g_ContentUserManager.WriteUserQuery(pWant, "*");
+    pWant->m_nMode = MASSIVE_MODE_READ;
+    pWant->BeginRead();
+    Bytes want(1, 1);
+    int nSize = pWant->GetUnreadSize();
+    want.resize(1 + nSize);
+    pWant->Read(&want[1], nSize);
+    pWant->Free();
+    Bytes got;
+    CHECK(TakeMassive(s_dwClient, 0xB200, &got) && Same(got, want));
+    CHECK(TakeLog("log 1 15 Online User Query REQ : *"));
+
+    // 0x7201: ban; 0x620D {JID} to the user's AgentServer (body 2)
+    p = Req(0x7201, B("06 00 70 6c 61 79 65 72"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    DWORD dwRelayID = 0;
+    CHECK(Relay(2, 0x620D, B("11 00 00 00"), &dwRelayID));
+    CHECK(TakeLog("log 1 14 Online User Ban REQ : player"));
+    sSMDefault_RelayMsg_Param* pParam = (sSMDefault_RelayMsg_Param*)RelayContext(dwRelayID);
+    CHECK(pParam->dw8 == 0x11 && pParam->wBodyID == 2);
+    // the answer {1} keeps the user, {2} removes it
+    p = Req(0xA20D, B("01"), 77);
+    CHECK(s_pSM->Dispatch(p, NULL, dwRelayID, (DWORD)pParam));
+    Done(p);
+    CHECK(Reply(0xB201, B("01")));
+    CHECK(g_ContentUserManager.Find(0x11) != NULL);
+    pParam = Param(2, 0x11);
+    p = Req(0xA20D, B("02"), 77);
+    CHECK(s_pSM->Dispatch(p, NULL, dwRelayID, (DWORD)pParam));
+    Done(p);
+    CHECK(Reply(0xB201, B("01")));
+    CHECK(g_ContentUserManager.Find(0x11) == NULL);
+    CHECK(g_SMRelayParamPool.m_nInUse == 0);
+    p = Req(0x7201, B("06 00 70 6c 61 79 65 72"));
+    s_pSM->OnMsg_7201(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Reply(0xB201, B("02 01")));
+    tmp.wAgentBodyID = 4;
+    CHECK(g_ContentUserManager.Register(&tmp) == 0);
+    p = Req(0x7201, B("06 00 70 6c 61 79 65 72"));
+    s_pSM->OnMsg_7201(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Reply(0xB201, B("02 02")));
+    CHECK(g_SMRelayParamPool.m_nInUse == 1);         // GM-001
+    g_SMRelayParamPool.m_nInUse = 0;
+    s_vecLog.clear();
+
+    // 0x7204: {division, users, daily, all, shard counts}
+    p = Req(0x7204, Bytes());
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    want = B("07");
+    PutD(want, g_ContentUserManager.m_nUserCount);
+    PutD(want, g_ContentUserManager.m_nDailyVisited);
+    PutD(want, g_ContentUserManager.m_nTotalVisited);
+    CMsg* pCount = g_pBSNet->AllocMsg(FALSE);
+    g_ContentUserManager.WriteShardUserCount(pCount);
+    want.insert(want.end(), pCount->m_pData + pCount->m_wReadPos,
+                pCount->m_pData + pCount->m_wWritePos);
+    g_pBSNet->ReleaseMsg(pCount);
+    CHECK(Reply(0xB204, want));
+
+    // 0x6313 {JID, text} relayed from an AgentServer: logged, answered 0xA313 {1}
+    p = Req(0x6313, B("11 00 00 00 02 00 68 69"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0x55, 0));
+    Done(p);
+    CHECK(TakeLog("user hi player"));
+    CHECK(Reply(0xA008, B("01 55 00 00 00 13 a3 01")));
+    p = Req(0x6313, B("12 00 00 00 02 00 68 69"));
+    s_pSM->OnMsg_6313(p, 0x56, 0, NULL);
+    Done(p);
+    CHECK(s_vecLog.empty());
+    CHECK(Reply(0xA008, B("01 56 00 00 00 13 a3 01")));
+    g_ContentUserManager.Unregister(0x11, NULL);
+
+    // 0x7205: the franchise addresses are loaded again
+    Answer(0);
+    p = Req(0x7205, Bytes());
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(s_vecCall.size() == 1);
+    s_vecCall.clear();
+    CHECK(Reply(0xB205, B("01 00 00 00 00")));
+    CHECK(TakeLog("log 1 13 Launch Server REQ"));
+    Answer(-1);
+    p = Req(0x7205, Bytes());
+    s_pSM->OnMsg_7205(p, 0, 0, NULL);
+    Done(p);
+    s_vecCall.clear();
+    CHECK(Reply(0xB205, B("02")));
+    s_vecLog.clear();
+    CHECK(NoPackets());
+}
+
+// 0x4023 (massive) to a body and the answer 0x8023.
+static void TestRecordRelay()
+{
+    BYTE abRecord[2443];
+    for (int i = 0; i < 2443; ++i)
+        abRecord[i] = (BYTE)i;
+    CMassiveMsg* pMassive = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);
+    pMassive->SetOpcode(0x4023);
+    WORD wBody = 3;
+    pMassive->Write(&wBody, 2);
+    BYTE b = 1;
+    pMassive->Write(&b, 1);
+    pMassive->Write(abRecord, 2443);
+    pMassive->Write(&b, 1);
+    pMassive->Write(abRecord, 2443);
+    b = 0;
+    pMassive->Write(&b, 1);
+    pMassive->m_nMode = MASSIVE_MODE_READ;
+    pMassive->BeginRead();
+    pMassive->m_dw36 = s_dwServer;
+    CHECK(s_pSM->Dispatch(NULL, pMassive, 0, 0));
+    pMassive->Free();
+    Bytes got;
+    CHECK(TakeMassive(s_dwClient, SERVER_MSG_RELAY_REQ, &got) && got.size() == 8 + 2 * 2444 + 1);
+    if (got.size() == 8 + 2 * 2444 + 1)
+    {
+        CHECK(*(WORD*)&got[4] == 3 && *(WORD*)&got[6] == 0x4023);
+        Bytes want;
+        for (int i = 0; i < 2; ++i)
+        {
+            PutB(want, 1);
+            Put(want, abRecord, 2443);
+        }
+        PutB(want, 0);
+        CHECK(Same(Bytes(got.begin() + 8, got.end()), want));
+        // the context of the massive relay (framework 0x48de30)
+        sSMDefault_RelayMsg_Param* pParam =
+            (sSMDefault_RelayMsg_Param*)RelayContext(*(DWORD*)&got[0]);
+        CHECK((DWORD)pParam != 0xFFFFFFFF && pParam->dw8 == 0x4023 && pParam->wBodyID == 3);
+        CMsg* p = Req(0x8023, Bytes(), 77);
+        CHECK(s_pSM->Dispatch(p, NULL, 0, (DWORD)pParam));
+        Done(p);
+        CHECK(Reply(0x8023, B("01")));
+    }
+    // no route: 0x8023 {0}
+    pMassive = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);
+    pMassive->SetOpcode(0x4023);
+    wBody = 4;
+    pMassive->Write(&wBody, 2);
+    pMassive->Write(&b, 1);
+    pMassive->m_nMode = MASSIVE_MODE_READ;
+    pMassive->BeginRead();
+    pMassive->m_dw36 = s_dwServer;
+    s_pSM->OnMsg_4023(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(Reply(0x8023, B("00")));
+    CHECK(g_SMRelayParamPool.m_nInUse == 0);
+    CHECK(NoPackets());
+}
+
 static void Startup()
 {
     BSNET_INIT_PARAM param;
@@ -1244,6 +1853,7 @@ static void Startup()
     LeaveCriticalSection(&s_cs);
 
     SetupArchitecture();
+    SetupCertData();
     g_pDefaultDBSession = DEFAULT_DB;
     g_pAccountDBSession = ACCOUNT_DB;
     s_pSM = new CServiceManagerProcess;
@@ -1268,6 +1878,13 @@ int main()
     TestGatewayRelays();
     TestShardSettings();
     TestShardService();
+    TestLogin();
+    TestArchitecture();
+    TestJobHandlers();
+    TestSecurityDescriptions();
+    TestUserAccounts();
+    TestContentUsers();
+    TestRecordRelay();
 
     CHECK(s_deqAnswer.empty() && s_vecCall.empty());
     delete s_pSM;
