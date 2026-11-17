@@ -49,3 +49,12 @@ GatewayServer	0x40d230	CCriticalSectionBS::Lock	CCriticalSectionBS::Lock
 GatewayServer	0x40d260	CCriticalSectionBS::Unlock	CCriticalSectionBS::Unlock
 GatewayServer	0x40d270	CCriticalSectionBS::vf04	CCriticalSectionBS::IsCriticalSection
 GatewayServer	0x482ae0	MsgPool_Free (inlined lock)	CSingleLockBS
+GatewayServer	0x4755f0	SetGlobalPair_4F812C	BSDebugSetFlags
+GatewayServer	0x475600	SetCallback_4F9D48	BSDebugSetAssertCallback
+GatewayServer	0x474920	Dbg_BuildSymbolSearchPath	BuildSymbolSearchPath (BSDebug.cpp)
+GatewayServer	0x474d10	Dbg_LoadDbgHelp	BSDebugLoadDbgHelp
+GatewayServer	0x474fa0	Dbg_WriteMiniDump	BSDebugWriteMiniDump
+GatewayServer	0x4751a0	Dbg_WalkStack	WalkStack (BSDebug.cpp)
+GatewayServer	0x4753b0	Dbg_FormatStackFrame	FormatStackFrame (BSDebug.cpp)
+GatewayServer	0x475190	NoOp_3	StackWalkFilter (BSDebug.cpp)
+GatewayServer	0x475620	Dbg_AssertDialog	BSAssertDialog
