@@ -20,6 +20,11 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [BSNET-002](BSNET-002.md) | CMsg | crash | Reading past the end of a received packet crashes the process on purpose |
 | [BSNET-003](BSNET-003.md) | CMsg | wrong | String reads in pop-back mode return without reading and leave the output unchanged |
 | [BSNET-004](BSNET-004.md) | CMsg | minor | Constructor copies an uninitialised pointer into the WSABUF (overwritten right after) |
+| [FILE-001](FILE-001.md) | Files | wrong | `CFileMem::Open` allocates a new buffer on every open; the old one leaks |
+| [FILE-002](FILE-002.md) | Files | wrong | `CFileMM` opens for reading with `OPEN_ALWAYS`: missing files are created empty; error paths leak handles |
+| [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
+| [FILE-004](FILE-004.md) | Files | minor | Lower-casing reads past a string that ends with a DBCS lead byte |
+| [FILE-005](FILE-005.md) | Files | wrong | Cache purge subtracts files that were never counted, so cache usage is under-reported |
 | [SEC-001](SEC-001.md) | Security | wrong | Blowfish encryption does not pad buffers shorter than 7 bytes and reads 8 source bytes |
 | [SEC-002](SEC-002.md) | Security | crash | Random prime search can divide by zero or return 1 for small start values |
 | [THREAD-001](THREAD-001.md) | Threads | crash | Thread start thunk runs from heap memory; faults when DEP is enforced |
