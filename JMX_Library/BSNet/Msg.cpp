@@ -27,7 +27,7 @@ CMsg::~CMsg()
     FreeExtBuffer();
 }
 
-void CMsg::Reset(int)
+void CMsg::Reset(DWORD)
 {
     m_wWritePos = MSG_HEADER_SIZE;
     m_wReadPos = MSG_HEADER_SIZE;

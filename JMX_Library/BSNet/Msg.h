@@ -34,7 +34,8 @@ public:
     CMsg();
     ~CMsg();
 
-    void Reset(int unused = 0);
+    // Also the pool's init callback, hence the unused parameter.
+    void Reset(DWORD dwUnused = 0);
 
     // header
     WORD GetOpcode() const                { return *m_pOpcode; }
