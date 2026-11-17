@@ -55,6 +55,15 @@ void OverlapJob_SetupQueryContentUserAccount(CTask* pTask, SM_JOB* pJob, const c
 SM_JOB* OverlapJob_AllocQueryPunishment();
 void OverlapJob_SetupQueryPunishment(CTask* pTask, SM_JOB* pJob, const char* pszUserID,
                                      DWORD dwSessionID);
+// COverlapJob_PunishmentJob: UserCertifier_AllocJob_426CF0 / sub_426D60 (the strings and times
+// of the 0x7408 request in their order).
+SM_JOB* OverlapJob_AllocPunishmentJob();
+void OverlapJob_SetupPunishmentJob(CTask* pTask, SM_JOB* pJob, const char* psz1,
+                                   const char* psz2, DWORD dwSessionID, BYTE byJob,
+                                   DWORD dwSerial, DWORD dwJID, BYTE byType, WORD wShardID,
+                                   const char* psz3, const char* psz4, const char* psz5,
+                                   const char* psz6, SYSTEMTIME t1, SYSTEMTIME t2,
+                                   SYSTEMTIME t3, SYSTEMTIME t4);
 // COverlapJob_QueryCharOwnedUser: UserCertifier_AllocJob_427890 / sub_427900.
 SM_JOB* OverlapJob_AllocQueryCharOwnedUser();
 void OverlapJob_SetupQueryCharOwnedUser(CTask* pTask, SM_JOB* pJob, const char* pszUserID,

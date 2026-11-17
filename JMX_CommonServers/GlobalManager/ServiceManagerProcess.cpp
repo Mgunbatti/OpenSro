@@ -67,6 +67,10 @@ void SM_FormatDateTime(std::string* pstrOut, const TIMESTAMP_STRUCT* pTime)
 CServiceManagerProcess::CServiceManagerProcess()
 {
     memset(m_aHandler, 0, sizeof(m_aHandler));
+    m_aHandler[0x7001] = &CServiceManagerProcess::OnMsg_7001;
+    m_aHandler[0x7002] = &CServiceManagerProcess::OnMsg_7002;
+    m_aHandler[0x7003] = &CServiceManagerProcess::OnMsg_7003;
+    m_aHandler[0x7004] = &CServiceManagerProcess::OnMsg_7004;
     m_aHandler[0x7005] = &CServiceManagerProcess::OnMsg_7005;
     m_aHandler[0x7006] = &CServiceManagerProcess::OnMsg_7006;
     m_aHandler[0x7007] = &CServiceManagerProcess::OnMsg_7007;
@@ -79,14 +83,45 @@ CServiceManagerProcess::CServiceManagerProcess()
     m_aHandler[0xA303] = &CServiceManagerProcess::OnMsg_A303;
     m_aHandler[0x7009] = &CServiceManagerProcess::OnMsg_7009;
     m_aHandler[0xA304] = &CServiceManagerProcess::OnMsg_A304;
+    m_aHandler[0x7200] = &CServiceManagerProcess::OnMsg_7200;
+    m_aHandler[0x7201] = &CServiceManagerProcess::OnMsg_7201;
     m_aHandler[0x7202] = &CServiceManagerProcess::OnMsg_7202;
     m_aHandler[0xA307] = &CServiceManagerProcess::OnMsg_A307;
     m_aHandler[0x7203] = &CServiceManagerProcess::OnMsg_7203;
+    m_aHandler[0x7204] = &CServiceManagerProcess::OnMsg_7204;
+    m_aHandler[0xA20D] = &CServiceManagerProcess::OnMsg_A20D;
+    m_aHandler[0x7300] = &CServiceManagerProcess::OnMsg_7300;
+    m_aHandler[0x7301] = &CServiceManagerProcess::OnMsg_7301;
+    m_aHandler[0x7302] = &CServiceManagerProcess::OnMsg_7302;
+    m_aHandler[0x7303] = &CServiceManagerProcess::OnMsg_7303;
+    m_aHandler[0x7304] = &CServiceManagerProcess::OnMsg_7304;
+    m_aHandler[0x7305] = &CServiceManagerProcess::OnMsg_7305;
+    m_aHandler[0x7307] = &CServiceManagerProcess::OnMsg_7307;
+    m_aHandler[0x7400] = &CServiceManagerProcess::OnMsg_7400;
+    m_aHandler[0x7401] = &CServiceManagerProcess::OnMsg_7401;
+    m_aHandler[0x7402] = &CServiceManagerProcess::OnMsg_7402;
+    m_aHandler[0x7403] = &CServiceManagerProcess::OnMsg_7403;
+    m_aHandler[0x7404] = &CServiceManagerProcess::OnMsg_7404;
+    m_aHandler[0x7405] = &CServiceManagerProcess::OnMsg_7405;
+    m_aHandler[0x7407] = &CServiceManagerProcess::OnMsg_7407;
+    m_aHandler[0x7408] = &CServiceManagerProcess::OnMsg_7408;
+    m_aHandler[0x7409] = &CServiceManagerProcess::OnMsg_7409;
+    m_aHandler[0x7410] = &CServiceManagerProcess::OnMsg_7410;
+    m_aHandler[0x7205] = &CServiceManagerProcess::OnMsg_7205;
     m_aHandler[0x7010] = &CServiceManagerProcess::OnMsg_7010;
     m_aHandler[0xA310] = &CServiceManagerProcess::OnMsg_A310;
+    m_aHandler[0x7206] = &CServiceManagerProcess::OnMsg_7206;
+    m_aHandler[0x7207] = &CServiceManagerProcess::OnMsg_7207;
+    m_aHandler[0x7208] = &CServiceManagerProcess::OnMsg_7208;
+    m_aHandler[0x7209] = &CServiceManagerProcess::OnMsg_7209;
     m_aHandler[0x7011] = &CServiceManagerProcess::OnMsg_7011;
     m_aHandler[0xA312] = &CServiceManagerProcess::OnMsg_A312;
     m_aHandler[0x7012] = &CServiceManagerProcess::OnMsg_7012;
+    m_aHandler[0x7411] = &CServiceManagerProcess::OnMsg_7411;
+    m_aHandler[0x6313] = &CServiceManagerProcess::OnMsg_6313;
+    m_aHandler[0x7412] = &CServiceManagerProcess::OnMsg_7412;
+    m_aHandler[0x4023] = &CServiceManagerProcess::OnMsg_4023;
+    m_aHandler[0x8023] = &CServiceManagerProcess::OnMsg_8023;
 }
 
 CServiceManagerProcess::~CServiceManagerProcess()
