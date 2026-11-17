@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 
 BS_IMPLEMENT_DYNCREATE(CMaintainer, &CServiceObject::classCServiceObject)
 

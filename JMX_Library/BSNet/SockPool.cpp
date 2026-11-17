@@ -1,6 +1,6 @@
 #include "SockPool.h"
 
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/SockDatagram.h"
 #include "BSNet/SockListener.h"
 #include "BSNet/SockStream.h"

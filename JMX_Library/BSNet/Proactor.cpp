@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "BSLib/thread/Task.h"
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
 #include "BSNet/QueMT.h"
 #include "BSNet/SockListener.h"

@@ -6,7 +6,7 @@
 #include "BSLib/thread/System.h"
 #include "BSLib/thread/Task.h"
 #include "BSNet/Msg.h"
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
 #include "BSNet/SockStream.h"
 
@@ -445,16 +445,11 @@ BOOL NetEngine_CreateDatagramSocket(NETENGINE_DATAGRAM* pDatagram, WORD wPort)
     pDatagram->pSocket->SetTask(pTask);
 
     CTask* pPeerTask = CSystem::GetInstance()->m_pTaskManager->FindTask(g_dwNetDatagramTaskID);
-    CServiceObjectSock* pProactor;
-    {
-        // Locked_GetField_0x1C: the task's job under the task lock.
-        CSingleLockBS lock(&pPeerTask->m_cs, TRUE);
-        pProactor = (CServiceObjectSock*)pPeerTask->m_desc.pJob;
-    }
+    CServiceObjectSock* pProactor = static_cast<CServiceObjectSock*>(pPeerTask->GetJob());
     CSockDatagram* pSock = pDatagram->pSocket;
     if (!pSock->AttachToProactor(pProactor, (HANDLE)pSock->m_hSocket))
         return FALSE;
-    return g_pNetEngine->StartProactorWorkers(g_dwNetDatagramTaskID, 1, 0, 0, 0, NULL) != NULL;
+    return g_pNetEngine->StartProactorWorkers(g_dwNetDatagramTaskID, 1, 0, 0, 0, NULL) != FALSE;
 }
 
 int NetEngine_SendDatagram(NETENGINE_DATAGRAM* pDatagram, const sockaddr* pTo, CMsg* pMsg)

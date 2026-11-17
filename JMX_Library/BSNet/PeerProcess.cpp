@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "BSNet/Msg.h"
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
 #include "BSNet/QueMT.h"
 #include "BSNet/SockDatagram.h"

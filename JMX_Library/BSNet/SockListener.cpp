@@ -1,7 +1,7 @@
 #include "SockListener.h"
 
 #include "BSLib/thread/ServiceObject.h"
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/SockPool.h"
 #include "BSNet/SockStream.h"
 #include "BSNet/SockSystem.h"
@@ -76,6 +76,8 @@ int CSockListener::CreateSessionForAccepted(CSockStream* pSock)
 {
     if (!pSock)
         return SOCK_ERR_ACCEPT;
+    // BUG(NET-011): the session (and its connect event, and its first receive) exists before
+    // AcceptPeer stores the peer address and checks the connect time.
     if (!NetEngine_CreateNewSession(g_pNetEngine, pSock,
                                     NetEngine_GetAcceptSessionParam(g_pNetEngine)))
     {

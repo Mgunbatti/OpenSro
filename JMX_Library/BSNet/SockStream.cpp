@@ -6,7 +6,7 @@
 #include "BSLib/thread/ServiceObject.h"
 #include "BSLib/thread/Task.h"
 #include "BSNet/Msg.h"
-#include "BSNet/NetEngineFwd.h"
+#include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
 #include "BSNet/SockSystem.h"
 
@@ -128,6 +128,8 @@ BYTE CSockStream::DisconnectReuse(DWORD dwReason)
         return bResult;
     }
 
+    // BUG(NET-013): a socket that is already disconnecting (close state set) gets the new
+    // reason and a second TransmitFile unless the reason is 2.
     m_dwCloseState = dwReason;
     // BUG(SOCK-004): TransmitFile returns a BOOL; the check for -1 never sees a failure, so a
     // failed disconnect leaves the socket open.
