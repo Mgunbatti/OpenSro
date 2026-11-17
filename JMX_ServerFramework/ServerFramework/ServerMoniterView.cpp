@@ -233,15 +233,20 @@ void CServerMoniterView::SampleAndLogGraphs()
         pGraph->AddSample();
         if ((double)nScale < pGraph->m_fMax)
             nScale = (int)(pGraph->m_fMax * 9.0 * 0.125);
+#ifndef JMX_FRAMEWORK_2007
+        // FarmManager 0x454870 has no PERFMON log.
         if (g_ServerGlobals.bWritePerfLogToText)
         {
             // BUG(FWUI-008): formats the buffer into itself; the line starts with ", ".
             StringCchPrintfA(szLog, sizeof(szLog), "%s, %s: %.2f", szLog, pGraph->m_szName,
                              (double)pGraph->m_fCurrent);
         }
+#endif
     }
+#ifndef JMX_FRAMEWORK_2007
     if (strlen(szLog))
         LogPrintf(0x3000000, "PERFMON >> %s", szLog);
+#endif
 
     float fScale = (float)nScale;
     if (!(m_fMaxValue < fScale))
@@ -315,12 +320,19 @@ BOOL CServerMoniterView::RenderGridBackground()
         y = ValueToY((float)nValue);
         if (nTop < 0)
         {
+#ifdef JMX_FRAMEWORK_2007
+            // FarmManager 0x454970
+            NetEngineLog(0x2000001,
+                         "CLAMP() ==> min(%d) exceeded max(%d) value), File: %s, Line: %d",
+                         0, nTop, ".\\ServerMoniterView.cpp", 421);
+#else
             NetEngineLog(0x2000001,
                          "CLAMP() ==> min(%.3f) exceeded max(%.3f) value), File: %s, Line: %d",
                          0.0, (double)nTop,
                          "D:\\WORK2005\\JMX_ServerFramework\\ServerFramework\\"
                          "ServerMoniterView.cpp",
                          434);
+#endif
             nTop = 0;
         }
     }

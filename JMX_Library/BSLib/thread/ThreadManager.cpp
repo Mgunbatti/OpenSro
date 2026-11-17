@@ -6,6 +6,14 @@
 
 #include "BSNet/NetEngineLog.h"
 
+#ifdef JMX_FRAMEWORK_2007
+// FarmManager 0x47dbd0: the CLAMP() log with integers and the relative file name.
+static void ClampLog(int nMin, int nMax, int nLine)
+{
+    NetEngineLog(0x2000001, "CLAMP() ==> min(%d) exceeded max(%d) value), File: %s, Line: %d",
+                 nMin, nMax, ".\\thread\\threadmanager.cpp", nLine);
+}
+#else
 // The CLAMP() log names the original source file.
 static const char s_szThreadManagerFile[] =
     "D:\\WORK2005\\JMX_Library\\BSLib\\thread\\threadmanager.cpp";
@@ -15,6 +23,7 @@ static void ClampLog(double dMin, double dMax, int nLine)
     NetEngineLog(0x2000001, "CLAMP() ==> min(%.3f) exceeded max(%.3f) value), File: %s, Line: %d",
                  dMin, dMax, s_szThreadManagerFile, nLine);
 }
+#endif
 
 // ---------------------------------------------------------------------------------------------
 // CThreadControl
@@ -180,7 +189,11 @@ BOOL CThreadManager::CreateThreads(THREAD_AFFINITY* pAffinity, int nCount, DWORD
 
             if (nMax < 0)
             {
+#ifdef JMX_FRAMEWORK_2007
+                ClampLog(0, nMax, 92);
+#else
                 ClampLog(0.0, (double)(int)si.dwNumberOfProcessors - 1.0, 92);
+#endif
                 pAffinity->nMinCPU = 0;
             }
             int n = pAffinity->nMinCPU;
@@ -192,7 +205,11 @@ BOOL CThreadManager::CreateThreads(THREAD_AFFINITY* pAffinity, int nCount, DWORD
 
             if (nMax < 0)
             {
+#ifdef JMX_FRAMEWORK_2007
+                ClampLog(0, nMax, 93);
+#else
                 ClampLog(0.0, (double)(int)si.dwNumberOfProcessors - 1.0, 93);
+#endif
                 pAffinity->nMaxCPU = 0;
             }
             n = pAffinity->nMaxCPU;
