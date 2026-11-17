@@ -34,6 +34,8 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [DB-012](DB-012.md) | Database | crash | Bound fetch loops never end on a fetch error |
 | [DL-001](DL-001.md) | DownloadServer | minor | An empty patch relay names its directory from uninitialised bytes |
 | [DL-002](DL-002.md) | DownloadServer | wrong | `USER_LIMIT` counts every engine session, server connections included |
+| [FM-001](FM-001.md) | FarmManager (2007 framework) | wrong | A refused second cord session is still treated as established; patch data dropped and handshake replies sent to the closed session |
+| [FM-002](FM-002.md) | FarmManager (2007 framework) | wrong | Without a cord, the 0x6005 query lists every body the server cannot reach |
 | [FILE-001](FILE-001.md) | Files | wrong | `CFileMem::Open` allocates a new buffer on every open; the old one leaks |
 | [FILE-002](FILE-002.md) | Files | wrong | `CFileMM` opens for reading with `OPEN_ALWAYS`: missing files are created empty; error paths leak handles |
 | [FILE-003](FILE-003.md) | Files | minor | `IFile::Read` logs the 4090-byte block limit instead of the requested size |
