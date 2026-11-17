@@ -77,6 +77,13 @@ enum { SERVER_CONFIG_TOKEN_SIZE = 1024 };
 // otherwise (also when parsing stops early).
 bool ServerConfig_Load();
 
+#ifdef JMX_FRAMEWORK_2011
+// ServerConfig_FindExtraValue (AgentServer 0x40d840): value of the key in
+// g_ServerGlobals.mapExtra (the unknown keys of the module's Server.cfg block), NULL without one.
+// The 2008 modules define it themselves; the 2011 framework uses it (MonitorGraph).
+const char* ServerConfig_FindExtraValue(const char* pszKey);
+#endif
+
 // Cfg_ReadNextToken (0x453d40): copies the next token of pszText into pszToken and returns the
 // position after it, NULL at the end of the text. Skips white space (and bytes >= 0x80) and
 // // and /* */ comments. A token is a "quoted string" (without the quotes), one of the

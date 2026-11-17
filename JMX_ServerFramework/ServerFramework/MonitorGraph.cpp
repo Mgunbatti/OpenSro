@@ -7,6 +7,11 @@
 #include "BSLib/thread/SynchObject.h"
 #include "BSNet/IBSNet.h"
 #include "ServerFramework/MassiveMsg.h"
+#ifdef JMX_FRAMEWORK_2011
+#include <stdlib.h>
+#include "ServerFramework/ServerConfig.h"
+#include "ServerFramework/ServerDataExtern.h"
+#endif
 
 ServerFramework::CServerMoniterView* g_pMonitorGraphView = NULL;
 
@@ -23,13 +28,52 @@ HANDLE              s_hStopEvent;       // 0x4F9CE4
 // Name of a counter ID without a name of its own (CP949).
 const char s_szUnknownCounter[] = "\xC0\xCC\xB0\xD4\xB9\xB9\xB3\xC4?";
 
+#ifdef JMX_FRAMEWORK_2011
+DWORD               s_dwLastMsgDumpTick;    // AgentServer 0x56BAC0
+#endif
+
 } // namespace
+
+#ifdef JMX_FRAMEWORK_2011
+int     g_nMsgCountOfDumpTrigger = 0;           // AgentServer 0x4E9B2C
+DWORD   g_dwMsgDumpTriggerElapseTick = 0;       // AgentServer 0x4E9B30
+
+void MonitorGraph_ReadMsgDumpConfig()
+{
+    const char* pszValue = ServerConfig_FindExtraValue("MsgCountOfDumpTrigger");
+    if (pszValue)
+        g_nMsgCountOfDumpTrigger = atol(pszValue);
+    pszValue = ServerConfig_FindExtraValue("MsgDumpTriggerElapseTick");
+    if (pszValue)
+        g_dwMsgDumpTriggerElapseTick = atol(pszValue);
+    else
+        g_dwMsgDumpTriggerElapseTick = 10000;
+}
+
+// AgentServer 0x4367e0 (the guarded part of the MsgCount counter).
+static void MonitorGraph_DumpMsgPool(IBSNet* pNet)
+{
+    __try
+    {
+        LogPrintf(0x2000001, "============== Msg Usage ================");
+        pNet->DumpMsgPool(1, g_nMsgCountOfDumpTrigger);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        LogPrintf(0x2000001, "It has been failed to write Msg Dump!");
+    }
+}
+#endif
 
 void MonitorGraph_StartUpdateThread()
 {
     if (!g_pServerFrameWindow)
         return;
     g_pMonitorGraphView = ServerFrameWindow_GetMonitorView();
+#ifdef JMX_FRAMEWORK_2011
+    // AgentServer 0x436130
+    MonitorGraph_ReadMsgDumpConfig();
+#endif
     s_hStopEvent = CreateEventA(NULL, FALSE, FALSE, NULL);
     DWORD dwThreadID;
     s_hUpdateThread = CreateThread(NULL, 0, MonitorGraph_UpdateThreadProc, NULL, 0,
@@ -153,7 +197,24 @@ bool __cdecl MonitorGraph_ReadNetEngineCounter(MONITOR_COUNTER* pCounter)
     case MONITOR_COUNTER_MSG:
         pNet->GetStatistics(BSNET_STAT_MSG_POOL, &stats.s);
         dwValue = stats.s.dwMsgUsed;
+#ifdef JMX_FRAMEWORK_2011
+        {
+            // AgentServer 0x4367e0: the message pool is dumped once the trigger count of
+            // messages is in use, at most once per elapse time.
+            pCounter->fValue = (float)dwValue;
+            DWORD dwTick = GetTickCount();
+            if (g_nMsgCountOfDumpTrigger
+                && (double)g_nMsgCountOfDumpTrigger <= (double)pCounter->fValue
+                && dwTick - s_dwLastMsgDumpTick > g_dwMsgDumpTriggerElapseTick)
+            {
+                MonitorGraph_DumpMsgPool(pNet);
+                s_dwLastMsgDumpTick = dwTick;
+            }
+            return true;
+        }
+#else
         break;
+#endif
     case MONITOR_COUNTER_SESSION:
         pNet->GetStatistics(BSNET_STAT_SESSIONS, &stats.s);
         dwValue = stats.s.dwSessionUsed;

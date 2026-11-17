@@ -76,6 +76,20 @@ void MonitorGraph_RegisterNetEngineCounter(DWORD dwID);
 // MonitorGraph_ReadNetEngineCounter (0x446ed0): false only without an engine.
 bool __cdecl MonitorGraph_ReadNetEngineCounter(MONITOR_COUNTER* pCounter);
 
+#ifdef JMX_FRAMEWORK_2011
+// Message pool dump of the 2011 MsgCount counter (AgentServer): once g_nMsgCountOfDumpTrigger
+// (Server.cfg "MsgCountOfDumpTrigger", 0 = never) messages are in use and more than
+// g_dwMsgDumpTriggerElapseTick ms ("MsgDumpTriggerElapseTick", default 10000) passed since the
+// last dump, the counter logs "============== Msg Usage ================" and calls
+// DumpMsgPool(1, trigger) of the engine.
+extern int      g_nMsgCountOfDumpTrigger;       // 0x4E9B2C
+extern DWORD    g_dwMsgDumpTriggerElapseTick;   // 0x4E9B30
+
+// MonitorGraph_ReadMsgDumpConfig (AgentServer 0x4360e0): reads both keys; called by
+// MonitorGraph_StartUpdateThread.
+void MonitorGraph_ReadMsgDumpConfig();
+#endif
+
 // ---------------------------------------------------------------------------------------------
 // Provided by other parts of the server application.
 

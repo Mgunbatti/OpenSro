@@ -92,8 +92,13 @@ CFG_RESULT ReadOption(char*& p, char* pszToken)
         p = Cfg_ReadNextToken(p, pszToken);
         if (!p)
             return CFG_LEAVE_BLOCK;
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x434570: the field size; a longer token fails the load.
+        if (StringCchCopyA(g.szCertificationIP, 16, pszToken) != S_OK)
+#else
         // BUG(FWUTIL-001): 256 characters allowed into a 16-byte field.
         if (StringCchCopyA(g.szCertificationIP, 256, pszToken) != S_OK)
+#endif
         {
             BSAssertFail();
             return CFG_FAIL;
@@ -113,8 +118,13 @@ CFG_RESULT ReadOption(char*& p, char* pszToken)
         p = Cfg_ReadNextToken(p, pszToken);
         if (!p)
             return CFG_LEAVE_BLOCK;
+#ifdef JMX_FRAMEWORK_2011
+        // AgentServer 0x434570: the field size; a longer token fails the load.
+        if (StringCchCopyA(g.szCertificationBindIP, 16, pszToken) != S_OK)
+#else
         // BUG(FWUTIL-001): 256 characters allowed into a 16-byte field.
         if (StringCchCopyA(g.szCertificationBindIP, 256, pszToken) != S_OK)
+#endif
         {
             BSAssertFail();
             return CFG_FAIL;
@@ -165,6 +175,17 @@ CFG_RESULT ReadOption(char*& p, char* pszToken)
 }
 
 } // namespace
+
+#ifdef JMX_FRAMEWORK_2011
+const char* ServerConfig_FindExtraValue(const char* pszKey)
+{
+    std::string strKey(pszKey);
+    std::map<std::string, std::string>::iterator it = g_ServerGlobals.mapExtra.find(strKey);
+    if (it == g_ServerGlobals.mapExtra.end())
+        return NULL;
+    return it->second.c_str();
+}
+#endif
 
 bool ServerConfig_Load()
 {
