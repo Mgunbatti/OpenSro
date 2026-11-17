@@ -22,6 +22,12 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [BSNET-004](BSNET-004.md) | CMsg | minor | Constructor copies an uninitialised pointer into the WSABUF (overwritten right after) |
 | [SEC-001](SEC-001.md) | Security | wrong | Blowfish encryption does not pad buffers shorter than 7 bytes and reads 8 source bytes |
 | [SEC-002](SEC-002.md) | Security | crash | Random prime search can divide by zero or return 1 for small start values |
+| [THREAD-001](THREAD-001.md) | Threads | crash | Thread start thunk runs from heap memory; faults when DEP is enforced |
+| [THREAD-002](THREAD-002.md) | Threads | crash | `CThreadControl::Stop` uses the job pointer without a NULL check |
+| [THREAD-003](THREAD-003.md) | Threads | crash | Random ideal-processor choice can divide by zero or pick invalid CPUs |
+| [THREAD-004](THREAD-004.md) | Threads | minor | Stopped thread controls stay in the manager's map until shutdown |
+| [THREAD-005](THREAD-005.md) | Threads | crash | Task destructor clears its thread manager first, so worker threads are never stopped |
+| [THREAD-006](THREAD-006.md) | Threads | crash | Task queue stopped without a NULL check |
 | [SRVFW-001](SRVFW-001.md) | ServerFramework | crash | Crash-dump fallback writes its .txt only when `fopen_s` fails, through an invalid `FILE*` |
 | [SRVFW-002](SRVFW-002.md) | CMassiveMsg | wrong | Reads and writes cross at most one part boundary and throw for anything larger |
 | [SRVFW-003](SRVFW-003.md) | CMassiveMsg | minor | Peeking the inner opcode leaves the read cursor one byte further on two paths |
