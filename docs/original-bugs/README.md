@@ -79,6 +79,19 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [GW-004](GW-004.md) | Gateway | security | Account database connection string, password included, written to the log |
 | [GW-005](GW-005.md) | Gateway | security | Quote filter of the login strings tests the wrong byte; quotes reach the certification SQL |
 | [GW-006](GW-006.md) | Gateway | minor | Notice count of 0xA104 wraps at 256 |
+| [GWCERT-001](GWCERT-001.md) | Gateway cert | crash | Handler table entries for divisions 0 and 27 are invalid; logins there crash the certifier thread |
+| [GWCERT-002](GWCERT-002.md) | Gateway cert | wrong | Certification records leak on failed logins and failed relays |
+| [GWCERT-003](GWCERT-003.md) | Gateway cert | security | Captcha codes come from a never-seeded `rand()`; the sequence repeats after every start |
+| [GWCERT-004](GWCERT-004.md) | Gateway cert | minor | The reserve captcha images of the start-up are never made |
+| [GWCERT-005](GWCERT-005.md) | Gateway cert | security | Yahoo certification logs passwords in clear text |
+| [GWCERT-006](GWCERT-006.md) | Gateway cert | crash | Yahoo login check reads up to 1024 bytes into a 256-byte buffer |
+| [GWCERT-007](GWCERT-007.md) | Gateway cert | hang | A privileged address range ending at 255.255.255.255 loops forever |
+| [GWCERT-008](GWCERT-008.md) | Gateway cert | wrong | Yahoo age check takes its last field from the wrong string |
+| [GWCERT-009](GWCERT-009.md) | Gateway cert | wrong | Joymax login-fail notice repeats the login request when parsing fails |
+| [GWCERT-010](GWCERT-010.md) | Gateway cert | minor | Captcha image record lost when drawing fails |
+| [GWCERT-011](GWCERT-011.md) | Gateway cert | wrong | Captcha failure counts per address never reset |
+| [GWCERT-012](GWCERT-012.md) | Gateway cert | minor | Handlers read the result row when the query returned none |
+| [GWCERT-013](GWCERT-013.md) | Gateway cert | security | `_CertifyUser_SU` puts the unfiltered password into the SQL text (SQL injection) |
 | [NET-001](NET-001.md) | NetEngine | minor | `Initialize` starts Winsock with the previous parameter block's version |
 | [NET-002](NET-002.md) | NetEngine | minor | `GetStatistics` reports the accepted-socket pool for the connect pool too |
 | [NET-003](NET-003.md) | NetEngine | wrong | `Connect` and `AddKeepAliveTarget` resolve the bind address but never use it |
