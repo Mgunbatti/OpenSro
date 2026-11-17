@@ -14,6 +14,7 @@ installed on Windows.
 | `toolchain/` | Fetch script, environment script and smoke test for the portable compiler |
 | `JMX_Library/` | Shared libraries, laid out like the original `D:\WORK2005\JMX_Library` tree (BSLib, BSNet) |
 | `JMX_ServerFramework/` | Server framework, laid out like `D:\WORK2005\JMX_ServerFramework` (server application base, processes, overlap jobs, server data, config, monitor GUI, NT service) |
+| `JMX_CommonServers/` | Server applications: GatewayServer, DownloadServer, MachineManager, FarmManager (`nmake gateway download machine farm`). FarmManager is built on the older 2007 framework, see [its README](JMX_CommonServers/FarmManager/README.md) |
 | `test/` | Unit tests, built and run by `nmake test` |
 | `docs/address-map.tsv` | Original function address and IDA name for every ported function |
 | `docs/original-bugs/` | Bugs found in the originals; reproduced on purpose and marked `BUG(<ID>)` in the code |
