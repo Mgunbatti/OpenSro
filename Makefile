@@ -45,6 +45,7 @@ BSLIB_OBJS = \
 	$(OBJ)\BSLib\FileSystem.obj \
 	$(OBJ)\BSLib\TimeSpan.obj \
 	$(OBJ)\BSLib\DateTimeUtil.obj \
+	$(OBJ)\BSLib\StringUtil.obj \
 	$(OBJ)\BSLib\Database.obj \
 	$(OBJ)\BSLib\DBQuery.obj
 
