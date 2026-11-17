@@ -30,6 +30,7 @@ BSLIB_OBJS = \
 	$(OBJ)\BSLib\ThreadManager.obj \
 	$(OBJ)\BSLib\Task.obj \
 	$(OBJ)\BSLib\System.obj \
+	$(OBJ)\BSLib\ServiceObject.obj \
 	$(OBJ)\BSLib\IFile.obj \
 	$(OBJ)\BSLib\FileMem.obj \
 	$(OBJ)\BSLib\FileLegacy.obj \
@@ -44,7 +45,11 @@ BSNET_OBJS = \
 	$(OBJ)\BSNet\MD5.obj \
 	$(OBJ)\BSNet\KeyExchange.obj \
 	$(OBJ)\BSNet\Security.obj \
-	$(OBJ)\BSNet\SecurityConstants.obj
+	$(OBJ)\BSNet\SecurityConstants.obj \
+	$(OBJ)\BSNet\Proactor.obj \
+	$(OBJ)\BSNet\PeerProcess.obj \
+	$(OBJ)\BSNet\Maintainer.obj \
+	$(OBJ)\BSNet\NetEngineFwd.obj
 
 SRVFW_OBJS = \
 	$(OBJ)\ServerFramework\MassiveMsg.obj
@@ -52,7 +57,7 @@ SRVFW_OBJS = \
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
 TESTS = $(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolTest.exe \
         $(BIN)\QueTest.exe $(BIN)\MassiveMsgTest.exe $(BIN)\SecurityTest.exe \
-        $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe
+        $(BIN)\ThreadTest.exe $(BIN)\FileTest.exe $(BIN)\ProactorTest.exe
 
 all: $(LIBS) $(TESTS)
 
@@ -103,6 +108,7 @@ $(BIN)\MassiveMsgTest.exe: $(OBJ)\test\MassiveMsgTest.obj
 $(BIN)\SecurityTest.exe: $(OBJ)\test\SecurityTest.obj
 $(BIN)\ThreadTest.exe: $(OBJ)\test\ThreadTest.obj
 $(BIN)\FileTest.exe: $(OBJ)\test\FileTest.obj
+$(BIN)\ProactorTest.exe: $(OBJ)\test\ProactorTest.obj
 
 test: all
 	$(BIN)\MsgTest.exe
@@ -114,6 +120,7 @@ test: all
 	$(BIN)\SecurityTest.exe
 	$(BIN)\ThreadTest.exe
 	$(BIN)\FileTest.exe
+	$(BIN)\ProactorTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
