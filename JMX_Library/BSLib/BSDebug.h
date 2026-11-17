@@ -25,6 +25,18 @@ extern char  g_szBSDebugError[4096];        // why dbghelp.dll could not be used
 void BSDebugSetFlags(DWORD dwWithDebugger, DWORD dwWithoutDebugger);
 void BSDebugSetAssertCallback(PFN_BSASSERT_CALLBACK pfn);
 
+// Receiver of BSDebugOutput (SetGlobal_4F9D10).
+typedef void (*PFN_BSDEBUG_OUTPUT)(const char* pszText);
+void BSDebugSetOutputCallback(PFN_BSDEBUG_OUTPUT pfn);
+
+// DebugOutputf: formats into 1024 bytes, appends a newline and passes the text to the output
+// callback. Nothing without a callback.
+void BSDebugOutput(const char* pszFormat, ...);
+
+// MsgBoxPrintf: message box "BSObj Plugin" with the formatted text (1024 bytes). Format strings
+// of 1024 characters or more show nothing (the result is then lstrlenA of the format).
+int BSMessageBoxPrintf(const char* pszFormat, ...);
+
 // Release-build invariant check. Writes a minidump when BSDBG_MINIDUMP is set, otherwise does
 // nothing. Never throws.
 BOOL BSAssertFail();

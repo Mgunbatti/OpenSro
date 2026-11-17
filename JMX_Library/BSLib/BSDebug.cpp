@@ -12,6 +12,7 @@ BOOL  g_bBSDebugAsserted = FALSE;
 char  g_szBSDebugError[4096];
 
 static PFN_BSASSERT_CALLBACK g_pfnAssertCallback;
+static PFN_BSDEBUG_OUTPUT g_pfnDebugOutput;
 static char* g_pszCallStack;                // output of the stack walk filter
 static bool  g_bDbgHelpLoaded;
 static HMODULE g_hDbgHelp;
@@ -382,4 +383,38 @@ bool BSAssertDialog(int nLine, const char* pszFile, const char* pszFormat, ...)
     if (MessageBoxA(NULL, szText, "BSLib Debug Module", MB_OKCANCEL | MB_ICONHAND) != IDOK)
         ExitProcess(0);
     return (dwFlags & BSDBG_BREAK) == 0;
+}
+
+void BSDebugSetOutputCallback(PFN_BSDEBUG_OUTPUT pfn)
+{
+    g_pfnDebugOutput = pfn;
+}
+
+void BSDebugOutput(const char* pszFormat, ...)
+{
+    if (!g_pfnDebugOutput)
+        return;
+
+    char szText[1024];
+    va_list args;
+    va_start(args, pszFormat);
+    StringCchVPrintfA(szText, 1024, pszFormat, args);
+    va_end(args);
+    StringCchCatA(szText, 1024, "\n");
+    g_pfnDebugOutput(szText);
+}
+
+int BSMessageBoxPrintf(const char* pszFormat, ...)
+{
+    int nResult = lstrlenA(pszFormat);
+    if (nResult >= 1024)
+        return nResult;
+
+    char szText[1024];
+    memset(szText, 0, sizeof(szText));
+    va_list args;
+    va_start(args, pszFormat);
+    StringCchVPrintfA(szText, 1024, pszFormat, args);
+    va_end(args);
+    return MessageBoxA(NULL, szText, "BSObj Plugin", 0);
 }
