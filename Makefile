@@ -239,7 +239,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ServerUiTest.exe $(BIN)\ServerAppTest.exe \
         $(BIN)\DatabaseTest.exe $(BIN)\GatewayTest.exe $(BIN)\GatewayCertTest.exe \
         $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe \
-        $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe
+        $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe \
+        $(BIN)\Framework201101Test.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -415,6 +416,10 @@ $(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
 $(OBJ)\test\Framework2011Test.obj: test\Framework2011Test.cpp
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework2011Test.cpp
 
+# Framework201101Test checks the January 2011 framework and needs its defines.
+$(OBJ)\test\Framework201101Test.obj: test\Framework201101Test.cpp
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201101Test.cpp
+
 # AgentTest and its two stand-ins for XTrap4Server.dll.
 $(OBJ)\test\AgentTest.obj: test\AgentTest.cpp
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\AgentTest.cpp
@@ -494,6 +499,10 @@ $(BIN)\FarmTest.exe: $(OBJ)\FarmManager $(OBJ)\test\FarmTest.obj $(FARM_OBJS) $(
 # Linked with the 2011 builds of the libraries.
 $(BIN)\Framework2011Test.exe: $(OBJ)\test\Framework2011Test.obj $(AGENT_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework2011Test.obj $(AGENT_LIBS) $(SYSLIBS)
+
+# Linked with the January 2011 builds of the libraries.
+$(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIBS) $(SYSLIBS)
 
 # Linked with the 2011 builds of the libraries; the stand-in DLLs are copied by the test.
 $(BIN)\AgentTest.exe: $(OBJ)\AgentServer $(OBJ)\test\AgentTest.obj $(AGENT_OBJS) $(AGENT_LIBS) \
@@ -585,6 +594,7 @@ test: all
 	$(BIN)\AgentTest.exe
 	$(BIN)\AgentTestNoDetect.exe
 	$(BIN)\Framework2011Test.exe
+	$(BIN)\Framework201101Test.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
