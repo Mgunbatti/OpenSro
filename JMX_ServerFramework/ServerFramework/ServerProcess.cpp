@@ -66,6 +66,15 @@ char* Msg_FormatDebugString(char* pszOut, CMsg* pMsg)
 }
 #endif
 
+CMsg* Msg_Build2209(WORD wOpcode, DWORD dwSessionID)
+{
+    CMsg* pMsg = g_pBSNet->AllocMsg(FALSE);
+    pMsg->SetOpcode(0x2209);
+    pMsg->WriteBytes(&dwSessionID, 4);
+    pMsg->WriteBytes(&wOpcode, 2);
+    return pMsg;
+}
+
 void CheckMsgFullyConsumed(CMsg* pMsg)
 {
     if (pMsg->m_lRefCount == 1 && pMsg->m_wWritePos != pMsg->m_wReadPos)

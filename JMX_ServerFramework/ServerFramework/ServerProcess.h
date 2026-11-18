@@ -206,4 +206,9 @@ void CheckMsgFullyConsumed(CMsg* pMsg);
 char* Msg_FormatDebugString(char* pszOut, CMsg* pMsg);
 #endif
 
+// Msg_Build2209Error (SR_ShardManager 0x687f10, not linked by the earlier modules): a new
+// message 0x2209 {DWORD dwSessionID, WORD wOpcode} from the engine, the header of a packet the
+// agent relays to the client session (the caller appends the data).
+CMsg* Msg_Build2209(WORD wOpcode, DWORD dwSessionID);
+
 } // namespace ServerFramework
