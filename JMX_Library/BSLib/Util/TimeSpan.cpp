@@ -149,6 +149,19 @@ CDateTime::CDateTime(__time32_t tTime)
 // DateTime_SetFromComponents (0x467560)
 CDateTime::CDateTime(int nYear, int nMonth, int nDay, int nHour, int nMin, int nSec, int nDST)
 {
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x6c1e50: no range checks and no check of the result, so the NewSchedule
+    // code can step over month and day ends (day 0, day 32, month 13) and let mktime normalise.
+    struct tm atm;
+    atm.tm_sec = nSec;
+    atm.tm_min = nMin;
+    atm.tm_hour = nHour;
+    atm.tm_mday = nDay;
+    atm.tm_mon = nMonth - 1;
+    atm.tm_year = nYear - 1900;
+    atm.tm_isdst = nDST;
+    m_time = _mktime32(&atm);
+#else
     struct tm atm;
     atm.tm_sec = nSec;
     atm.tm_min = nMin;
@@ -166,6 +179,7 @@ CDateTime::CDateTime(int nYear, int nMonth, int nDay, int nHour, int nMin, int n
     m_time = _mktime32(&atm);
     if (m_time == -1)
         BSAssertFail();
+#endif
 }
 
 // DateTime_SetFromDosDateTime (0x4675f0)
@@ -251,9 +265,18 @@ __time32_t CDateTime::GetTime() const
     return m_time;
 }
 
-// 0x467500
-struct tm* CDateTime::GetLocalTm()
+// 0x467500. The variant with a target is the 2011 one (SR_ShardManager 0x6c1d90): the local
+// time goes through a local struct tm into *ptm, m_tm is left alone.
+struct tm* CDateTime::GetLocalTm(struct tm* ptm)
 {
+    if (ptm)
+    {
+        struct tm atm;
+        if (_localtime32_s(&atm, &m_time) != 0)
+            return NULL;
+        *ptm = atm;
+        return ptm;
+    }
     memset(&m_tm, 0, sizeof(m_tm));
     if (_localtime32_s(&m_tm, &m_time) != 0)
         return NULL;

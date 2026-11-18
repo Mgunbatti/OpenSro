@@ -49,7 +49,8 @@ class CDateTime
 public:
     CDateTime() {}
     CDateTime(__time32_t tTime);
-    // Asserts nDay 1..31, nMonth 1..12 and nYear >= 1900, and that mktime succeeds.
+    // Asserts nDay 1..31, nMonth 1..12 and nYear >= 1900, and that mktime succeeds (August 2011
+    // build: no checks, mktime normalises the values).
     CDateTime(int nYear, int nMonth, int nDay, int nHour, int nMin, int nSec, int nDST = -1);
     CDateTime(WORD wDosDate, WORD wDosTime, int nDST = -1);
     CDateTime(const SYSTEMTIME& st, int nDST = -1);
@@ -62,8 +63,9 @@ public:
     static CDateTime GetCurrent();
 
     __time32_t GetTime() const;
-    // Fills m_tm with the local time; NULL when the time cannot be converted.
-    struct tm* GetLocalTm();
+    // Fills m_tm (or *ptm when given) with the local time; NULL when the time cannot be
+    // converted.
+    struct tm* GetLocalTm(struct tm* ptm = NULL);
     bool GetAsSystemTime(SYSTEMTIME& st);
     // GlobalManager 0x4b5310 (January 2011 library): the local time as
     // "YYYY-MM-DD hh:mm:ss" (month, day and time with two digits); empty when it does not fit.
