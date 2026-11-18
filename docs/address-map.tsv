@@ -2292,3 +2292,23 @@ GlobalManager	0x5259c0	GlobalManager_AtExitDtor	CGlobalManager::~CGlobalManager
 GlobalManager	0x4129c0	sub_4129C0	GlobalManagerMain_SetLastPlayTimeReset
 GlobalManager	0x40bf30	sub_40BF30	CGlobalManagerMainProcess::DeleteObject
 GlobalManager	0x469890	ServerCord_GetPeerBodyID	PeerBodyID (ServiceManagerPatch.cpp)
+SR_ShardManager	0x6b1740	CDBSessionMgr::Open	CDBSessionMgr::Open
+SR_ShardManager	0x6b1ad0	CDatabase::CreateSession	CDatabase::CreateSession
+SR_ShardManager	0x6b28d0	CDatabase::ExecDirectWithReturnValue	CDatabase::ExecDirectWithReturnValue
+SR_ShardManager	0x6b2f60	CDBRecord::Update	CDBRecord::Update
+SR_ShardManager	0x6b47b0	CDBRecord::BuildUpdate	CDBRecord::BuildUpdate
+SR_ShardManager	0x43f920	CDBRecord::ClearDirty	CDBRecord::ClearDirty
+SR_ShardManager	0x404080	CDBRecord::vf05	CDBRecord::InitData
+SR_ShardManager	0x402c70	CDBRecord::vf06	CDBRecord::GetData
+SR_ShardManager	0x61a580	CDBRecStream::vf05	CDBRecStream::InitData
+SR_ShardManager	0x61a560	CDBRecStream::vf06	CDBRecStream::GetData
+SR_ShardManager	0x5494a0	CCustomAllocator_CRefClimate_CChunkAllocatorMT_CRefClimate::ctor	CCustomAllocator<T, TPool>::CCustomAllocator
+SR_ShardManager	0x549520	CCustomAllocator_CRefClimate_CChunkAllocatorMT_CRefClimate::vf01	CCustomAllocator<T, TPool>::AllocRecord
+SR_ShardManager	0x549530	CCustomAllocator_CRefClimate_CChunkAllocatorMT_CRefClimate::vf02	CCustomAllocator<T, TPool>::FreeRecord
+SR_ShardManager	0x549550	CCustomAllocator_CRefClimate_CChunkAllocatorMT_CRefClimate::vf03	CCustomAllocator<T, TPool>::vf03
+SR_ShardManager	0x55ca00	CCustomAllocator_GetCounts_55CA00	CCustomAllocator<T, TPool>::vf03
+SR_ShardManager	0x565060	CCustomAllocator_CRefClimate_CChunkAllocatorMT_CRefClimate::dtor	CCustomAllocator<T, TPool>::~CCustomAllocator
+SR_ShardManager	0x41b5a0	CMsg::CopyPayloadFrom	CMsg::CopyPayloadFrom
+SR_ShardManager	0x40aa40	CMsg::Read_DWORD_raw	CMsg::ReadForwardOnly<T>
+SR_ShardManager	0x687f10	ServerFramework::Msg_Build2209Error	ServerFramework::Msg_Build2209
+SR_ShardManager	0x688100	SelfDivision_IsInGroup_688100	SelfDivision_IsInGroup3
