@@ -112,6 +112,26 @@ void CMsg::ReadBytes(void* pDst, WORD wLen)
     m_wReadPos += wLen;
 }
 
+void CMsg::CopyPayloadFrom(CMsg* pSrc, int nMode)
+{
+    const BYTE* pPayload;
+    WORD wLen;
+    if (nMode == 1)
+    {
+        wLen = (WORD)(pSrc->m_wWritePos - pSrc->m_wReadPos);
+        pPayload = pSrc->m_pData + pSrc->m_wReadPos;
+    }
+    else
+    {
+        wLen = pSrc->GetPayloadSize();
+        pPayload = pSrc->PtrAt(MSG_HEADER_SIZE);
+    }
+    pSrc->SkipRemaining();
+    if (wLen + m_wWritePos > m_nCapacity)
+        throw 0;
+    WriteBytes(pPayload, wLen);
+}
+
 // BUG(BSNET-001): the three string writers clamp without counting the 2-byte length word, so a
 // string near the end of the buffer makes WriteBytes throw instead of being truncated.
 CMsg& CMsg::operator<<(const char* psz)

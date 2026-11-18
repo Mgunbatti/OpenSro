@@ -7,6 +7,7 @@
 #include "BSLib/ChunkAllocator.h"
 #include "BSLib/DB/CustomAllocator.h"
 #include "BSLib/DB/Database.h"
+#include "BSNet/Msg.h"
 #include "ServerFramework/CertArch.h"
 
 #include <odbcinst.h>
@@ -259,6 +260,58 @@ static void TestRecordAllocator()
 }
 
 // ---------------------------------------------------------------------------------------------
+// BSNet: CMsg::CopyPayloadFrom (new, no define)
+
+static void TestMsgCopy()
+{
+    CMsg src;
+    src.Reset();
+    src.SetOpcode(0x3510);
+    DWORD dw = 0x11223344;
+    WORD w = 0x5566;
+    src.Write(dw);
+    src.Write(w);
+    src.m_wReadPos = MSG_HEADER_SIZE + 4;
+
+    // mode 1: the unread part; the source is read to the end
+    CMsg dst;
+    dst.Reset();
+    BYTE b = 0x77;
+    dst.Write(b);
+    dst.CopyPayloadFrom(&src, 1);
+    CHECK(dst.GetPayloadSize() == 3 && dst.m_pData[6] == 0x77);
+    CHECK(*(WORD*)(dst.m_pData + 7) == 0x5566);
+    CHECK(src.m_wReadPos == src.m_wWritePos && src.GetPayloadSize() == 6);
+    // nothing unread: nothing appended
+    dst.CopyPayloadFrom(&src, 1);
+    CHECK(dst.GetPayloadSize() == 3);
+
+    // other modes: the whole payload, also when it was read already
+    CMsg whole;
+    whole.Reset();
+    whole.CopyPayloadFrom(&src, 0);
+    CHECK(whole.GetPayloadSize() == 6 && *(DWORD*)(whole.m_pData + 6) == 0x11223344);
+    CHECK(*(WORD*)(whole.m_pData + 10) == 0x5566 && whole.GetOpcode() == 0);
+
+    // no room: (int)0 thrown after the source was marked as read
+    CMsg full;
+    full.Reset();
+    full.m_wWritePos = (WORD)(full.m_nCapacity - 2);
+    src.m_wReadPos = MSG_HEADER_SIZE;
+    int nThrown = -1;
+    try
+    {
+        full.CopyPayloadFrom(&src, 1);
+    }
+    catch (int n)
+    {
+        nThrown = n;
+    }
+    CHECK(nThrown == 0 && src.m_wReadPos == src.m_wWritePos);
+    CHECK(full.m_wWritePos == full.m_nCapacity - 2);
+}
+
+// ---------------------------------------------------------------------------------------------
 // optional checks against a temporary Access database
 
 static char s_szAccessFile[MAX_PATH];
@@ -360,6 +413,7 @@ int main()
     TestSessionCount();
     TestRecords();
     TestRecordAllocator();
+    TestMsgCopy();
     TestWithAccessDriver();
     return TEST_RESULT("Framework201108Test");
 }

@@ -101,6 +101,11 @@ public:
     void WriteBytes(const void* pSrc, WORD wLen);
     void ReadBytes(void* pDst, WORD wLen);
 
+    // CMsg::CopyPayloadFrom (SR_ShardManager 0x41b5a0, not linked by the earlier modules):
+    // appends the unread part of pSrc (nMode 1) or its whole payload (other values) and marks
+    // pSrc as read. Throws (int)0 when this message has no room.
+    void CopyPayloadFrom(CMsg* pSrc, int nMode);
+
     // BUG(BSNET-002): a short packet crashes the process here and in PopBack (2011: throws
     // CMsgException).
     template <typename T> CMsg& Read(T& v)
