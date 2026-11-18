@@ -162,3 +162,58 @@ Bugs of the January 2011 code reproduced on purpose: FW11-021.
 the pool size, the registry life cycle, the log lines, the query object, `CDateTime::Format`
 and, with the 32-bit Access ODBC driver, a string parameter and the query text in the
 diagnostics. The assert path of `DescribeColumns` is not reached by a test (it opens a dialog).
+
+## August 2011 (SR_ShardManager)
+
+`SR_ShardManager.exe` was built on 2011-08-08, five weeks after AgentServer. Its BSNet, BSLib
+and ServerFramework code is the July 2011 framework, and its DB layer is the January 2011 one of
+GlobalManager (heap pool registry, `DBPARAM_VARCHAR`, "Query Error!!!" line, the `Source\` assert
+path, the query object fixes). The 475 framework functions that are not byte-identical to an
+already ported module were compared with their AgentServer and GlobalManager copies; nearly all
+differ only in generated code: helpers that the other builds inline are called (the ID pool's
+`Push` from `COverlapJob::ReleaseId`, `CQue::Push` from the pool `Free` functions, the
+`hash_map` / `list` clears of `CFileSystem::Cleanup`, `ServerApp_FreeCertArchData` and the
+destructors, `CFileTransMgr::Reset` from `CServerApp::Shutdown`, `ModuleVersion_FreeAllData`, the
+`CMsg` readers of `_OnMsgReceivedBeforeHandshake`), constants are propagated
+(`CWindowBase::Show(SW_SHOW)`), arguments move between registers and the stack
+(`CSession::OpenTransferFile`, `CDBRecord::BuildUpdate`) and stack frames grow
+(`CDBTable::BuildSqlTemplates`, `DescribeColumns`). `CFileSystem` has the two hash maps of the
+rewrite; `SetDefaultEngineConfig` sets the same fields.
+
+The differences are in the DB layer and in code no earlier module linked. They are written under
+`#ifdef JMX_FRAMEWORK_2011_08`, which is only ever defined together with `JMX_FRAMEWORK_2011` and
+`JMX_FRAMEWORK_2011_01` (BSDebug.h stops the build otherwise), so the other builds are unchanged.
+
+- `SHARD_DEFS` = `/DJMX_FRAMEWORK_2011 /DJMX_FRAMEWORK_2011_01 /DJMX_FRAMEWORK_2011_08
+  /DSERVER_MODULE_NAME="SR_ShardManager" /DSERVER_CONFIG_MODULE_NAME="SR_ShardManager"` (the exe
+  has the single string "SR_ShardManager": service, semaphore, Server.cfg block, StartupError
+  file);
+- objects in `build\obj\shard\{BSLib,BSNet,ServerFramework}`, libraries in `build\lib\shard`
+  (`SHARD_LIBS`); everything linked with them is compiled with `SHARD_DEFS` too. After a header
+  change delete `build\obj\shard` and `build\lib\shard`.
+
+Layout: `CDBTableInfo` gets `int m_nDataOffset` at +0x104 (the offset of the row data in a
+record, used by the default `CDBRecord::GetData`); `CDBRecord` and `CDBRecStream` implement
+vtable slots 5 and 6 instead of leaving them pure. No other class layout differs from the July
+2011 framework.
+
+| Original (SR_ShardManager) | Function (rewrite file) | August 2011 behaviour | January 2011 behaviour |
+|---|---|---|---|
+| 0x6b1740, 0x6b1ad0 | `CDBSessionMgr::Open(pszConnect, nCount)`, `CDatabase::CreateSession(nCount, pszConnect)` (BSLib\DB\Database.h/.cpp) | The number of connections is a parameter; 0 or less fails at once without touching the pool | 4 connections |
+| 0x6b28d0 | `CDatabase::ExecDirectWithReturnValue` (Database.cpp) | New, no define: `DBEXEC_RETURN_INT` (2) / `DBEXEC_RETURN_BIGINT` (4) bind `pValue` as output parameter 1 (int / `__int64`), the remaining results are skipped (DB-007); -1 empty text, -3 no statement | - |
+| 0x6b2f60 | `CDBRecord::Update(pTable, nGroup)` | Always connection 0, through `ExecDirectWithReturnValue` without an output parameter | `Update(pTable, nConn, nGroup)`, `ExecDirect` |
+| 0x43f920, 0x6b52aa | `CDBRecord::ClearDirty`, `CDBRecord::BuildUpdate` | A group from 64 on asserts, a negative one clears the bit of its low byte; `BuildUpdate` asserts instead of clearing a negative group | Out of range: ignored |
+| 0x404080, 0x402c70 | `CDBRecord::InitData` / `GetData` (slots 5 / 6) | Defaults: clear the dirty bits / the record plus `CDBTableInfo::m_nDataOffset` | Pure |
+| 0x61a580, 0x61a560 | `CDBRecStream::InitData` / `GetData` | Clear +1C, +20, +28 / the buffer at +18 (asserts when NULL) | Pure |
+| 0x5494a0.., 0x549520.., 0x55ca00 | `CCustomAllocator<T, TPool>` (BSLib\DB\CustomAllocator.h) | New, no define: the record allocator of a table on a `CChunkAllocatorMT<T>` / `CChunkAllocatorST<T>` of 1000 records per block named after the table ("Unknown DB Table"); slots 1 `AllocRecord`, 2 `FreeRecord`, 3 the pool counts | - |
+| 0x41b5a0 | `CMsg::CopyPayloadFrom` (BSNet\Msg.cpp) | New, no define: appends the unread part (mode 1) or the whole payload of another message and marks that one as read | - |
+| 0x688100 | `SelfDivision_IsInGroup3` (ServerFramework.cpp) | New, no define: division 3, 5, 9, 10, 26, 27 or 34 (unreferenced in AgentServer at 0x40e130) | - |
+
+No new bug of the August code was found; `ExecDirectWithReturnValue` has the endless
+`SQLMoreResults` loop of DB-007.
+
+`test\Framework201108Test.cpp` (compiled with `SHARD_DEFS`, linked with `SHARD_LIBS`) checks
+every row: the pool sizes, the record slots and dirty bits, `Update` and
+`ExecDirectWithReturnValue` (with the 32-bit Access ODBC driver against a temporary .mdb), the
+allocator template through the `_record_allocator` slots and `CDBTable`, `CopyPayloadFrom` and
+the division group.
