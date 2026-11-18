@@ -62,6 +62,13 @@ LONG BSDebugWriteMiniDump(EXCEPTION_POINTERS* pExceptionInfo);
 #error JMX_FRAMEWORK_2011_01 needs JMX_FRAMEWORK_2011 (see GLOBAL_DEFS in the Makefile)
 #endif
 
+// The August 2011 framework (SR_ShardManager) is the July 2011 one with the January 2011 DB layer
+// plus a few blocks.
+#if defined(JMX_FRAMEWORK_2011_08) \
+    && (!defined(JMX_FRAMEWORK_2011) || !defined(JMX_FRAMEWORK_2011_01))
+#error JMX_FRAMEWORK_2011_08 needs JMX_FRAMEWORK_2011 and JMX_FRAMEWORK_2011_01 (see SHARD_DEFS)
+#endif
+
 #ifdef JMX_FRAMEWORK_2011
 // Wide character assert dialog (AgentServer 0x462960): the file name and the formatted text
 // (0x400 characters) are converted to the ANSI code page; with BSDBG_CALLSTACK no minidump is

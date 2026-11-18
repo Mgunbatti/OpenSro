@@ -207,6 +207,23 @@ GLOBAL_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\global\Serv
 GLOBAL_LIBS = $(GLOBAL_LIBDIR)\ServerFramework.lib $(GLOBAL_LIBDIR)\BSNet.lib \
               $(GLOBAL_LIBDIR)\BSLib.lib
 
+# The August 2011 framework of SR_ShardManager (JMX_ServerFramework\FRAMEWORK_2011.md, "August 2011
+# (SR_ShardManager)"): the July 2011 framework with the January 2011 DB layer (JMX_FRAMEWORK_2011,
+# JMX_FRAMEWORK_2011_01) plus the blocks under JMX_FRAMEWORK_2011_08. The libraries are built a
+# fourth time with SHARD_DEFS into build\obj\shard and build\lib\shard (SHARD_LIBS); everything
+# linked with them is compiled with SHARD_DEFS too (the exe has the single module string
+# "SR_ShardManager").
+SHARD_DEFS = /DJMX_FRAMEWORK_2011 /DJMX_FRAMEWORK_2011_01 /DJMX_FRAMEWORK_2011_08 \
+             /DSERVER_MODULE_NAME=\"SR_ShardManager\" \
+             /DSERVER_CONFIG_MODULE_NAME=\"SR_ShardManager\"
+SHARD_OBJ = $(OBJ)\shard
+SHARD_LIBDIR = $(LIBDIR)\shard
+SHARD_BSLIB_OBJS = $(BSLIB_OBJS:build\obj\BSLib=build\obj\shard\BSLib)
+SHARD_BSNET_OBJS = $(BSNET_OBJS:build\obj\BSNet=build\obj\shard\BSNet)
+SHARD_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\shard\ServerFramework)
+SHARD_LIBS = $(SHARD_LIBDIR)\ServerFramework.lib $(SHARD_LIBDIR)\BSNet.lib \
+             $(SHARD_LIBDIR)\BSLib.lib
+
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
 # GLOBAL_EXE_OBJS; the tests link the parts they need with their own stand-ins.
@@ -289,7 +306,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\Framework201101Test.exe $(BIN)\GlobalManagerTest.exe \
         $(BIN)\GlobalManagerSvcTest.exe $(BIN)\GlobalManagerJobsTest.exe \
         $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe \
-        $(BIN)\GlobalManagerSlaveTest.exe $(BIN)\GlobalManagerMainTest.exe
+        $(BIN)\GlobalManagerSlaveTest.exe $(BIN)\GlobalManagerMainTest.exe \
+        $(BIN)\Framework201108Test.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -466,6 +484,43 @@ $(GLOBAL_LIBDIR)\ServerFramework.lib: $(GLOBAL_OBJ)\ServerFramework $(GLOBAL_LIB
                                       $(GLOBAL_SRVFW_OBJS)
 	lib $(LIBFLAGS) /out:$@ $(GLOBAL_SRVFW_OBJS)
 
+$(SHARD_OBJ)\BSLib $(SHARD_OBJ)\BSNet $(SHARD_OBJ)\ServerFramework $(SHARD_LIBDIR):
+	@if not exist $@ mkdir $@
+
+{JMX_Library\BSLib}.cpp{$(SHARD_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\thread}.cpp{$(SHARD_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\file}.cpp{$(SHARD_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\Util}.cpp{$(SHARD_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\DB}.cpp{$(SHARD_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
+
+{JMX_Library\BSNet}.cpp{$(SHARD_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSNet\ $<
+
+{JMX_Library\BSNet\security}.cpp{$(SHARD_OBJ)\BSNet}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSNet\ $<
+
+{JMX_ServerFramework\ServerFramework}.cpp{$(SHARD_OBJ)\ServerFramework}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\ServerFramework\ $<
+
+$(SHARD_LIBDIR)\BSLib.lib: $(SHARD_OBJ)\BSLib $(SHARD_LIBDIR) $(SHARD_BSLIB_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(SHARD_BSLIB_OBJS)
+
+$(SHARD_LIBDIR)\BSNet.lib: $(SHARD_OBJ)\BSNet $(SHARD_LIBDIR) $(SHARD_BSNET_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(SHARD_BSNET_OBJS)
+
+$(SHARD_LIBDIR)\ServerFramework.lib: $(SHARD_OBJ)\ServerFramework $(SHARD_LIBDIR) \
+                                     $(SHARD_SRVFW_OBJS)
+	lib $(LIBFLAGS) /out:$@ $(SHARD_SRVFW_OBJS)
+
 # FarmTest uses the FarmManager classes and the 2007 framework and needs their defines.
 $(OBJ)\test\FarmTest.obj: test\FarmTest.cpp
 	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\FarmTest.cpp
@@ -477,6 +532,10 @@ $(OBJ)\test\Framework2011Test.obj: test\Framework2011Test.cpp
 # Framework201101Test checks the January 2011 framework and needs its defines.
 $(OBJ)\test\Framework201101Test.obj: test\Framework201101Test.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201101Test.cpp
+
+# Framework201108Test checks the August 2011 framework and needs its defines.
+$(OBJ)\test\Framework201108Test.obj: test\Framework201108Test.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201108Test.cpp
 
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
@@ -583,6 +642,10 @@ $(BIN)\Framework2011Test.exe: $(OBJ)\test\Framework2011Test.obj $(AGENT_LIBS)
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIBS) $(SYSLIBS)
+
+# Linked with the August 2011 builds of the libraries.
+$(BIN)\Framework201108Test.exe: $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
@@ -749,6 +812,7 @@ test: all
 	$(BIN)\GlobalManagerBillingTest.exe
 	$(BIN)\GlobalManagerSlaveTest.exe
 	$(BIN)\GlobalManagerMainTest.exe
+	$(BIN)\Framework201108Test.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
