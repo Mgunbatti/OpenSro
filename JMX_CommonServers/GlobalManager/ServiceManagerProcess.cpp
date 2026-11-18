@@ -83,6 +83,10 @@ CServiceManagerProcess::CServiceManagerProcess()
     m_aHandler[0xA303] = &CServiceManagerProcess::OnMsg_A303;
     m_aHandler[0x7009] = &CServiceManagerProcess::OnMsg_7009;
     m_aHandler[0xA304] = &CServiceManagerProcess::OnMsg_A304;
+    m_aHandler[0x7100] = &CServiceManagerProcess::OnMsg_7100;
+    m_aHandler[0xA305] = &CServiceManagerProcess::OnMsg_A305;
+    m_aHandler[0x7104] = &CServiceManagerProcess::OnMsg_7104;
+    m_aHandler[0xA308] = &CServiceManagerProcess::OnMsg_A308;
     m_aHandler[0x7200] = &CServiceManagerProcess::OnMsg_7200;
     m_aHandler[0x7201] = &CServiceManagerProcess::OnMsg_7201;
     m_aHandler[0x7202] = &CServiceManagerProcess::OnMsg_7202;
