@@ -10,6 +10,7 @@
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
 #include "GlobalManager/GlobalManagerJobs.h"
+#include "GlobalManager/GlobalManagerMainFwd.h"
 #include "BSLib/BSDebug.h"
 #include "BSLib/DB/DBQuery.h"
 #include "BSLib/Util/TimeSpan.h"
@@ -37,6 +38,14 @@ public:
 };
 
 static CNetEngine s_Engine;
+
+// Stand-in for the main process' setter (CGlobalManagerMainProcess is not ported yet).
+static DWORD s_dwLastPlayTimeReset;
+
+void GlobalManagerMain_SetLastPlayTimeReset(DWORD dwTime)
+{
+    s_dwLastPlayTimeReset = dwTime;
+}
 
 static sContentUser* MakeUser(sContentUser& user, DWORD dwIP, DWORD dwJID, const char* pszID,
                               WORD wShard, WORD wAgent)

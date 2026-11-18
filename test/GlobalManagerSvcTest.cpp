@@ -19,6 +19,7 @@
 
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
+#include "GlobalManager/GlobalManagerMainFwd.h"
 #include "GlobalManager/GlobalManagerSvcFwd.h"
 #include "GlobalManager/ServiceManagerProcess.h"
 #include "BSLib/BSDebug.h"
@@ -389,6 +390,11 @@ void CServiceManagerProcess::WriteAnswerLog(std::string* pstrText, DWORD dwSessi
 void CServiceManagerProcess::WriteUserLog(std::string* pstrText, std::string* pstrUserID)
 {
     AddLog("user %s %s", pstrText->c_str(), pstrUserID->c_str());
+}
+
+// The main process' setter, used by the play time reset job (GlobalManagerJobs).
+void GlobalManagerMain_SetLastPlayTimeReset(DWORD)
+{
 }
 
 BYTE SMLog_GetAnswerType(WORD wOpcode)
