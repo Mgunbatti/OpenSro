@@ -236,7 +236,11 @@ GLOBAL_JOB_OBJS = \
 # GLOBAL_OBJS, GLOBAL_SVC_OBJS and GLOBAL_JOB_OBJS (GLOBAL_EXE_OBJS).
 GLOBAL_BILL_OBJS = \
 	$(OBJ)\GlobalManager\PunishmentManager.obj \
-	$(OBJ)\GlobalManager\UserValidationHistory.obj
+	$(OBJ)\GlobalManager\UserValidationHistory.obj \
+	$(OBJ)\GlobalManager\IOCP.obj \
+	$(OBJ)\GlobalManager\ThreadEx.obj \
+	$(OBJ)\GlobalManager\BaseBillingMgr.obj \
+	$(OBJ)\GlobalManager\StandardBillingMgr.obj
 GLOBAL_EXE_OBJS = $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_JOB_OBJS) $(GLOBAL_BILL_OBJS)
 
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
@@ -274,7 +278,7 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe \
         $(BIN)\Framework201101Test.exe $(BIN)\GlobalManagerTest.exe \
         $(BIN)\GlobalManagerSvcTest.exe $(BIN)\GlobalManagerJobsTest.exe \
-        $(BIN)\GlobalManagerPunishmentTest.exe
+        $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -372,6 +376,9 @@ $(OBJ)\GlobalManager:
 	@if not exist $@ mkdir $@
 
 {JMX_CommonServers\GlobalManager}.cpp{$(OBJ)\GlobalManager}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\GlobalManager\ $<
+
+{JMX_CommonServers\GlobalManager\Billing}.cpp{$(OBJ)\GlobalManager}.obj:
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\GlobalManager\ $<
 
 $(AGENT_OBJ)\BSLib $(AGENT_OBJ)\BSNet $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDIR):
@@ -472,6 +479,9 @@ $(OBJ)\test\GlobalManagerJobsTest.obj: test\GlobalManagerJobsTest.cpp
 
 $(OBJ)\test\GlobalManagerPunishmentTest.obj: test\GlobalManagerPunishmentTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerPunishmentTest.cpp
+
+$(OBJ)\test\GlobalManagerBillingTest.obj: test\GlobalManagerBillingTest.cpp
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerBillingTest.cpp
 
 # AgentTest and its two stand-ins for XTrap4Server.dll.
 $(OBJ)\test\AgentTest.obj: test\AgentTest.cpp
@@ -585,6 +595,20 @@ $(BIN)\GlobalManagerPunishmentTest.exe: $(OBJ)\GlobalManager \
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerPunishmentTest.obj \
 	    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
+# Billing against the stand-in network and timer libraries (loaded from the exe's folder by
+# their original names) and a billing server on 127.0.0.1.
+$(BIN)\GlobalManagerBillingTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerBillingTest.obj \
+                                    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(BIN)\AlphegaNet.dll \
+                                    $(BIN)\AlphegaTimer.dll
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerBillingTest.obj $(GLOBAL_EXE_OBJS) \
+	    $(GLOBAL_LIBS) $(SYSLIBS)
+
+$(BIN)\AlphegaNet.dll: $(OBJ)\test $(BIN) $(OBJ)\test\BillingTestAlphegaNet.obj
+	link /nologo /DLL /out:$@ $(OBJ)\test\BillingTestAlphegaNet.obj ws2_32.lib
+
+$(BIN)\AlphegaTimer.dll: $(OBJ)\test $(BIN) $(OBJ)\test\BillingTestAlphegaTimer.obj
+	link /nologo /DLL /out:$@ $(OBJ)\test\BillingTestAlphegaTimer.obj
+
 # Linked with the 2011 builds of the libraries; the stand-in DLLs are copied by the test.
 $(BIN)\AgentTest.exe: $(OBJ)\AgentServer $(OBJ)\test\AgentTest.obj $(AGENT_OBJS) $(AGENT_LIBS) \
                       $(BIN)\AgentTestXTrap.dll $(BIN)\AgentTestXTrapMissing.dll
@@ -680,6 +704,7 @@ test: all
 	$(BIN)\GlobalManagerSvcTest.exe
 	$(BIN)\GlobalManagerJobsTest.exe
 	$(BIN)\GlobalManagerPunishmentTest.exe
+	$(BIN)\GlobalManagerBillingTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
