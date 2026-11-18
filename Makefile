@@ -312,7 +312,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\GlobalManagerSvcTest.exe $(BIN)\GlobalManagerJobsTest.exe \
         $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe \
         $(BIN)\GlobalManagerSlaveTest.exe $(BIN)\GlobalManagerMainTest.exe \
-        $(BIN)\Framework201108Test.exe
+        $(BIN)\Framework201108Test.exe \
+        $(BIN)\NewScheduleTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -557,6 +558,9 @@ $(OBJ)\test\Framework201101Test.obj: test\Framework201101Test.cpp
 $(OBJ)\test\Framework201108Test.obj: test\Framework201108Test.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201108Test.cpp
 
+$(OBJ)\test\NewScheduleTest.obj: test\NewScheduleTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\NewScheduleTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -666,6 +670,9 @@ $(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIB
 # Linked with the August 2011 builds of the libraries.
 $(BIN)\Framework201108Test.exe: $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\NewScheduleTest.exe: $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
@@ -833,6 +840,7 @@ test: all
 	$(BIN)\GlobalManagerSlaveTest.exe
 	$(BIN)\GlobalManagerMainTest.exe
 	$(BIN)\Framework201108Test.exe
+	$(BIN)\NewScheduleTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
