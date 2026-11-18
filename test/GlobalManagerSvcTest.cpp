@@ -777,6 +777,10 @@ static void TestPools()
     CHECK(s_pSM->m_aHandler[0x7005] == &CServiceManagerProcess::OnMsg_7005);
     CHECK(s_pSM->m_aHandler[0xA300] == &CServiceManagerProcess::OnMsg_A300);
     CHECK(s_pSM->m_aHandler[0x7006] != NULL && s_pSM->m_aHandler[0x7100 - 1] == NULL);
+    int nHandlers = 0;
+    for (int i = 0; i < 0xFFFF; ++i)
+        nHandlers += s_pSM->m_aHandler[i] != NULL;
+    CHECK(nHandlers == 59);
     CHECK(s_pSM->m_nPatchStep == -1 && s_pSM->m_pTask == g_pBSNet->GetProactor(TEST_TASK_SERVER));
 }
 
@@ -1298,6 +1302,9 @@ static void TestLogin()
     CHECK(pUser && pUser->bySecurity == 3 && pUser->dwSessionID == s_dwServer);
     CHECK(g_setNotifySession.count(s_dwServer) == 1);
     g_setNotifySession.clear();
+    s_pSM->m_mapUser.clear();
+    if (pUser)
+        pUser->Release();
     CHECK(NoPackets());
 }
 
@@ -1801,6 +1808,221 @@ static void TestRecordRelay()
     CHECK(NoPackets());
 }
 
+// ---------------------------------------------------------------------------------------------
+// Patches
+
+static void TestPreparePatch()
+{
+    // body 4 (GatewayServer without session) is left out while it is not in service
+    s_aBody[3].nState = 3;
+    g_mapSessionCord[s_dwServer] = &s_CordUp;
+    s_CordUp.wFromID = 1;
+    CMsg* p = Req(0x7104, B("04 09"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    DWORD dwRelayID = 0;
+    CHECK(Relay(2, 0x6308, Bytes(), &dwRelayID) && RelayContext(dwRelayID) == 2);
+    CHECK(Relay(3, 0x6308, Bytes(), &dwRelayID) && RelayContext(dwRelayID) == 3);
+    CHECK(Relay(6, 0x6308, Bytes(), &dwRelayID) && RelayContext(dwRelayID) == 6);
+    CHECK(s_pSM->m_bPreparingPatch && s_pSM->m_setPrepareBody.size() == 3);
+    CHECK(s_pSM->m_byPrepareModule == 4 && s_pSM->m_byPrepare181 == 9);
+    CHECK(s_pSM->m_dwPrepareSession == s_dwServer);
+    // another request while preparing: (massive) 0xB104 {2, 1}
+    p = Req(0x7104, B("04 09"));
+    s_pSM->OnMsg_7104(p, 0, 0, NULL);
+    Done(p);
+    Bytes got;
+    CHECK(TakeMassive(s_dwClient, 0xB104, &got) && Same(got, B("02 01")));
+
+    // the answers come from the cord's other end; an unknown one is ignored
+    s_CordUp.wToID = 9;
+    p = Req(0xA308, B("01"));
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 9));
+    Done(p);
+    CHECK(s_pSM->m_setPrepareBody.size() == 3);
+    p = Req(0xA308, B("01"), 77);       // no cord
+    s_pSM->OnMsg_A308(p, 0, 0, NULL);
+    Done(p);
+    CHECK(s_pSM->m_setPrepareBody.size() == 3);
+    WORD awPeer[] = { 2, 6, 3 };
+    for (int i = 0; i < 3; ++i)
+    {
+        s_CordUp.wToID = awPeer[i];
+        p = Req(0xA308, B("01"));
+        s_pSM->OnMsg_A308(p, 0, 0, NULL);
+        Done(p);
+        CHECK(s_pSM->m_setPrepareBody.size() == (size_t)(2 - i));
+        CHECK(s_pMain->m_vecJobs.size() == (i == 2 ? 1u : 0u));
+    }
+    CHECK(PostedJob("PreparePatch 1 4 9"));
+    CHECK(!s_pSM->m_bPreparingPatch);
+    p = Req(0xA308, B("01"));
+    s_pSM->OnMsg_A308(p, 0, 0, NULL);       // not preparing
+    Done(p);
+    CHECK(s_pMain->m_vecJobs.empty());
+
+    // a failure answer ends the preparation: {2, 2}
+    p = Req(0x7104, B("04 09"));
+    s_pSM->OnMsg_7104(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Relay(2, 0x6308, Bytes()) && Relay(3, 0x6308, Bytes()) && Relay(6, 0x6308, Bytes()));
+    p = Req(0xA308, B("02"));
+    s_pSM->OnMsg_A308(p, 0, 0, NULL);
+    Done(p);
+    CHECK(TakeMassive(s_dwClient, 0xB104, &got) && Same(got, B("02 02")));
+    CHECK(!s_pSM->m_bPreparingPatch && s_pSM->m_setPrepareBody.empty());
+
+    // a front server without route: {2, 2}
+    s_aBody[3].nState = 4;
+    p = Req(0x7104, B("04 09"));
+    s_pSM->OnMsg_7104(p, 0, 0, NULL);
+    Done(p);
+    CHECK(Relay(2, 0x6308, Bytes()) && Relay(3, 0x6308, Bytes()));
+    CHECK(TakeMassive(s_dwClient, 0xB104, &got) && Same(got, B("02 02")));
+    CHECK(!s_pSM->m_bPreparingPatch && s_pSM->m_setPrepareBody.empty());
+    g_mapSessionCord.clear();
+    CHECK(NoPackets());
+}
+
+static MODULE_VERSION_FILE s_aFile[2];
+
+static CMassiveMsg* UploadRequest()
+{
+    MODULE_VERSION module;
+    memset(&module, 0, sizeof(module));
+    module.byModuleID = 7;
+    module.ab0[5] = 3;
+    module.dwVersion = 100;
+    CMassiveMsg* pMassive = CMassiveMsg::Alloc(MASSIVE_MODE_WRITE);
+    pMassive->SetOpcode(0x7100);
+    pMassive->Write(&module, sizeof(module));
+    WORD wCount = 2;
+    pMassive->Write(&wCount, 2);
+    for (int i = 0; i < 2; ++i)
+    {
+        memset(&s_aFile[i], 0, sizeof(s_aFile[i]));
+        s_aFile[i].dwID = 50 + i;
+        s_aFile[i].dwVersion = 100;
+        s_aFile[i].byModuleID = 7;
+        sprintf_s(s_aFile[i].szName, "file%d.dat", i);
+        s_aFile[i].dwSize = 10;
+        s_aFile[i].byValid = 1;
+        pMassive->Write(&s_aFile[i], sizeof(s_aFile[i]));
+    }
+    pMassive->m_nMode = MASSIVE_MODE_READ;
+    pMassive->BeginRead();
+    pMassive->m_dw36 = s_dwServer;
+    return pMassive;
+}
+
+static void TestPatchUpload()
+{
+    // only logged-in SMCs
+    CMassiveMsg* pMassive = UploadRequest();
+    s_pSM->OnMsg_7100(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(!s_pSM->m_bPatchUploading);
+
+    sServiceManagerUser* pUser = AddUser(s_dwServer, 1, "a");
+    pMassive = UploadRequest();
+    CHECK(s_pSM->Dispatch(NULL, pMassive, 0, 0));
+    pMassive->Free();
+    CHECK(Reply(0xB100, B("01")));
+    CHECK(s_pSM->m_bPatchUploading && s_pSM->m_pPatchUser == pUser);
+    CHECK(s_pSM->m_nPatchStep == 0 && s_pSM->m_wPatchFileCount == 2);
+    CHECK(s_pSM->m_wPatchFilesLeft == 2 && s_pSM->m_PatchModule.byModuleID == 7);
+    CHECK(g_pModuleVersionFileList && g_pModuleVersionFileList->size() == 2);
+    CHECK(g_pModuleVersionList && g_pModuleVersionList->empty());
+    // another upload: 0x3103 {1}
+    pMassive = UploadRequest();
+    s_pSM->OnMsg_7100(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(Reply(0x3103, B("01")));
+    CHECK(s_pSM->m_wPatchFilesLeft == 2);
+
+    // the SMC's files arrive; then the DownloadServers get 0x6305 {count, files}, but body 6 is
+    // not in service: 0x3102 {2, 1} and the upload is canceled
+    s_pSM->OnFileDone(s_dwServer);
+    CHECK(s_pSM->m_wPatchFilesLeft == 1 && NoPacket(s_dwClient, 0x3101));
+    s_pSM->OnFileDone(s_dwServer);
+    CHECK(Reply(0x3101, B("01 01")));
+    CHECK(Reply(0x3102, B("02 01")));
+    CHECK(!s_pSM->m_bPatchUploading && s_pSM->m_nPatchStep == -1);
+    CHECK(s_pSM->m_pPatchUser == NULL && g_pModuleVersionFileList == NULL);
+
+    s_aBody[5].nState = 5;
+    pMassive = UploadRequest();
+    s_pSM->OnMsg_7100(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(Reply(0xB100, B("01")));
+    s_pSM->OnFileDone(s_dwServer);
+    s_pSM->OnFileDone(s_dwServer);
+    CHECK(Reply(0x3101, B("01 01")));
+    Bytes want = B("02 00");
+    Put(want, s_aFile, sizeof(s_aFile));
+    Bytes got;
+    CHECK(TakeMassive(s_dwClient, 0x6305, &got) && Same(got, want));
+    CHECK(s_pSM->m_nPatchStep == 1 && s_pSM->m_mapPatchTarget.size() == 1);
+    SM_PATCH_TARGET& target = s_pSM->m_mapPatchTarget.begin()->second;
+    CHECK(target.pBody == &s_aBody[2] && target.dwSessionID == s_dwServer);
+    CHECK(target.wFilesLeft == 2 && target.bSent == 1);
+
+    // the DownloadServer confirms the files: {1, 2, body, left}, then {2, 1} and the jobs
+    s_pSM->OnFileDone(s_dwServer);
+    CHECK(Reply(0x3101, B("01 02 03 00 01 00")));
+    s_pSM->OnFileDone(s_dwServer);
+    CHECK(Reply(0x3101, B("02 01")));
+    CHECK(PostedJob("ModuleVersionData 1"));
+    CHECK(PostedJob("RecordPatchData 7 2 1"));
+    CHECK(!s_pSM->m_bPatchUploading && s_pSM->m_nPatchStep == -1);
+    CHECK(s_pSM->m_pPatchUser == NULL && s_pSM->m_mapPatchTarget.empty());
+    s_pSM->OnFileDone(s_dwServer);          // no upload
+    s_pSM->OnFileFailed();
+    s_pSM->OnCordClosed();
+    CHECK(NoPackets());
+
+    // a failed transfer of the SMC's files: {2, 2}
+    pMassive = UploadRequest();
+    s_pSM->OnMsg_7100(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(Reply(0xB100, B("01")));
+    s_pSM->OnCordClosed();                  // only while delivering
+    CHECK(s_pSM->m_bPatchUploading);
+    s_pSM->OnFileFailed();
+    CHECK(Reply(0x3102, B("02 02")));
+    CHECK(!s_pSM->m_bPatchUploading);
+
+    // a closed cord while delivering: {2, 2}
+    pMassive = UploadRequest();
+    s_pSM->OnMsg_7100(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(Reply(0xB100, B("01")));
+    s_pSM->OnFileDone(s_dwServer);
+    s_pSM->OnFileDone(s_dwServer);
+    CHECK(Reply(0x3101, B("01 01")) && TakeMassive(s_dwClient, 0x6305, &got));
+    s_pSM->OnCordClosed();
+    CHECK(Reply(0x3102, B("02 02")));
+    CHECK(!s_pSM->m_bPatchUploading && s_pSM->m_mapPatchTarget.empty());
+
+    // 0xA305 {2} cancels the upload
+    pMassive = UploadRequest();
+    s_pSM->OnMsg_7100(NULL, 0, 0, pMassive);
+    pMassive->Free();
+    CHECK(Reply(0xB100, B("01")));
+    CMsg* p = Req(0xA305, B("01"), 77);
+    CHECK(s_pSM->Dispatch(p, NULL, 0, 0));
+    Done(p);
+    CHECK(s_pSM->m_bPatchUploading);
+    p = Req(0xA305, B("02"), 77);
+    s_pSM->OnMsg_A305(p, 0, 0, NULL);
+    Done(p);
+    CHECK(!s_pSM->m_bPatchUploading && g_pModuleVersionFileList == NULL);
+    s_aBody[5].nState = 3;
+    s_pSM->m_mapUser.clear();
+    pUser->Release();
+    CHECK(NoPackets());
+}
+
 static void Startup()
 {
     BSNET_INIT_PARAM param;
@@ -1885,6 +2107,8 @@ int main()
     TestUserAccounts();
     TestContentUsers();
     TestRecordRelay();
+    TestPreparePatch();
+    TestPatchUpload();
 
     CHECK(s_deqAnswer.empty() && s_vecCall.empty());
     delete s_pSM;
