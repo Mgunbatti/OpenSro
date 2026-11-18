@@ -191,19 +191,28 @@ CDBSessionMgr::~CDBSessionMgr()
     Close();
 }
 
+#ifdef JMX_FRAMEWORK_2011_08
+// SR_ShardManager 0x6b1740
+BOOL CDBSessionMgr::Open(const char* pszConnect, int nCount)
+{
+    if (nCount <= 0)
+        return FALSE;
+#else
 BOOL CDBSessionMgr::Open(const char* pszConnect)
 {
+    const int nCount = DB_SESSION_COUNT;
+#endif
     SQLCHAR szConnOut[1024];
     SQLSMALLINT cbConnOut;
 
     const char* pszUse = (pszConnect && lstrlenA(pszConnect)) ? pszConnect
                                                               : g_strDBConnect.c_str();
 
-    m_nCount = DB_SESSION_COUNT;
-    m_phDbc = new SQLHDBC[DB_SESSION_COUNT];
-    memset(m_phDbc, 0, DB_SESSION_COUNT * sizeof(SQLHDBC));
+    m_nCount = nCount;
+    m_phDbc = new SQLHDBC[nCount];
+    memset(m_phDbc, 0, nCount * sizeof(SQLHDBC));
 
-    for (int i = 0; i < DB_SESSION_COUNT; ++i)
+    for (int i = 0; i < nCount; ++i)
     {
         if (!SQL_SUCCEEDED(SQLAllocHandle(SQL_HANDLE_DBC, g_hDBEnv, &m_phDbc[i]))
             || !SQL_SUCCEEDED(SQLDriverConnect(m_phDbc[i], NULL, (SQLCHAR*)pszUse, SQL_NTS,
@@ -267,13 +276,22 @@ BOOL CDatabase::InitEnvironment(const char* pszDefaultConnect)
     return TRUE;
 }
 
+#ifdef JMX_FRAMEWORK_2011_08
+// SR_ShardManager 0x6b1ad0
+CDBSessionMgr* CDatabase::CreateSession(int nCount, const char* pszConnect)
+#else
 CDBSessionMgr* CDatabase::CreateSession(const char* pszConnect)
+#endif
 {
     if (g_hDBEnv == NULL)
         return NULL;
 
     CDBSessionMgr* pSession = new CDBSessionMgr;
+#ifdef JMX_FRAMEWORK_2011_08
+    if (!pSession->Open(pszConnect, nCount))
+#else
     if (!pSession->Open(pszConnect))
+#endif
     {
         if (pSession)
             delete pSession;

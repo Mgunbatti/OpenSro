@@ -323,7 +323,13 @@ public:
     // DBConnPool_OpenConnections (0x4769f0): allocates DB_SESSION_COUNT connection handles
     // and connects each with SQLDriverConnect (pszConnect, or g_strDBConnect when NULL or
     // empty). On the first failure all handles are freed and FALSE is returned.
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x6b1740: the number of connections is a parameter; 0 or less fails at
+    // once (nothing allocated, m_nCount unchanged).
+    BOOL Open(const char* pszConnect, int nCount);
+#else
     BOOL Open(const char* pszConnect);
+#endif
     // DBConnPool_FreeHandles (0x476b00). See DB-001.
     void Close();
     // DBConn_HasHandle (0x476b50).
@@ -385,7 +391,12 @@ public:
     static BOOL InitEnvironment(const char* pszDefaultConnect);
     // DBConnMap_CreateConnection (0x476ce0): a new open pool registered in g_setDBSessionMgr,
     // NULL without environment or when a connection fails.
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x6b1ad0: a pool of nCount connections.
+    static CDBSessionMgr* CreateSession(int nCount, const char* pszConnect);
+#else
     static CDBSessionMgr* CreateSession(const char* pszConnect);
+#endif
     // DBConnMap53BA0C_RemoveAndDelete (0x476da0).
     static void DestroySession(CDBSessionMgr* pSession);
     // DBConnMap_DestroyAll (0x476bf0): closes and deletes every pool, then frees g_hDBEnv.
