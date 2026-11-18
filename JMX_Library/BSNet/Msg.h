@@ -124,6 +124,21 @@ public:
         return *this;
     }
 
+    // Forward read that ignores m_bReadForward (SR_ShardManager 0x40aa40 / 0x40b3a0 / 0x41b550,
+    // GlobalManager 0x40e2a0, inlined in application code): a short packet asserts and crashes
+    // in every framework version (no CMsgException).
+    template <typename T> T ReadForwardOnly()
+    {
+        if (m_wReadPos + sizeof(T) > m_wWritePos)
+        {
+            BSAssertFail();
+            BS_CRASH();
+        }
+        T v = *(T*)(m_pData + m_wReadPos);
+        m_wReadPos += sizeof(T);
+        return v;
+    }
+
     // Reads from the end of the payload and shrinks the size field.
     template <typename T> void PopBack(T& v)
     {

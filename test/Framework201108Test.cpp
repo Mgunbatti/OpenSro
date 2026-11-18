@@ -8,8 +8,10 @@
 #include "BSLib/DB/CustomAllocator.h"
 #include "BSLib/DB/Database.h"
 #include "BSNet/Msg.h"
+#include "BSNet/NetEngine.h"
 #include "ServerFramework/CertArch.h"
 #include "ServerFramework/ServerFramework.h"
+#include "ServerFramework/ServerProcess.h"
 
 #include <odbcinst.h>
 #include <stdio.h>
@@ -312,6 +314,61 @@ static void TestMsgCopy()
     CHECK(full.m_wWritePos == full.m_nCapacity - 2);
 }
 
+// The forward-only reads crash on a short packet (no C++ objects here because of __try).
+static BOOL ShortForwardReadCrashes(CMsg* pMsg)
+{
+    __try
+    {
+        pMsg->ReadForwardOnly<DWORD>();
+    }
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER
+                                                                : EXCEPTION_CONTINUE_SEARCH)
+    {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static void TestMsgForwardOnly()
+{
+    CMsg msg;
+    msg.Reset();
+    DWORD dw = 0x01020304;
+    WORD w = 0x0506;
+    BYTE b = 7;
+    msg.Write(dw);
+    msg.Write(w);
+    msg.Write(b);
+    // the direction flag is ignored
+    msg.m_bReadForward = 0;
+    CHECK(msg.ReadForwardOnly<DWORD>() == 0x01020304);
+    CHECK(msg.ReadForwardOnly<WORD>() == 0x0506);
+    CHECK(msg.ReadForwardOnly<BYTE>() == 7);
+    CHECK(msg.m_wReadPos == msg.m_wWritePos && msg.GetPayloadSize() == 7);
+    CHECK(ShortForwardReadCrashes(&msg));
+    CHECK(msg.m_wReadPos == msg.m_wWritePos);
+}
+
+// ---------------------------------------------------------------------------------------------
+// ServerFramework: the 0x2209 relay header (new, no define)
+
+static void TestRelayHeader()
+{
+    CNetEngine engine;
+    IBSNet* pOld = g_pBSNet;
+    g_pBSNet = &engine;
+    CMsg* pMsg = ServerFramework::Msg_Build2209(0x3013, 0x12345678);
+    CHECK(pMsg != NULL);
+    if (pMsg)
+    {
+        CHECK(pMsg->GetOpcode() == 0x2209 && pMsg->GetPayloadSize() == 6);
+        CHECK(*(DWORD*)(pMsg->m_pData + 6) == 0x12345678);
+        CHECK(*(WORD*)(pMsg->m_pData + 10) == 0x3013);
+        g_pBSNet->ReleaseMsg(pMsg);
+    }
+    g_pBSNet = pOld;
+}
+
 // ---------------------------------------------------------------------------------------------
 // ServerFramework: the division group SR_ShardManager's code asks for (new, no define)
 
@@ -437,6 +494,8 @@ int main()
     TestRecordAllocator();
     TestMsgCopy();
     TestDivisionGroup();
+    TestMsgForwardOnly();
+    TestRelayHeader();
     TestWithAccessDriver();
     return TEST_RESULT("Framework201108Test");
 }
