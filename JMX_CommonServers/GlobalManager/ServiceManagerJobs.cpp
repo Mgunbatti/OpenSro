@@ -1310,7 +1310,7 @@ bool COverlapJob_AutomatedPunishmentJob::Execute()
     sprintf_s(szQuery, 0x2800, "EXEC _RegisterAutomatedPunishment '%s',%d,'%s','%s','%s',%d",
               m_strUserID.c_str(), 1, m_str2.c_str(), m_str3.c_str(), m_str4.c_str(),
               m_dwParam);
-    // BUG(GM-003): the formatted text is the format of the query (no escaping either).
+    // BUG(GM-013): the formatted text is the format of the query (no escaping either).
     if (query.ExecuteFormat(szQuery) < 0)
     {
         LogPrintf(0x1000000, "Query failed!: [%s]", szQuery);
