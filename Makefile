@@ -224,6 +224,13 @@ GLOBAL_SVC_OBJS = \
 	$(OBJ)\GlobalManager\ServiceManagerAccount.obj \
 	$(OBJ)\GlobalManager\ServiceManagerPatch.obj
 
+# The overlap jobs of the service manager and the SMC log (the functions of GlobalManagerSvcFwd.h).
+# They call the punishment manager and are not linked into GlobalManagerSvcTest (which has
+# stand-ins); GlobalManagerJobsTest links them with GLOBAL_SVC_OBJS. The exe needs both.
+GLOBAL_JOB_OBJS = \
+	$(OBJ)\GlobalManager\ServiceManagerJobs.obj \
+	$(OBJ)\GlobalManager\ServiceManagerLog.obj
+
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
 # 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
 # the 2011 build of the libraries.
@@ -258,7 +265,7 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\DownloadTest.exe $(BIN)\MachineTest.exe $(BIN)\FarmTest.exe \
         $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe \
         $(BIN)\Framework201101Test.exe $(BIN)\GlobalManagerTest.exe \
-        $(BIN)\GlobalManagerSvcTest.exe
+        $(BIN)\GlobalManagerSvcTest.exe $(BIN)\GlobalManagerJobsTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -451,6 +458,9 @@ $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 $(OBJ)\test\GlobalManagerSvcTest.obj: test\GlobalManagerSvcTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerSvcTest.cpp
 
+$(OBJ)\test\GlobalManagerJobsTest.obj: test\GlobalManagerJobsTest.cpp
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerJobsTest.cpp
+
 # AgentTest and its two stand-ins for XTrap4Server.dll.
 $(OBJ)\test\AgentTest.obj: test\AgentTest.cpp
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\AgentTest.cpp
@@ -547,6 +557,14 @@ $(BIN)\GlobalManagerSvcTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerS
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerSvcTest.obj $(GLOBAL_SVC_OBJS) \
 	    $(GLOBAL_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
+# The overlap jobs with the real service manager; stand-ins for the main process' setter, the
+# punishment manager and CDBQuery's execution.
+$(BIN)\GlobalManagerJobsTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerJobsTest.obj \
+                                 $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_JOB_OBJS) \
+                                 $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerJobsTest.obj $(GLOBAL_JOB_OBJS) \
+	    $(GLOBAL_SVC_OBJS) $(GLOBAL_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
+
 # Linked with the 2011 builds of the libraries; the stand-in DLLs are copied by the test.
 $(BIN)\AgentTest.exe: $(OBJ)\AgentServer $(OBJ)\test\AgentTest.obj $(AGENT_OBJS) $(AGENT_LIBS) \
                       $(BIN)\AgentTestXTrap.dll $(BIN)\AgentTestXTrapMissing.dll
@@ -640,6 +658,7 @@ test: all
 	$(BIN)\Framework201101Test.exe
 	$(BIN)\GlobalManagerTest.exe
 	$(BIN)\GlobalManagerSvcTest.exe
+	$(BIN)\GlobalManagerJobsTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
