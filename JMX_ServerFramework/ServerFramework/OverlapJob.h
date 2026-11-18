@@ -188,6 +188,9 @@ public:
     // IdPool53B8C0_StaticInit (0x448ea0). m_dwStatNextID and m_dwStatFree keep the zero of the
     // static storage until the first Pop.
     COverlapJobIDPool();
+    // The same with the limit and the first ID (GlobalManager 0x4560E0, also used by the CAS
+    // chat manager with 1000 and 0); asserts when fewer than 500 IDs are left.
+    COverlapJobIDPool(DWORD dwMaxID, DWORD dwFirstID);
 
     // IdPool_PushNextIds (0x4496a0): queues the next nCount IDs.
     void PushNextIds(int nCount);

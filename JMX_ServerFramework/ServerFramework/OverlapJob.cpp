@@ -35,6 +35,15 @@ COverlapJobIDPool::COverlapJobIDPool()
     m_dwInUse = 0;
 }
 
+COverlapJobIDPool::COverlapJobIDPool(DWORD dwMaxID, DWORD dwFirstID)
+{
+    m_dwMaxID = dwMaxID;
+    m_dwNextID = dwFirstID;
+    m_dwGrowBy = 500;
+    PushNextIds(500);
+    m_dwInUse = 0;
+}
+
 void COverlapJobIDPool::PushNextIds(int nCount)
 {
     if (m_dwNextID >= m_dwMaxID - nCount)

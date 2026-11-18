@@ -10,6 +10,7 @@
 #include "BSNet/MsgPool.h"
 #include "BSNet/NetEngine.h"
 #include "BSNet/NetEngineLog.h"
+#include "ServerFramework/OverlapJob.h"
 
 #include <odbcinst.h>
 #include <stdarg.h>
@@ -311,6 +312,22 @@ static void TestWithAccessDriver()
     DeleteFileA(szFile);
 }
 
+// The ID pool with a limit and a first ID (GlobalManager 0x4560E0): 500 IDs from the first one,
+// handed out in order; the default pool is the same with the limit -1 and the first ID 1.
+static void TestIDPool()
+{
+    ServerFramework::COverlapJobIDPool pool(1000, 0);
+    CHECK(pool.m_dwMaxID == 1000 && pool.m_dwNextID == 500 && pool.m_dwGrowBy == 500);
+    CHECK(pool.m_deqFree.size() == 500 && pool.m_deqFree.front() == 0
+          && pool.m_deqFree.back() == 499 && pool.m_dwInUse == 0);
+    CHECK(pool.Pop() == 0 && pool.Pop() == 1 && pool.m_dwInUse == 2);
+    CHECK(pool.m_dwStatNextID == 500 && pool.m_dwStatFree == 498);
+    pool.Push(0);
+    CHECK(pool.m_deqFree.back() == 0 && pool.m_dwInUse == 1);
+    ServerFramework::COverlapJobIDPool def;
+    CHECK(def.m_dwMaxID == (DWORD)-1 && def.m_dwNextID == 501 && def.m_deqFree.front() == 1);
+}
+
 int main()
 {
     CNetEngine engine;
@@ -318,6 +335,7 @@ int main()
     g_pBSNet = &g_Net;
     LogCapture_Start();
 
+    TestIDPool();
     TestDateTimeFormat();
     TestDatabaseWithoutServer();
     TestWithAccessDriver();
