@@ -67,3 +67,10 @@ BOOL SelfDivision_IsInGroup2()
         || g_dwSelfDivisionID == 19 || g_dwSelfDivisionID == 20 || g_dwSelfDivisionID == 18
         || g_dwSelfDivisionID == 2 || g_dwSelfDivisionID == 31;
 }
+
+BOOL SelfDivision_IsInGroup3()
+{
+    return g_dwSelfDivisionID == 5 || g_dwSelfDivisionID == 9 || g_dwSelfDivisionID == 26
+        || g_dwSelfDivisionID == 10 || g_dwSelfDivisionID == 3 || g_dwSelfDivisionID == 27
+        || g_dwSelfDivisionID == 34;
+}

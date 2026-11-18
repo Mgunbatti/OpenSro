@@ -9,6 +9,7 @@
 #include "BSLib/DB/Database.h"
 #include "BSNet/Msg.h"
 #include "ServerFramework/CertArch.h"
+#include "ServerFramework/ServerFramework.h"
 
 #include <odbcinst.h>
 #include <stdio.h>
@@ -312,6 +313,27 @@ static void TestMsgCopy()
 }
 
 // ---------------------------------------------------------------------------------------------
+// ServerFramework: the division group SR_ShardManager's code asks for (new, no define)
+
+static void TestDivisionGroup()
+{
+    DWORD dwOld = g_dwSelfDivisionID;
+    int nIn = 0;
+    for (DWORD dw = 0; dw < 64; ++dw)
+    {
+        g_dwSelfDivisionID = dw;
+        BOOL bIn = SelfDivision_IsInGroup3();
+        BOOL bExpected = dw == 3 || dw == 5 || dw == 9 || dw == 10 || dw == 26 || dw == 27
+                         || dw == 34;
+        CHECK(!bIn == !bExpected);
+        if (bIn)
+            ++nIn;
+    }
+    CHECK(nIn == 7);
+    g_dwSelfDivisionID = dwOld;
+}
+
+// ---------------------------------------------------------------------------------------------
 // optional checks against a temporary Access database
 
 static char s_szAccessFile[MAX_PATH];
@@ -414,6 +436,7 @@ int main()
     TestRecords();
     TestRecordAllocator();
     TestMsgCopy();
+    TestDivisionGroup();
     TestWithAccessDriver();
     return TEST_RESULT("Framework201108Test");
 }

@@ -40,3 +40,6 @@ ServerFramework::CServerMoniterView* ServerFrameWindow_GetMonitorView();
 // 20, 31.
 BOOL SelfDivision_IsInGroup1();
 BOOL SelfDivision_IsInGroup2();
+// SR_ShardManager 0x688100 (the same code is unreferenced in AgentServer at 0x40e130): TRUE for
+// the divisions 3, 5, 9, 10, 26, 27, 34.
+BOOL SelfDivision_IsInGroup3();
