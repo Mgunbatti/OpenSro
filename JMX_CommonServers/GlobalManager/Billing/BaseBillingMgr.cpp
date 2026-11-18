@@ -79,6 +79,7 @@ void CBillingPacket::Write(const void* pData, WORD wSize)
 void CBillingPacket::WriteString(const char* psz)
 {
     DWORD dwLen = psz ? (WORD)lstrlenA(psz) : 0;
+    // BUG(GM-019): the cut does not count the length word, so a cut text never fits.
     if ((WORD)dwLen + m_wWritePos >= 4096)
         dwLen = (WORD)(4095 - m_wWritePos);
     Write(&dwLen, 2);
@@ -89,6 +90,7 @@ void CBillingPacket::WriteString(const char* psz)
 void CBillingPacket::WriteString(const std::string& str)
 {
     DWORD dwLen = (WORD)str.size();
+    // BUG(GM-019): as above.
     if ((WORD)dwLen + m_wWritePos >= 4096)
         dwLen = (WORD)(4095 - m_wWritePos);
     Write(&dwLen, 2);
