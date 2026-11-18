@@ -231,16 +231,20 @@ GLOBAL_JOB_OBJS = \
 	$(OBJ)\GlobalManager\ServiceManagerJobs.obj \
 	$(OBJ)\GlobalManager\ServiceManagerLog.obj
 
-# The punishment manager, the user validation history, billing and the slave process. The jobs
-# tests link stand-ins for the punishment manager instead; the exe needs these objects with
-# GLOBAL_OBJS, GLOBAL_SVC_OBJS and GLOBAL_JOB_OBJS (GLOBAL_EXE_OBJS).
+# The punishment manager, the user validation history, billing, the slave process with the IP
+# country table and the CAS chat manager. The jobs tests link stand-ins for the punishment
+# manager instead; the exe needs these objects with GLOBAL_OBJS, GLOBAL_SVC_OBJS and
+# GLOBAL_JOB_OBJS (GLOBAL_EXE_OBJS).
 GLOBAL_BILL_OBJS = \
 	$(OBJ)\GlobalManager\PunishmentManager.obj \
 	$(OBJ)\GlobalManager\UserValidationHistory.obj \
 	$(OBJ)\GlobalManager\IOCP.obj \
 	$(OBJ)\GlobalManager\ThreadEx.obj \
 	$(OBJ)\GlobalManager\BaseBillingMgr.obj \
-	$(OBJ)\GlobalManager\StandardBillingMgr.obj
+	$(OBJ)\GlobalManager\StandardBillingMgr.obj \
+	$(OBJ)\GlobalManager\GlobalManagerSlave.obj \
+	$(OBJ)\GlobalManager\IPCountryTable.obj \
+	$(OBJ)\GlobalManager\CASChat.obj
 GLOBAL_EXE_OBJS = $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_JOB_OBJS) $(GLOBAL_BILL_OBJS)
 
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
@@ -278,7 +282,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\AgentTest.exe $(BIN)\AgentTestNoDetect.exe $(BIN)\Framework2011Test.exe \
         $(BIN)\Framework201101Test.exe $(BIN)\GlobalManagerTest.exe \
         $(BIN)\GlobalManagerSvcTest.exe $(BIN)\GlobalManagerJobsTest.exe \
-        $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe
+        $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe \
+        $(BIN)\GlobalManagerSlaveTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -483,6 +488,9 @@ $(OBJ)\test\GlobalManagerPunishmentTest.obj: test\GlobalManagerPunishmentTest.cp
 $(OBJ)\test\GlobalManagerBillingTest.obj: test\GlobalManagerBillingTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerBillingTest.cpp
 
+$(OBJ)\test\GlobalManagerSlaveTest.obj: test\GlobalManagerSlaveTest.cpp
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerSlaveTest.cpp
+
 # AgentTest and its two stand-ins for XTrap4Server.dll.
 $(OBJ)\test\AgentTest.obj: test\AgentTest.cpp
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\AgentTest.cpp
@@ -603,6 +611,13 @@ $(BIN)\GlobalManagerBillingTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalMana
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerBillingTest.obj $(GLOBAL_EXE_OBJS) \
 	    $(GLOBAL_LIBS) $(SYSLIBS)
 
+# The slave, the IP country table and the CAS chat manager with everything the exe links except
+# the main process; stand-ins for the main process' setter and CDBQuery's execution.
+$(BIN)\GlobalManagerSlaveTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerSlaveTest.obj \
+                                  $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerSlaveTest.obj $(GLOBAL_EXE_OBJS) \
+	    $(GLOBAL_LIBS) $(SYSLIBS)
+
 $(BIN)\AlphegaNet.dll: $(OBJ)\test $(BIN) $(OBJ)\test\BillingTestAlphegaNet.obj
 	link /nologo /DLL /out:$@ $(OBJ)\test\BillingTestAlphegaNet.obj ws2_32.lib
 
@@ -705,6 +720,7 @@ test: all
 	$(BIN)\GlobalManagerJobsTest.exe
 	$(BIN)\GlobalManagerPunishmentTest.exe
 	$(BIN)\GlobalManagerBillingTest.exe
+	$(BIN)\GlobalManagerSlaveTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
