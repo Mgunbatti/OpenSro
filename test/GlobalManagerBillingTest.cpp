@@ -752,6 +752,13 @@ static bool AckTimerStopped()
     return !s_pfnTimerIsActive(eHeartBeatAckTimer);
 }
 
+// SendHeartBeat sends 0x2003 before it starts the answer timer, so the frame can arrive
+// first; the checks wait for the timer.
+static bool AckTimerActive()
+{
+    return s_pfnTimerIsActive(eHeartBeatAckTimer) != 0;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Users
 
@@ -1018,14 +1025,14 @@ static void TestBillingConnect()
     CHECK(Frame(0x2003, want));
     CHECK(WaitFor(IsActivated));
     CHECK(p->IsReady() && !s_pBilling->m_bNoActiveUserList);
-    CHECK(s_pfnTimerIsActive(eHeartBeatTimer) && s_pfnTimerIsActive(eHeartBeatAckTimer));
+    CHECK(WaitFor(AckTimerActive) && s_pfnTimerIsActive(eHeartBeatTimer));
     CHECK(!s_pfnTimerIsActive(eReconnectTimer));
     // 0x4003 stops the answer timer; the heartbeat timer sends the next heartbeat.
     SendFrame(0x4003, Bytes());
     CHECK(WaitFor(AckTimerStopped));
     CHECK(s_pfnTimerFire(eHeartBeatTimer));
     CHECK(Frame(0x2003, want));
-    CHECK(s_pfnTimerIsActive(eHeartBeatAckTimer));
+    CHECK(WaitFor(AckTimerActive));
     SendFrame(0x4003, Bytes());
     CHECK(WaitFor(AckTimerStopped));
 
