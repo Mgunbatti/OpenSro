@@ -2291,3 +2291,4 @@ GlobalManager	0x411c40	sub_411C40	FormatMAC
 GlobalManager	0x5259c0	GlobalManager_AtExitDtor	CGlobalManager::~CGlobalManager
 GlobalManager	0x4129c0	sub_4129C0	GlobalManagerMain_SetLastPlayTimeReset
 GlobalManager	0x40bf30	sub_40BF30	CGlobalManagerMainProcess::DeleteObject
+GlobalManager	0x469890	ServerCord_GetPeerBodyID	PeerBodyID (ServiceManagerPatch.cpp)
