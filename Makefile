@@ -314,7 +314,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\GlobalManagerSlaveTest.exe $(BIN)\GlobalManagerMainTest.exe \
         $(BIN)\Framework201108Test.exe \
         $(BIN)\NewScheduleTest.exe \
-        $(BIN)\StringCheckTest.exe
+        $(BIN)\StringCheckTest.exe \
+        $(BIN)\SimpleFTPTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -559,6 +560,9 @@ $(OBJ)\test\Framework201101Test.obj: test\Framework201101Test.cpp
 $(OBJ)\test\Framework201108Test.obj: test\Framework201108Test.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201108Test.cpp
 
+$(OBJ)\test\SimpleFTPTest.obj: test\SimpleFTPTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\SimpleFTPTest.cpp
+
 $(OBJ)\test\StringCheckTest.obj: test\StringCheckTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\StringCheckTest.cpp
 
@@ -674,6 +678,9 @@ $(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIB
 # Linked with the August 2011 builds of the libraries.
 $(BIN)\Framework201108Test.exe: $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\SimpleFTPTest.exe: $(OBJ)\test\SimpleFTPTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\SimpleFTPTest.obj $(SHARD_LIBS) $(SYSLIBS) wininet.lib
 
 $(BIN)\StringCheckTest.exe: $(OBJ)\test\StringCheckTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\StringCheckTest.obj $(SHARD_LIBS) $(SYSLIBS)
@@ -849,6 +856,7 @@ test: all
 	$(BIN)\Framework201108Test.exe
 	$(BIN)\NewScheduleTest.exe
 	$(BIN)\StringCheckTest.exe
+	$(BIN)\SimpleFTPTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
