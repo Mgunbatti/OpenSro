@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "TestCheck.h"
+#include "TestClock.h"
 #include "LogCapture.h"
 
 #include "GlobalManager/ContentUser.h"
@@ -771,6 +772,8 @@ static void TestInitMsgHandlers()
 {
     CHECK(sizeof(CGlobalManagerMainProcess) == 0x80268);
     CHECK(CGlobalManagerMainProcess::classCGlobalManagerMainProcess.m_nObjectSize == 0x80268);
+    // The time to midnight is checked below.
+    WaitClearOfMidnight(30);
     s_pMain->InitMsgHandlers();
     CHECK(s_pMain->m_aHandler[0x6201] == static_cast<PFN_MSG_HANDLER>(
                                              &CGlobalManagerMainProcess::OnMsg_6201));
@@ -828,6 +831,8 @@ static Bytes LoginData(DWORD dwIP, DWORD dwJID, const char* pszID, WORD wPlayTim
 
 static void TestLogin()
 {
+    // The play times sent are of today.
+    WaitClearOfMidnight(30);
     DWORD dwNow = CDateTime::GetCurrent().GetTime();
     // Billing answers 1: {JID, 1, IP type, play time of today}.
     s_pBilling->m_nResult = 1;
@@ -1048,6 +1053,7 @@ static void TestShardUsers()
 {
     s_pBilling->Clear();
     ClearLogs();
+    WaitClearOfMidnight(30);
     DWORD dwNow = CDateTime::GetCurrent().GetTime();
     Bytes v;
     PutW(v, 10);
@@ -1428,6 +1434,7 @@ static void TestEvents()
     // vf41: both cords of body 1 are up -> state 5; the FarmManager peer starts the play time
     // reset when the last one was not today.
     DropJobs();
+    WaitClearOfMidnight(30);        // the reset day and the seconds since midnight are checked
     s_pMain->m_dwLastPlayTimeReset = CDateTime::GetCurrent().GetTime() - 2 * 86400;
     CHECK(s_pMain->IsPlayTimeResetDue());
     g_pSelfBody->nState = 4;

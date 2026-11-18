@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "TestCheck.h"
+#include "TestClock.h"
 
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
@@ -801,16 +802,26 @@ static void TestPunishmentTick()
 {
     RegisterUser(101, 11, "ending");        // shard 11, managed by body 7
     RegisterUser(102, 10, "starting");
+    // The timestamps have whole seconds: built just after a second boundary, the begin of 102
+    // is close to 2 s ahead, not one that a boundary passing in between makes "now".
+    WaitForSecondStart();
     TIMESTAMP_STRUCT tsPast = LocalStamp(-120);
-    TIMESTAMP_STRUCT tsAlmost = LocalStamp(1);
+    TIMESTAMP_STRUCT tsAlmost = LocalStamp(2);
     TIMESTAMP_STRUCT tsEnd = LocalStamp(3600);
-    // 101 active, ends now; 102 begins in a second. The map has the two nodes, 101 the root
+    // 101 active, ends now; 102 begins in two seconds. The map has the two nodes, 101 the root
     // with 102 as its right child (the loop goes on from the erased node, see GM-015).
     CHECK(PunishmentManager_Add(g_pPunishmentManager, 101, 4, &tsPast, &tsPast));
     CHECK(Relayed(7, 0x6317, Started(101, 4, StampToSystemTime(tsPast))));
     CHECK(PunishmentManager_Add(g_pPunishmentManager, 102, 3, &tsAlmost, &tsEnd));
     CHECK(NoPackets(50));
-    Sleep(2100);
+    // Tick once the begin of 102 passed.
+    FILETIME ftBegin = Punishment_TimestampToFileTime(&tsAlmost);
+    FILETIME ftNow;
+    do
+    {
+        Sleep(50);
+        ftNow = Punishment_GetLocalFileTime();
+    } while (CompareFileTime(&ftBegin, &ftNow) > 0);
     g_PunishmentManager.Tick();
     CHECK(Relayed(7, 0x6317, Ended(101, 4)));
     CHECK(Relayed(7, 0x6317, Started(102, 3, StampThroughFileTime(tsEnd))));
@@ -907,7 +918,10 @@ static void TestUserValidationHistory()
     mgr.Clear(&strUser);
     CHECK(g_UVFailureHistoryPool.m_nInUse == 1);
 
-    // The day check clears everything when the day of the week changed.
+    // The day check clears everything when the day of the week changed (the last check made
+    // now, clear of midnight, so the first check sees the same day).
+    WaitClearOfMidnight(30);
+    mgr.m_dtLastCheck = CDateTime::GetCurrent();
     mgr.CheckDay();
     CHECK(g_UVFailureHistoryPool.m_nInUse == 1);
     mgr.m_dtLastCheck = CDateTime::GetCurrent().GetTime() - 86400;

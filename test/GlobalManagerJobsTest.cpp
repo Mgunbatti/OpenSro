@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "TestCheck.h"
+#include "TestClock.h"
 
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
@@ -684,6 +685,7 @@ static void TestRefreshShardUser()
     std::string str;
     GM_FormatTimestamp(&str, &ts);
     CHECK(str == "2011-1-24 5:6:7");
+    WaitClearOfMidnight(30);        // the date of today is checked in the queries below
     GM_GetLocalTimestamp(&ts);
     SYSTEMTIME st;
     GetLocalTime(&st);

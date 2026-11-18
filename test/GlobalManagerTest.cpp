@@ -6,6 +6,7 @@
 
 #include "LoopbackBind.h"
 #include "TestCheck.h"
+#include "TestClock.h"
 
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
@@ -67,6 +68,7 @@ static void TestWildcard()
     CHECK(ContentUser_IsOfficialIP(0x01AC95DD));
     CHECK(ContentUser_IsOfficialIP(0xFE82093B));
     CHECK(!ContentUser_IsOfficialIP(0x0100007F));
+    WaitClearOfMidnight(5);
     CHECK(!ContentUser_IsNotToday(CDateTime::GetCurrent().GetTime()));
     CHECK(ContentUser_IsNotToday(CDateTime::GetCurrent().GetTime() - 3 * 86400));
 }
