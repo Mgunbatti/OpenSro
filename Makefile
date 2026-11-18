@@ -289,7 +289,7 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\Framework201101Test.exe $(BIN)\GlobalManagerTest.exe \
         $(BIN)\GlobalManagerSvcTest.exe $(BIN)\GlobalManagerJobsTest.exe \
         $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe \
-        $(BIN)\GlobalManagerSlaveTest.exe
+        $(BIN)\GlobalManagerSlaveTest.exe $(BIN)\GlobalManagerMainTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -497,6 +497,9 @@ $(OBJ)\test\GlobalManagerBillingTest.obj: test\GlobalManagerBillingTest.cpp
 $(OBJ)\test\GlobalManagerSlaveTest.obj: test\GlobalManagerSlaveTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerSlaveTest.cpp
 
+$(OBJ)\test\GlobalManagerMainTest.obj: test\GlobalManagerMainTest.cpp
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerMainTest.cpp
+
 # AgentTest and its two stand-ins for XTrap4Server.dll.
 $(OBJ)\test\AgentTest.obj: test\AgentTest.cpp
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\AgentTest.cpp
@@ -625,6 +628,14 @@ $(BIN)\GlobalManagerSlaveTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManage
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerSlaveTest.obj $(GLOBAL_EXE_OBJS) \
 	    $(GLOBAL_LIBS) $(SYSLIBS)
 
+# The main process and the application object with everything the exe links except WinMain;
+# stand-ins for CDBQuery's execution and CDatabase's sessions, a recording billing manager.
+$(BIN)\GlobalManagerMainTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerMainTest.obj \
+                                 $(GLOBAL_APP_OBJS) $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) \
+                                 $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerMainTest.obj $(GLOBAL_APP_OBJS) \
+	    $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
+
 $(BIN)\AlphegaNet.dll: $(OBJ)\test $(BIN) $(OBJ)\test\BillingTestAlphegaNet.obj
 	link /nologo /DLL /out:$@ $(OBJ)\test\BillingTestAlphegaNet.obj ws2_32.lib
 
@@ -737,6 +748,7 @@ test: all
 	$(BIN)\GlobalManagerPunishmentTest.exe
 	$(BIN)\GlobalManagerBillingTest.exe
 	$(BIN)\GlobalManagerSlaveTest.exe
+	$(BIN)\GlobalManagerMainTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
