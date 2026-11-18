@@ -215,9 +215,9 @@ GLOBAL_OBJS = \
 	$(OBJ)\GlobalManager\GlobalManagerJobs.obj \
 	$(OBJ)\GlobalManager\GlobalManagerDB.obj
 
-# The service manager part (CServiceManagerProcess). It calls the SM log members and overlap jobs
-# of the parts that are not ported yet (GlobalManagerSvcFwd.h), so only GlobalManagerSvcTest
-# links it (with stand-ins); the exe needs it in GLOBAL_OBJS.
+# The service manager part (CServiceManagerProcess). Its SM log members and overlap jobs are in
+# GLOBAL_JOB_OBJS; GlobalManagerSvcTest links it with stand-ins for them instead. The exe needs
+# GLOBAL_SVC_OBJS and GLOBAL_JOB_OBJS.
 GLOBAL_SVC_OBJS = \
 	$(OBJ)\GlobalManager\ServiceManagerProcess.obj \
 	$(OBJ)\GlobalManager\ServiceManagerControl.obj \

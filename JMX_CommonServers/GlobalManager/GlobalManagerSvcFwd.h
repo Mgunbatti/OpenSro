@@ -8,13 +8,14 @@
 #include "ServerFramework/ModuleVersion.h"
 #include "ServerFramework/OverlapJob.h"
 
-// Functions of other parts of GlobalManager that the service manager calls (signatures from the
-// binary). The overlap jobs are allocated from their pools with a job ID and set up with the
-// main process' task; the service manager then posts them (CServiceManagerProcess::PostJob or
+// The overlap jobs the service manager starts (signatures from the binary; defined in
+// ServiceManagerJobs.cpp). The jobs are allocated from their pools with a job ID and set up with
+// the main process' task; the service manager then posts them (CServiceManagerProcess::PostJob or
 // SendOverlapJob of the task's job).
 //
 // The SM log members of CServiceManagerProcess (0x450B40 WriteUserLog, 0x450B90 WriteAnswerLog,
-// 0x450CA0 WriteLog, 0x450DE0 WriteQueryLog) are declared in ServiceManagerProcess.h.
+// 0x450CA0 WriteLog, 0x450DE0 WriteQueryLog) are declared in ServiceManagerProcess.h and defined
+// in ServiceManagerLog.cpp with SMLog_GetAnswerType.
 
 typedef ServerFramework::COverlapJob_Local SM_JOB;
 

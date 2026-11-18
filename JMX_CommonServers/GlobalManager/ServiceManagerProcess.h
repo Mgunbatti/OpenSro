@@ -243,8 +243,7 @@ public:
     int OnShardServiceRow(DWORD dwQuery, DWORD dwUnused);   // 0x44A320
     int OnUserJIDRow(DWORD dwQuery, DWORD dwUnused);        // 0x44A660
 
-    // Defined with the SM log jobs (0x450B40..0x450F10, outside this part; see
-    // GlobalManagerSvcFwd.h).
+    // The SMC log (ServiceManagerLog.cpp): every line is an SMLog job.
     void WriteLog(DWORD dwSessionID, BYTE byType, const char* pszFormat, ...);     // 0x450CA0
     void WriteQueryLog(DWORD dwSessionID, const char* pszFormat, ...);             // 0x450DE0
     void WriteAnswerLog(std::string* pstrText, DWORD dwSessionID, BYTE byType);    // 0x450B90
