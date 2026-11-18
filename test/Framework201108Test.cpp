@@ -5,6 +5,7 @@
 // check.
 
 #include "BSLib/ChunkAllocator.h"
+#include "BSLib/DB/CustomAllocator.h"
 #include "BSLib/DB/Database.h"
 #include "ServerFramework/CertArch.h"
 
@@ -186,6 +187,78 @@ static void TestRecords()
 }
 
 // ---------------------------------------------------------------------------------------------
+// BSLib DB: the record allocator template (one instance per record type in SR_ShardManager)
+
+typedef CCustomAllocator<CShardRecord, CChunkAllocatorMT<CShardRecord> > CShardAllocMT;
+typedef CCustomAllocator<CShardRecord, CChunkAllocatorST<CShardRecord> > CShardAllocST;
+
+static void TestRecordAllocator()
+{
+    C_ASSERT(sizeof(CShardAllocMT) == 0xA0);
+    C_ASSERT(sizeof(CShardAllocST) == 0x64);
+    C_ASSERT(FIELD_OFFSET(CShardAllocMT, m_Pool) == 8);
+    C_ASSERT(FIELD_OFFSET(CShardAllocMT, m_Pool.m_cs) == 8 + 0x5C);
+
+    CDBTableInfo info;
+    FillShardInfo(info);
+    s_pShardInfo = &info;
+    CDBTable table;
+
+    // the pool is named after the table, 1000 records per block
+    CShardAllocMT* pMT = new CShardAllocMT(&table, &info);
+    CHECK(pMT->m_pTable == &table);
+    CHECK(pMT->m_Pool.m_strName == "T" && pMT->m_Pool.m_nItemsPerBlock == 1000);
+    CHECK(pMT->m_Pool.m_pfnInit == NULL && pMT->m_Pool.m_dwInitParam == 0);
+    CShardAllocST st(&table, NULL);
+    CHECK(st.m_Pool.m_strName == "Unknown DB Table" && st.m_Pool.m_nItemsPerBlock == 1000);
+
+    // through the base class slots
+    _record_allocator* pAlloc = pMT;
+    DWORD dwTotal = 9;
+    DWORD dwUsed = 9;
+    pAlloc->vf03(&dwTotal, &dwUsed);
+    CHECK(dwTotal == 0 && dwUsed == 0);
+    CDBRecord* p1 = pAlloc->AllocRecord();
+    CDBRecord* p2 = pAlloc->AllocRecord();
+    CHECK(p1 != NULL && (CShardRecord*)p2 == (CShardRecord*)p1 + 1);
+    pAlloc->vf03(&dwTotal, &dwUsed);
+    CHECK(dwTotal == 1000 && dwUsed == 2);
+    pAlloc->FreeRecord(p1);
+    pAlloc->vf03(&dwTotal, &dwUsed);
+    CHECK(dwTotal == 1000 && dwUsed == 1);
+    // the freed record goes to the end of the free list
+    CHECK(pMT->m_Pool.m_FreeQue.GetSize() == 999 && pMT->m_Pool.m_FreeQue.m_Que.back() == p1);
+    // NULL asserts and changes nothing
+    pAlloc->FreeRecord(NULL);
+    pAlloc->vf03(&dwTotal, &dwUsed);
+    CHECK(dwUsed == 1 && pMT->m_Pool.m_FreeQue.GetSize() == 999);
+
+    // a full free list drops the record but counts it as returned
+    CDBRecord* p3 = st.AllocRecord();
+    CHECK(p3 != NULL);
+    size_t nFree = st.m_Pool.m_FreeQue.GetSize();
+    st.m_Pool.m_FreeQue.m_nMaxSize = (LONG)nFree;
+    st.FreeRecord(p3);
+    st.vf03(&dwTotal, &dwUsed);
+    CHECK(dwTotal == 1000 && dwUsed == 0 && st.m_Pool.m_FreeQue.GetSize() == nFree);
+
+    // the table creates and frees its records through the allocator
+    CHECK(table.Open(&info, NULL, pMT) == 1 && table.m_pAllocator == pMT);
+    CDBRecord* pRec = table.CreateRecord();
+    CHECK((CShardRecord*)pRec == (CShardRecord*)p2 + 1 && pRec->m_pOwner == &table && pRec->m_qwDirty == 0);
+    pAlloc->vf03(&dwTotal, &dwUsed);
+    CHECK(dwUsed == 2);
+    table.FreeRecord(pRec);
+    CHECK(pRec->m_pOwner == NULL);
+    pAlloc->vf03(&dwTotal, &dwUsed);
+    CHECK(dwUsed == 1);
+    // the table deletes the allocator
+    table.Close();
+    CHECK(table.m_pAllocator == NULL);
+    s_pShardInfo = NULL;
+}
+
+// ---------------------------------------------------------------------------------------------
 // optional checks against a temporary Access database
 
 static char s_szAccessFile[MAX_PATH];
@@ -286,6 +359,7 @@ int main()
     TestBuild();
     TestSessionCount();
     TestRecords();
+    TestRecordAllocator();
     TestWithAccessDriver();
     return TEST_RESULT("Framework201108Test");
 }
