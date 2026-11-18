@@ -48,7 +48,11 @@ BSLIB_OBJS = \
 	$(OBJ)\BSLib\StringUtil.obj \
 	$(OBJ)\BSLib\Registry.obj \
 	$(OBJ)\BSLib\Database.obj \
-	$(OBJ)\BSLib\DBQuery.obj
+	$(OBJ)\BSLib\DBQuery.obj \
+	$(OBJ)\BSLib\StringCheck.obj \
+	$(OBJ)\BSLib\Schedule.obj \
+	$(OBJ)\BSLib\ScheduleManager.obj \
+	$(OBJ)\BSLib\ScheduleExecutor.obj
 
 BSNET_OBJS = \
 	$(OBJ)\BSNet\Msg.obj \
@@ -100,7 +104,8 @@ SRVFW_OBJS = \
 	$(OBJ)\ServerFramework\ServerProcessMain.obj \
 	$(OBJ)\ServerFramework\ServerApp.obj \
 	$(OBJ)\ServerFramework\CrashDump.obj \
-	$(OBJ)\ServerFramework\NTService.obj
+	$(OBJ)\ServerFramework\NTService.obj \
+	$(OBJ)\ServerFramework\SimpleFTP.obj
 
 LIBS = $(LIBDIR)\ServerFramework.lib $(LIBDIR)\BSNet.lib $(LIBDIR)\BSLib.lib
 
@@ -338,6 +343,9 @@ $(OBJ)\AgentServer $(OBJ)\AgentServer\patched:
 {JMX_Library\BSLib\Util}.cpp{$(OBJ)\BSLib}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
 
+{JMX_Library\BSLib\NewSchedule}.cpp{$(OBJ)\BSLib}.obj:
+	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
+
 {JMX_Library\BSLib\DB}.cpp{$(OBJ)\BSLib}.obj:
 	cl $(CFLAGS) /Fo$@ /Fd$(OBJ)\BSLib\ $<
 
@@ -378,6 +386,9 @@ $(OBJ)\AgentServer $(OBJ)\AgentServer\patched:
 	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
 
 {JMX_Library\BSLib\Util}.cpp{$(FARM_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\NewSchedule}.cpp{$(FARM_OBJ)\BSLib}.obj:
 	cl $(CFLAGS) $(FARM_DEFS) /Fo$@ /Fd$(FARM_OBJ)\BSLib\ $<
 
 {JMX_Library\BSLib\DB}.cpp{$(FARM_OBJ)\BSLib}.obj:
@@ -425,6 +436,9 @@ $(AGENT_OBJ)\BSLib $(AGENT_OBJ)\BSNet $(AGENT_OBJ)\ServerFramework $(AGENT_LIBDI
 {JMX_Library\BSLib\Util}.cpp{$(AGENT_OBJ)\BSLib}.obj:
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
 
+{JMX_Library\BSLib\NewSchedule}.cpp{$(AGENT_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
+
 {JMX_Library\BSLib\DB}.cpp{$(AGENT_OBJ)\BSLib}.obj:
 	cl $(CFLAGS) $(AGENT_DEFS) /Fo$@ /Fd$(AGENT_OBJ)\BSLib\ $<
 
@@ -462,6 +476,9 @@ $(GLOBAL_OBJ)\BSLib $(GLOBAL_OBJ)\BSNet $(GLOBAL_OBJ)\ServerFramework $(GLOBAL_L
 {JMX_Library\BSLib\Util}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
 
+{JMX_Library\BSLib\NewSchedule}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
+
 {JMX_Library\BSLib\DB}.cpp{$(GLOBAL_OBJ)\BSLib}.obj:
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(GLOBAL_OBJ)\BSLib\ $<
 
@@ -497,6 +514,9 @@ $(SHARD_OBJ)\BSLib $(SHARD_OBJ)\BSNet $(SHARD_OBJ)\ServerFramework $(SHARD_LIBDI
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
 
 {JMX_Library\BSLib\Util}.cpp{$(SHARD_OBJ)\BSLib}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
+
+{JMX_Library\BSLib\NewSchedule}.cpp{$(SHARD_OBJ)\BSLib}.obj:
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(SHARD_OBJ)\BSLib\ $<
 
 {JMX_Library\BSLib\DB}.cpp{$(SHARD_OBJ)\BSLib}.obj:
