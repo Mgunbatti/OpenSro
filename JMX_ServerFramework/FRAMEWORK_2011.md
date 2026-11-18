@@ -208,6 +208,8 @@ vtable slots 5 and 6 instead of leaving them pure. No other class layout differs
 | 0x5494a0.., 0x549520.., 0x55ca00 | `CCustomAllocator<T, TPool>` (BSLib\DB\CustomAllocator.h) | New, no define: the record allocator of a table on a `CChunkAllocatorMT<T>` / `CChunkAllocatorST<T>` of 1000 records per block named after the table ("Unknown DB Table"); slots 1 `AllocRecord`, 2 `FreeRecord`, 3 the pool counts | - |
 | 0x41b5a0 | `CMsg::CopyPayloadFrom` (BSNet\Msg.cpp) | New, no define: appends the unread part (mode 1) or the whole payload of another message and marks that one as read | - |
 | 0x688100 | `SelfDivision_IsInGroup3` (ServerFramework.cpp) | New, no define: division 3, 5, 9, 10, 26, 27 or 34 (unreferenced in AgentServer at 0x40e130) | - |
+| 0x40aa40, 0x40b3a0, 0x41b550 | `CMsg::ReadForwardOnly<T>` (BSNet\Msg.h) | New, no define: the forward read the application code inlines (also GlobalManager 0x40e2a0): ignores `m_bReadForward`, a short packet asserts and crashes (`BS_CRASH`) instead of throwing `CMsgException` | - |
+| 0x687f10 | `ServerFramework::Msg_Build2209` (ServerProcess.cpp) | New, no define: a new engine message 0x2209 {DWORD session, WORD opcode}, the header of a packet relayed to a client | - |
 
 No new bug of the August code was found; `ExecDirectWithReturnValue` has the endless
 `SQLMoreResults` loop of DB-007.
@@ -215,5 +217,5 @@ No new bug of the August code was found; `ExecDirectWithReturnValue` has the end
 `test\Framework201108Test.cpp` (compiled with `SHARD_DEFS`, linked with `SHARD_LIBS`) checks
 every row: the pool sizes, the record slots and dirty bits, `Update` and
 `ExecDirectWithReturnValue` (with the 32-bit Access ODBC driver against a temporary .mdb), the
-allocator template through the `_record_allocator` slots and `CDBTable`, `CopyPayloadFrom` and
-the division group.
+allocator template through the `_record_allocator` slots and `CDBTable`, `CopyPayloadFrom`, the
+forward-only reads (the crash under `__try`), the 0x2209 header and the division group.
