@@ -61,6 +61,131 @@ static void TestSessionCount()
 }
 
 // ---------------------------------------------------------------------------------------------
+// BSLib DB records: the default data slots, the dirty bits, Update on connection 0
+
+struct SHARD_ROW
+{
+    int     nId;        // +0
+    short   sScore;     // +4
+};
+
+static CDBTableInfo* s_pShardInfo = NULL;
+
+// The row follows the CDBRecord part (CDBTableInfo::m_nDataOffset 24); InitData and GetData are
+// the defaults of the August library.
+class CShardRecord : public CDBRecord
+{
+public:
+    virtual void Reserved02() {}
+    virtual CDBTableInfo* GetTableInfo() { return s_pShardInfo; }
+    virtual void AllocData(int) {}
+    virtual void SetField(const DBColumnInfo*, const void*) {}
+
+    SHARD_ROW m_row;    // +18
+};
+
+C_ASSERT(FIELD_OFFSET(CShardRecord, m_row) == 24);
+
+class CShardStream : public CDBRecStream
+{
+public:
+    virtual void Reserved02() {}
+    virtual CDBTableInfo* GetTableInfo() { return s_pShardInfo; }
+    virtual void AllocData(int) {}
+    virtual void SetField(const DBColumnInfo*, const void*) {}
+};
+
+static DBColumnInfo MakeColumn(const char* pszName, int nType, int nOffset)
+{
+    DBColumnInfo col;
+    col.strName = pszName;
+    col.nType = nType;
+    col.nOffset = nOffset;
+    col.strFormat = DB_ColumnTypeFormat(nType);
+    return col;
+}
+
+// T: key id, group 2 score.
+static void FillShardInfo(CDBTableInfo& info)
+{
+    info.m_pRecordClass = NULL;
+    info.m_strTable = "T";
+    info.m_dwFlags = DBTABLE_UPDATE;
+    info.m_nRowSize = 0;
+    info.m_nColumns = 0;
+    info.m_pIdentity = NULL;
+    info.m_pTable = NULL;
+    info.m_nDataOffset = FIELD_OFFSET(CShardRecord, m_row);
+    info.m_mapGroups.clear();
+    info.m_mapGroups[DBGROUP_KEY].vecColumns.push_back(MakeColumn("id", DBTYPE_INT, 0));
+    info.m_mapGroups[2].vecColumns.push_back(MakeColumn("score", DBTYPE_SHORT, 4));
+    info.BuildSqlTemplates(0);
+}
+
+static void TestRecords()
+{
+    C_ASSERT(FIELD_OFFSET(CDBTableInfo, m_nDataOffset) == 0x104);
+    CDBTableInfo info;
+    FillShardInfo(info);
+    s_pShardInfo = &info;
+
+    CShardRecord rec;
+    rec.m_row.nId = 7;
+    rec.m_row.sScore = -3;
+    // the default InitData clears the dirty bits, GetData is the record plus the data offset
+    rec.m_qwDirty = 5;
+    rec.InitData();
+    CHECK(rec.m_qwDirty == 0);
+    CHECK(rec.GetData() == (BYTE*)&rec.m_row);
+
+    std::string str;
+    rec.m_qwDirty = 4;
+    CHECK(rec.BuildUpdate(str, 2) == 1 && str == "UPDATE T SET score=-3 WHERE id=7");
+    CHECK(rec.m_qwDirty == 0);
+
+    // ClearDirty: from 64 on an assert (no change); a negative group clears the bit of its low
+    // byte (January 2011: both ignored)
+    rec.m_qwDirty = 4;
+    rec.ClearDirty(64);
+    rec.ClearDirty(300);
+    CHECK(rec.m_qwDirty == 4);
+    rec.ClearDirty(-254);
+    CHECK(rec.m_qwDirty == 0);
+    rec.m_qwDirty = 2;
+    rec.ClearDirty(-1);
+    CHECK(rec.m_qwDirty == 2);
+
+    // Update: built, then no statement (no pool)
+    CDBTable table;
+    rec.m_qwDirty = 4;
+    CHECK(rec.Update(&table, 2) == -3);
+    CHECK(rec.m_qwDirty == 0);
+    CHECK(rec.Update(&table, 2) == 0);
+
+    // the stream record's defaults: the buffer at +18, InitData clears +1C, +20 and +28
+    CShardStream stream;
+    BYTE abBuffer[4];
+    stream.m_dw18 = (DWORD)abBuffer;
+    stream.m_dw1C = 1;
+    stream.m_dw20 = 2;
+    stream.m_dw24 = 3;
+    stream.m_dw28 = 4;
+    stream.m_qwDirty = 6;
+    stream.InitData();
+    CHECK(stream.m_dw1C == 0 && stream.m_dw20 == 0 && stream.m_dw28 == 0);
+    CHECK(stream.m_dw24 == 3 && stream.m_qwDirty == 6);
+    CHECK(stream.GetData() == abBuffer);
+    stream.m_dw18 = 0;
+    CHECK(stream.GetData() == NULL);
+
+    // ExecDirectWithReturnValue without text / statement
+    CHECK(CDatabase::ExecDirectWithReturnValue(NULL, 0, NULL, 0, NULL) == -1);
+    CHECK(CDatabase::ExecDirectWithReturnValue(NULL, 0, "", DBEXEC_RETURN_INT, NULL) == -1);
+    CHECK(CDatabase::ExecDirectWithReturnValue(NULL, 0, "select 1", 0, NULL) == -3);
+    s_pShardInfo = NULL;
+}
+
+// ---------------------------------------------------------------------------------------------
 // optional checks against a temporary Access database
 
 static char s_szAccessFile[MAX_PATH];
@@ -117,6 +242,38 @@ static void TestWithAccessDriver()
     CHECK(CDBSessionMgr::GetConnection(pSession, 1) != NULL);
     CHECK(CDBSessionMgr::GetConnection(pSession, 2) == NULL);
 
+    // ExecDirectWithReturnValue without an output parameter
+    CHECK(CDatabase::ExecDirectWithReturnValue(pSession, 0, "CREATE TABLE T (id INTEGER, "
+                                               "score SMALLINT)", 0, NULL) == SQL_SUCCESS);
+    CHECK(CDatabase::ExecDirectWithReturnValue(pSession, 0, "INSERT INTO T VALUES (7, 1)",
+                                               DBEXEC_RETURN_INT, NULL) == SQL_SUCCESS);
+    CHECK(CDatabase::ExecDirectWithReturnValue(pSession, 0, "SELECT * FROM NoSuchTable", 0,
+                                               NULL) == SQL_ERROR);
+    CHECK(CDatabase::ExecDirectWithReturnValue(pSession, 2, "SELECT * FROM T", 0, NULL) == -3);
+
+    // Update runs the statement on connection 0 (the Access driver shows the changes of one
+    // connection to another only later, so everything here uses connection 0)
+    CDBTableInfo info;
+    FillShardInfo(info);
+    s_pShardInfo = &info;
+    CDBTable table;
+    table.m_pSession = pSession;
+    CShardRecord rec;
+    rec.m_row.nId = 7;
+    rec.m_row.sScore = -3;
+    rec.m_qwDirty = 4;
+    CHECK(rec.Update(&table, 2) == SQL_SUCCESS && rec.m_qwDirty == 0);
+    SQLHSTMT hStmt = CDatabase::AllocStmt(pSession, 0);
+    CHECK(hStmt != NULL);
+    SQLSMALLINT sScore = 0;
+    SQLINTEGER cb = 0;
+    CHECK(SQL_SUCCEEDED(SQLExecDirect(hStmt, (SQLCHAR*)"SELECT score FROM T WHERE id=7",
+                                      SQL_NTS)));
+    CHECK(SQL_SUCCEEDED(SQLFetch(hStmt)));
+    CHECK(SQL_SUCCEEDED(SQLGetData(hStmt, 1, SQL_C_SSHORT, &sScore, 0, &cb)) && sScore == -3);
+    SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
+    s_pShardInfo = NULL;
+
     CDatabase::DestroySession(pSession);
     CDatabase::DestroyAllSessions();
     CHECK(g_hDBEnv == NULL && g_pSetDBSessionMgr == NULL);
@@ -128,6 +285,7 @@ int main()
 {
     TestBuild();
     TestSessionCount();
+    TestRecords();
     TestWithAccessDriver();
     return TEST_RESULT("Framework201108Test");
 }

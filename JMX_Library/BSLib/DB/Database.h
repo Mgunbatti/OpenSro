@@ -150,12 +150,20 @@ public:
     int             m_nColumns;         // +F8  columns over all groups
     DBColumnInfo*   m_pIdentity;        // +FC  identity column, if any
     CDBTable*       m_pTable;           // +100 binding that uses this description
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x402c70 (CDBRecord::GetData): offset of the row data in the record
+    // object, set by the application's table description.
+    int             m_nDataOffset;      // +104
+#endif
 };
 
 C_ASSERT(FIELD_OFFSET(CDBTableInfo, m_strKeyWhere) == 0xC8);
 C_ASSERT(FIELD_OFFSET(CDBTableInfo, m_mapGroups) == 0xE4);
 C_ASSERT(FIELD_OFFSET(CDBTableInfo, m_nRowSize) == 0xF0);
 C_ASSERT(FIELD_OFFSET(CDBTableInfo, m_pTable) == 0x100);
+#ifdef JMX_FRAMEWORK_2011_08
+C_ASSERT(FIELD_OFFSET(CDBTableInfo, m_nDataOffset) == 0x104);
+#endif
 
 // Base of the record objects (24 bytes). The Gateway contains no record class, so the
 // constructor and slot 2 are not known; the slots the library calls are 3..7.
@@ -171,9 +179,20 @@ public:
     virtual CDBTableInfo* GetTableInfo() = 0;                               // 3
     // Called once after creation with CDBTableInfo::m_nRowSize.
     virtual void AllocData(int nRowSize) = 0;                               // 4
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x404080: the default clears the dirty bits.
+    virtual void InitData();                                                // 5
+#else
     virtual void InitData() = 0;                                            // 5
+#endif
     // Record data; DBColumnInfo::nOffset is relative to it.
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x402c70: the default is the record itself plus
+    // CDBTableInfo::m_nDataOffset.
+    virtual BYTE* GetData();                                                // 6
+#else
     virtual BYTE* GetData() = 0;                                            // 6
+#endif
     // Stores one fetched column value (pValue points into the fetch buffer).
     virtual void SetField(const DBColumnInfo* pColumn, const void* pValue) = 0;   // 7
 
@@ -197,8 +216,14 @@ public:
     // nGroup == -1, one statement for all dirty groups. 1 with strOut set (the dirty bits are
     // cleared), 0 when nothing can be built.
     int BuildUpdate(std::string& strOut, int nGroup);
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x6b2f60: BuildUpdate + CDatabase::ExecDirectWithReturnValue on
+    // connection 0 of the table's pool (no connection argument).
+    int Update(CDBTable* pTable, int nGroup);
+#else
     // CDBTable::ExecUpdate (0x4788a0): BuildUpdate + CDatabase::ExecDirect on the table's pool.
     int Update(CDBTable* pTable, int nConn, int nGroup);
+#endif
 
 public:
     DWORD               m_dw04;         // +04
@@ -223,6 +248,13 @@ public:
     DWORD m_dw24;       // +24
     DWORD m_dw28;       // +28
     DWORD m_dw2C;       // +2C
+
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x61a580: clears +1C, +20 and +28 (not the dirty bits).
+    virtual void InitData();                                                // 5
+    // SR_ShardManager 0x61a560: the buffer at +18 (asserts when there is none).
+    virtual BYTE* GetData();                                                // 6
+#endif
 };
 
 C_ASSERT(sizeof(CDBRecStream) == 48);
@@ -362,6 +394,13 @@ enum
     DBPARAM_VARCHAR     = 6,
 };
 
+// dwFlags of CDatabase::ExecDirectWithReturnValue (the int wins when both are set).
+enum
+{
+    DBEXEC_RETURN_INT       = 0x02,     // SQL_C_SLONG / SQL_INTEGER output parameter
+    DBEXEC_RETURN_BIGINT    = 0x04,     // SQL_C_SBIGINT / SQL_BIGINT output parameter
+};
+
 struct DB_PARAM
 {
     int         nType;          // +00  DBPARAM_*
@@ -412,6 +451,12 @@ public:
     // -1 empty text, -2 no statement, otherwise the last result. See DB-006, DB-007.
     static int ExecDirectWithParams(CDBSessionMgr* pSession, int nConn, const char* pszSql,
                                     DBParamList* pParams);
+    // SR_ShardManager 0x6b28d0 (not linked by the earlier modules): executes pszSql; with
+    // DBEXEC_RETURN_INT / DBEXEC_RETURN_BIGINT and pValue, pValue is bound as output parameter 1
+    // (int or __int64, "{? = call ...}") and the remaining results are skipped. -1 empty text,
+    // -3 no statement, otherwise the (last) result. See DB-007.
+    static int ExecDirectWithReturnValue(CDBSessionMgr* pSession, int nConn, const char* pszSql,
+                                         DWORD dwFlags, SQLPOINTER pValue);
 
     // 0x47b200: logs the query and the statement diagnostics (lines of up to 80 characters)
     // with NetEngineLog(0x2000001), plus "Database Connection was lost!!! ..." for SQLSTATE

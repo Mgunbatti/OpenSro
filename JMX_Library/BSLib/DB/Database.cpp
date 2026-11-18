@@ -391,6 +391,44 @@ int CDatabase::ExecDirect(const char* pszSql, CDBSessionMgr* pSession, int nConn
     return nRet;
 }
 
+int CDatabase::ExecDirectWithReturnValue(CDBSessionMgr* pSession, int nConn, const char* pszSql,
+                                         DWORD dwFlags, SQLPOINTER pValue)
+{
+    if (pszSql == NULL || !lstrlenA(pszSql))
+        return -1;
+    SQLHSTMT hStmt = AllocStmt(pSession, nConn);
+    if (hStmt == NULL)
+        return -3;
+
+    SQLINTEGER cbValue = 0;
+    if (dwFlags & DBEXEC_RETURN_INT)
+    {
+        if (pValue)
+            SQLBindParameter(hStmt, 1, SQL_PARAM_OUTPUT, SQL_C_SLONG, SQL_INTEGER, 0, 0, pValue,
+                             0, &cbValue);
+    }
+    else if ((dwFlags & DBEXEC_RETURN_BIGINT) && pValue)
+    {
+        SQLBindParameter(hStmt, 1, SQL_PARAM_OUTPUT, SQL_C_SBIGINT, SQL_BIGINT, 0, 0, pValue, 0,
+                         &cbValue);
+    }
+
+    SQLRETURN nRet = SQLExecDirect(hStmt, (SQLCHAR*)pszSql, SQL_NTS);
+    if (SQL_SUCCEEDED(nRet) && (dwFlags & (DBEXEC_RETURN_INT | DBEXEC_RETURN_BIGINT)) && pValue)
+    {
+        // BUG(DB-007): SQLMoreResults returning SQL_ERROR or SQL_INVALID_HANDLE repeats
+        // forever.
+        while (SQLMoreResults(hStmt) != SQL_NO_DATA)
+            ;
+        nRet = SQL_SUCCESS;
+    }
+    if (!SQL_SUCCEEDED(nRet) && nRet != SQL_NO_DATA)
+        HandleSQLError(nRet, hStmt, pszSql);
+    SQLFreeStmt(hStmt, SQL_CLOSE);
+    SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
+    return nRet;
+}
+
 int CDatabase::ExecDirectWithParams(CDBSessionMgr* pSession, int nConn, const char* pszSql,
                                     DBParamList* pParams)
 {
@@ -572,6 +610,36 @@ CDBRecord::~CDBRecord()
 {
 }
 
+#ifdef JMX_FRAMEWORK_2011_08
+// SR_ShardManager 0x404080
+void CDBRecord::InitData()
+{
+    m_qwDirty = 0;
+}
+
+// SR_ShardManager 0x402c70
+BYTE* CDBRecord::GetData()
+{
+    return (BYTE*)this + GetTableInfo()->m_nDataOffset;
+}
+
+// SR_ShardManager 0x61a580
+void CDBRecStream::InitData()
+{
+    m_dw28 = 0;
+    m_dw20 = 0;
+    m_dw1C = 0;
+}
+
+// SR_ShardManager 0x61a560
+BYTE* CDBRecStream::GetData()
+{
+    if (!m_dw18)
+        BSAssertFail();
+    return (BYTE*)m_dw18;
+}
+#endif
+
 // The shift is done on the low byte of the group number (_allshl): 0 from 64 on.
 static unsigned __int64 DirtyBit(int nGroup)
 {
@@ -588,8 +656,18 @@ BOOL CDBRecord::IsDirty(int nGroup) const
 
 void CDBRecord::ClearDirty(int nGroup)
 {
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x43f920: a group from 64 on asserts; a negative one clears the bit of
+    // its low byte like DirtyBit (January 2011: both ignored).
+    if (nGroup >= 64)
+    {
+        BSAssertFail();
+        return;
+    }
+#else
     if ((unsigned)nGroup > 63)
         return;
+#endif
     m_qwDirty &= ~DirtyBit(nGroup);
 }
 
@@ -716,7 +794,15 @@ int CDBRecord::BuildUpdate(std::string& strOut, int nGroup)
                 return 0;
             strOut.assign(szText);
         }
+#ifdef JMX_FRAMEWORK_2011_08
+        // SR_ShardManager 0x6b52aa: a negative group asserts instead of being cleared.
+        if (nGroup < 0)
+            BSAssertFail();
+        else
+            ClearDirty(nGroup);
+#else
         ClearDirty(nGroup);
+#endif
         return 1;
     }
 
@@ -757,6 +843,17 @@ int CDBRecord::BuildUpdate(std::string& strOut, int nGroup)
     return 1;
 }
 
+#ifdef JMX_FRAMEWORK_2011_08
+// SR_ShardManager 0x6b2f60: always connection 0, through ExecDirectWithReturnValue without an
+// output parameter.
+int CDBRecord::Update(CDBTable* pTable, int nGroup)
+{
+    std::string strSql;
+    if (BuildUpdate(strSql, nGroup) != 1)
+        return 0;
+    return CDatabase::ExecDirectWithReturnValue(pTable->m_pSession, 0, strSql.c_str(), 0, NULL);
+}
+#else
 int CDBRecord::Update(CDBTable* pTable, int nConn, int nGroup)
 {
     std::string strSql;
@@ -764,6 +861,7 @@ int CDBRecord::Update(CDBTable* pTable, int nConn, int nGroup)
         return 0;
     return CDatabase::ExecDirect(strSql.c_str(), pTable->m_pSession, nConn);
 }
+#endif
 
 // ---------------------------------------------------------------------------------------------
 // _record_allocator
