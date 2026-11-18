@@ -219,3 +219,29 @@ every row: the pool sizes, the record slots and dirty bits, `Update` and
 `ExecDirectWithReturnValue` (with the 32-bit Access ODBC driver against a temporary .mdb), the
 allocator template through the `_record_allocator` slots and `CDBTable`, `CopyPayloadFrom`, the
 forward-only reads (the crash under `__try`), the 0x2209 header and the division group.
+
+### Libraries no earlier module linked (SR_ShardManager, also used by SR_GameServer)
+
+Added without a define and built into every library set (BSLib / ServerFramework); only the
+SR modules link them. `test\NewScheduleTest.cpp`, `test\StringCheckTest.cpp` and
+`test\SimpleFTPTest.cpp` are compiled with `SHARD_DEFS` and linked with `SHARD_LIBS`
+(SimpleFTPTest also with wininet.lib).
+
+| Original (SR_ShardManager) | Rewrite | What it is |
+|---|---|---|
+| 0x6d6d60..0x6dea10, 0x6d7170..0x6d7c10 | `NewSchedule::ISchedule` and ten rule classes, date helpers (BSLib\NewSchedule\Schedule.h/.cpp) | One `_Schedule` row (0x913 bytes) per rule object (0x944 bytes, `CreateByType` by type 1..10): every day, every n days, weekly, every n weeks, n-th week of every (n-th) month, a day of every (n-th) month, repeating slots inside a daily window, once. Slot 1 the running and next period at a time, slot 2 the next period, slot 3 the previous one (the analysis called it GetNextPeriodFrom). All dates go through the component constructor of `CDateTime` and let mktime normalise day 0, day 32, month 13. |
+| 0x6bf480..0x6c09a0, 0x6c77f0..0x6c8430 | `NewSchedule::CScheduleGroup`, `CScheduleManager` (ScheduleManager.h/.cpp) | Groups of rules per `_RefScheduleDefine` entry; a queue of begin / end events sorted by time (unsigned), slot 2 at service start for running periods, slot 3 for due events; the application derives the manager (CShard_ScheduleManager, static at 0x8a7b24). |
+| 0x6bea60..0x6befc0, 0x6c7510..0x6c7570, 0x6642c0 / 0x664330 | `NewSchedule::IScheduleJob`, `CScheduleExecutor` (ScheduleExecutor.h/.cpp) | Jobs (no virtual destructor; deleted through the base class) by schedule ID with CanBegin / OnBegin / OnTick / OnEnd, a list of job prototypes. |
+| 0x6df010..0x6e1df0 | `CStringCheck`, `CStringProcess`, `CStringLineReader` (BSLib\Util\StringCheck.h/.cpp) | The name filter: UTF-16 filter file with "#allow_id_table first last" lines (allowed character codes, the table keeps forbidden bits), words with four columns (1 forbidden word, 2 forbidden part), a column offset per language; comment-aware line reader and number / token reader. |
+| 0x6be610..0x6be8e0 | `CSimpleFTP` (ServerFramework\SimpleFTP.h/.cpp) | WinInet uploader of the guild crests: user and password from the caller's ftp:// URL, passive mode, folder "./SRO_CREST", 256-byte uploads. |
+
+`CDateTime` (BSLib\Util\TimeSpan.cpp) of the August 2011 library: `GetLocalTm(struct tm* ptm)`
+with a target (0x6c1d90, added without define; NULL keeps the old behaviour); the component
+constructor (0x6c1e50) under `JMX_FRAMEWORK_2011_08` checks neither the ranges nor the mktime
+result (the reachable copy in GlobalManager is the 2008 one).
+
+Bugs of this code reproduced on purpose: FW11-022 (Everymonths_Date stores type 3), FW11-023
+(periods, events and job infos cleared with memset leak short names), FW11-024 (uninitialised
+times at service start), FW11-025 (Repeat_Sometime running slot after the time), FW11-026
+(Once_Date time fields), FW11-027 (FTP password in the log), FW11-028 (reads past a trailing
+lead byte), FW11-029 (unbounded word copy).
