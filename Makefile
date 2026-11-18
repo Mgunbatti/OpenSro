@@ -208,7 +208,8 @@ GLOBAL_LIBS = $(GLOBAL_LIBDIR)\ServerFramework.lib $(GLOBAL_LIBDIR)\BSNet.lib \
               $(GLOBAL_LIBDIR)\BSLib.lib
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
-# The tests link the parts they need with their own stand-ins.
+# GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
+# GLOBAL_EXE_OBJS; the tests link the parts they need with their own stand-ins.
 GLOBAL_OBJS = \
 	$(OBJ)\GlobalManager\ContentUser.obj \
 	$(OBJ)\GlobalManager\GlobalManagerJobs.obj \
@@ -245,8 +246,12 @@ GLOBAL_BILL_OBJS = \
 	$(OBJ)\GlobalManager\IPCountryTable.obj \
 	$(OBJ)\GlobalManager\CASChat.obj
 GLOBAL_EXE_OBJS = $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_JOB_OBJS) $(GLOBAL_BILL_OBJS)
-# The main process (needs GLOBAL_EXE_OBJS).
+# The main process (needs GLOBAL_EXE_OBJS) and the application object (needs the main process).
 GLOBAL_MAIN_OBJS = $(OBJ)\GlobalManager\GlobalManagerMainProcess.obj
+GLOBAL_APP_OBJS = $(OBJ)\GlobalManager\GlobalManager.obj
+# The DLLs of the original: ADVAPI32 GDI32 KERNEL32 ODBC32 USER32 WS2_32 iphlpapi ole32.
+GLOBAL_SYSLIBS = kernel32.lib advapi32.lib iphlpapi.lib user32.lib ws2_32.lib ole32.lib \
+                 gdi32.lib comctl32.lib odbc32.lib
 
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
 # 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
@@ -682,6 +687,15 @@ $(BIN)\AgentServer.exe: $(BIN) $(AGENT_LIBS) $(OBJ)\AgentServer $(AGENT_OBJS) \
                         $(OBJ)\AgentServer\WinMain.obj
 	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
 	    /out:$@ $(OBJ)\AgentServer\WinMain.obj $(AGENT_OBJS) $(AGENT_LIBS) $(AGENT_SYSLIBS)
+
+global: $(BIN)\GlobalManager.exe
+
+# GUI exe like the original; it keeps the framework's NT service code as well.
+$(BIN)\GlobalManager.exe: $(BIN) $(GLOBAL_LIBS) $(OBJ)\GlobalManager $(GLOBAL_APP_OBJS) \
+                          $(GLOBAL_MAIN_OBJS) $(OBJ)\GlobalManager\WinMain.obj $(GLOBAL_EXE_OBJS)
+	link /nologo /DEBUG /SUBSYSTEM:WINDOWS /INCLUDE:?NTService_HandleCommandLine@@YAHXZ \
+	    /out:$@ $(OBJ)\GlobalManager\WinMain.obj $(GLOBAL_APP_OBJS) $(GLOBAL_MAIN_OBJS) \
+	    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(GLOBAL_SYSLIBS)
 
 gateway: $(BIN)\GatewayServer.exe
 
