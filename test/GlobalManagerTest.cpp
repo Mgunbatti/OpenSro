@@ -10,6 +10,7 @@
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
 #include "GlobalManager/GlobalManagerJobs.h"
+#include "GlobalManager/GlobalManagerMainProcess.h"
 #include "GlobalManager/GlobalManagerMainFwd.h"
 #include "BSLib/BSDebug.h"
 #include "BSLib/DB/DBQuery.h"
@@ -21,7 +22,7 @@
 using namespace ServerFramework;
 
 // Stands in for the main process: records the jobs instead of sending them.
-class CTestProcess : public CServerProcessMain
+class CTestProcess : public CGlobalManagerMainProcess
 {
 public:
     virtual bool SendOverlapJob(COverlapJob_Local* pJob, CTask* pTask)
@@ -38,14 +39,6 @@ public:
 };
 
 static CNetEngine s_Engine;
-
-// Stand-in for the main process' setter (CGlobalManagerMainProcess is not ported yet).
-static DWORD s_dwLastPlayTimeReset;
-
-void GlobalManagerMain_SetLastPlayTimeReset(DWORD dwTime)
-{
-    s_dwLastPlayTimeReset = dwTime;
-}
 
 static sContentUser* MakeUser(sContentUser& user, DWORD dwIP, DWORD dwJID, const char* pszID,
                               WORD wShard, WORD wAgent)

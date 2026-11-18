@@ -6,6 +6,7 @@
 
 #include "GlobalManagerDB.h"
 #include "GlobalManagerJobs.h"
+#include "GlobalManagerMainProcess.h"
 #include "IPCountryTable.h"
 #include "BSLib/BSDebug.h"
 #include "BSLib/DB/DBQuery.h"

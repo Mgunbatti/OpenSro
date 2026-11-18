@@ -507,7 +507,8 @@ static void Startup()
     g_pAccountDBSession = ACCOUNT_DB;
     g_pSilkDBSession = SILK_DB;
     // The main process' queue is the server task's (only GetOwner is called).
-    g_pGlobalManagerProcess = static_cast<CServerProcessMain*>((CServerProcessBase*)s_pMain);
+    // Only GetOwner is used: the test task stands in for the main process.
+    g_pGlobalManagerProcess = (CGlobalManagerMainProcess*)(CServerProcessBase*)s_pMain;
 }
 
 // ---------------------------------------------------------------------------------------------

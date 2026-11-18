@@ -20,6 +20,8 @@
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
 #include "GlobalManager/GlobalManagerJobs.h"
+#include "GlobalManager/GlobalManagerMainProcess.h"
+#include "GlobalManager/PunishmentManager.h"
 #include "GlobalManager/GlobalManagerMainFwd.h"
 #include "GlobalManager/GlobalManagerSvcFwd.h"
 #include "GlobalManager/ServiceManagerJobs.h"
@@ -157,8 +159,8 @@ public:
 
 BS_IMPLEMENT_DYNCREATE(CTestTask, &CServerProcessBase::classCServerProcessBase)
 
-// Stands in for g_pGlobalManagerProcess (its owner task is NULL).
-class CTestMainProcess : public CServerProcessMain
+// g_pGlobalManagerProcess: the real main process, not started (its owner task is not set).
+class CTestMainProcess : public CGlobalManagerMainProcess
 {
 };
 
@@ -294,30 +296,6 @@ static CMsg* Req(const Bytes& data)
         p->WriteBytes(&data[0], (WORD)data.size());
     p->m_dwSessionID = s_dwServer;
     return p;
-}
-
-// ---------------------------------------------------------------------------------------------
-// Stand-ins for the main process and the punishment manager.
-
-static DWORD s_dwLastPlayTimeReset;
-
-void GlobalManagerMain_SetLastPlayTimeReset(DWORD dwTime)
-{
-    s_dwLastPlayTimeReset = dwTime;
-}
-
-CPunishmentManager* g_pPunishmentManager = (CPunishmentManager*)0x5150;
-static std::string s_strPunishment;
-
-bool __stdcall PunishmentManager_Add(CPunishmentManager* pManager, DWORD dwJID, DWORD dwType,
-                                     const TIMESTAMP_STRUCT* pBegin,
-                                     const TIMESTAMP_STRUCT* pEnd)
-{
-    char sz[128];
-    sprintf_s(sz, "%p %u %u %u/%u %u/%u", pManager, dwJID, dwType, pBegin->year, pBegin->second,
-              pEnd->year, pEnd->second);
-    s_strPunishment = sz;
-    return true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -755,16 +733,16 @@ static void TestResetPlayTime()
     Answer(0, row);
     CHECK(Run(pJob, true, true));
     CHECK(Query("select * from _WriteOutResetPlayTime", ACCOUNT_DB, 3));
-    s_dwLastPlayTimeReset = 0;
+    g_pGlobalManagerProcess->m_dwLastPlayTimeReset = 0;
     CHECK(pJob->OnComplete());
-    CHECK(s_dwLastPlayTimeReset == 12345);
+    CHECK(g_pGlobalManagerProcess->m_dwLastPlayTimeReset == 12345);
     CHECK(pJob->Setup(1, 777));
     Answer(1);
     CHECK(Run(pJob, true, true));
     CHECK(Query("update _WriteOutResetPlayTime set LatestResetTime = 777", ACCOUNT_DB, 3));
-    s_dwLastPlayTimeReset = 0;
+    g_pGlobalManagerProcess->m_dwLastPlayTimeReset = 0;
     CHECK(pJob->OnComplete() && pJob->OnFail());
-    CHECK(s_dwLastPlayTimeReset == 0);
+    CHECK(g_pGlobalManagerProcess->m_dwLastPlayTimeReset == 0);
     Answer(-2);
     CHECK(Run(pJob, true, false));
     s_vecCall.clear();
@@ -1242,13 +1220,22 @@ static void TestPunishmentJob()
             CHECK(Query(c.byJob ? pszUpdate : pszRegister, ACCOUNT_DB));
         if (c.bOK)
         {
-            s_strPunishment.clear();
             CHECK(pJob->OnComplete());
             Bytes want;
             PutB(want, 1);
             PutB(want, c.byJob);
             CHECK(Packet(0xB408, want));
-            CHECK(s_strPunishment == "00005150 100 3 2012/1 2013/2");
+            // The punishment manager got the second and third date.
+            PunishmentMap& map = g_PunishmentManager.m_mapPunishment;
+            CHECK(map.size() == 1 && map.begin()->first == 100);
+            Punishment_Info_Internal* pInfo = map.begin()->second;
+            SYSTEMTIME stBegin, stEnd;
+            FileTimeToSystemTime(&pInfo->ftBegin, &stBegin);
+            FileTimeToSystemTime(&pInfo->ftEnd, &stEnd);
+            CHECK(pInfo->byType == 3 && stBegin.wYear == 2012 && stBegin.wSecond == 1
+                  && stEnd.wYear == 2013 && stEnd.wSecond == 2);
+            pInfo->Release();
+            map.clear();
         }
         else
         {

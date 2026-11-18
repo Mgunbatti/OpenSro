@@ -392,11 +392,6 @@ void CServiceManagerProcess::WriteUserLog(std::string* pstrText, std::string* ps
     AddLog("user %s %s", pstrText->c_str(), pstrUserID->c_str());
 }
 
-// The main process' setter, used by the play time reset job (GlobalManagerJobs).
-void GlobalManagerMain_SetLastPlayTimeReset(DWORD)
-{
-}
-
 BYTE SMLog_GetAnswerType(WORD wOpcode)
 {
     return wOpcode == 0x8001 ? 0x14 : 0xFF;

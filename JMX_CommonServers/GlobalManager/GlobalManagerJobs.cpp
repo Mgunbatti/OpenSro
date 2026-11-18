@@ -5,6 +5,7 @@
 
 #include "ContentUser.h"
 #include "GlobalManagerDB.h"
+#include "GlobalManagerMainProcess.h"
 #include "GlobalManagerMainFwd.h"
 #include "BSLib/BSDebug.h"
 #include "BSLib/Util/TimeSpan.h"
@@ -17,7 +18,7 @@
 
 using namespace ServerFramework;
 
-ServerFramework::CServerProcessMain* g_pGlobalManagerProcess;
+CGlobalManagerMainProcess* g_pGlobalManagerProcess;
 
 CChunkAllocatorST<COverlapJob_CheckCharName> g_CheckCharNameJobPool(
     NULL, 0, 500, "COverlapJob_CheckCharName");

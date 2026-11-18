@@ -20,9 +20,9 @@ class CMsg;
 // taken with a job ID, set up with the main process' task and sent with SendOverlapJob(job,
 // NULL). The service manager's jobs are in ServiceManagerJobs.h.
 
-// 0x558C98: the main process, set by its Initialize. Declared as the framework base until the
-// main process class is ported.
-extern ServerFramework::CServerProcessMain* g_pGlobalManagerProcess;
+// 0x558C98: the main process, set by its Initialize (GlobalManagerMainProcess.h).
+class CGlobalManagerMainProcess;
+extern CGlobalManagerMainProcess* g_pGlobalManagerProcess;
 
 // sub_422570: "%d-%d-%d %d:%d:%d" of the time (StringCchPrintf into 256 characters; asserts
 // instead of assigning when it does not fit).

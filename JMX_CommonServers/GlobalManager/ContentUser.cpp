@@ -2,6 +2,7 @@
 
 #include "GlobalManagerDB.h"
 #include "GlobalManagerJobs.h"
+#include "GlobalManagerMainProcess.h"
 #include "BSLib/DB/DBQuery.h"
 #include "BSLib/Util/TimeSpan.h"
 #include "ServerFramework/CertArch.h"

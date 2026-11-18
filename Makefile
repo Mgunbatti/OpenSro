@@ -207,9 +207,8 @@ GLOBAL_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\global\Serv
 GLOBAL_LIBS = $(GLOBAL_LIBDIR)\ServerFramework.lib $(GLOBAL_LIBDIR)\BSNet.lib \
               $(GLOBAL_LIBDIR)\BSLib.lib
 
-# GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS. There is
-# no exe target yet (parts of the module are still being ported); GlobalManagerTest links these
-# objects with its own stand-ins.
+# GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
+# The tests link the parts they need with their own stand-ins.
 GLOBAL_OBJS = \
 	$(OBJ)\GlobalManager\ContentUser.obj \
 	$(OBJ)\GlobalManager\GlobalManagerJobs.obj \
@@ -246,6 +245,8 @@ GLOBAL_BILL_OBJS = \
 	$(OBJ)\GlobalManager\IPCountryTable.obj \
 	$(OBJ)\GlobalManager\CASChat.obj
 GLOBAL_EXE_OBJS = $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_JOB_OBJS) $(GLOBAL_BILL_OBJS)
+# The main process (needs GLOBAL_EXE_OBJS).
+GLOBAL_MAIN_OBJS = $(OBJ)\GlobalManager\GlobalManagerMainProcess.obj
 
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
 # 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
@@ -577,39 +578,40 @@ $(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIB
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
-                             $(GLOBAL_OBJS) $(GLOBAL_LIBS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerTest.obj $(GLOBAL_OBJS) \
-	    $(GLOBAL_LIBS) $(SYSLIBS)
+                             $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerTest.obj $(GLOBAL_MAIN_OBJS) \
+	    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
-# The service manager with stand-ins for the SM log, the overlap jobs and CDBQuery's execution.
+# The service manager with stand-ins for the SM log, the overlap jobs and CDBQuery's execution
+# (the main process and GLOBAL_BILL_OBJS as they are).
 $(BIN)\GlobalManagerSvcTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerSvcTest.obj \
-                                $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_LIBS)
+                                $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_MAIN_OBJS) \
+                                $(GLOBAL_BILL_OBJS) $(GLOBAL_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerSvcTest.obj $(GLOBAL_SVC_OBJS) \
-	    $(GLOBAL_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
+	    $(GLOBAL_MAIN_OBJS) $(GLOBAL_BILL_OBJS) $(GLOBAL_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
-# The overlap jobs with the real service manager; stand-ins for the main process' setter, the
-# punishment manager and CDBQuery's execution.
+# The overlap jobs with the real service manager, main process and punishment manager; a
+# stand-in for CDBQuery's execution.
 $(BIN)\GlobalManagerJobsTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerJobsTest.obj \
-                                 $(GLOBAL_OBJS) $(GLOBAL_SVC_OBJS) $(GLOBAL_JOB_OBJS) \
-                                 $(GLOBAL_LIBS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerJobsTest.obj $(GLOBAL_JOB_OBJS) \
-	    $(GLOBAL_SVC_OBJS) $(GLOBAL_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
+                                 $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerJobsTest.obj $(GLOBAL_MAIN_OBJS) \
+	    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
 # The punishment manager and the user validation history with everything the exe links except
-# the main process; stand-ins for the main process' setter and CDBQuery's execution.
+# the application object; a stand-in for CDBQuery's execution.
 $(BIN)\GlobalManagerPunishmentTest.exe: $(OBJ)\GlobalManager \
                                         $(OBJ)\test\GlobalManagerPunishmentTest.obj \
-                                        $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS)
+                                        $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerPunishmentTest.obj \
-	    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
+	    $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
 # Billing against the stand-in network and timer libraries (loaded from the exe's folder by
 # their original names) and a billing server on 127.0.0.1.
 $(BIN)\GlobalManagerBillingTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerBillingTest.obj \
-                                    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(BIN)\AlphegaNet.dll \
-                                    $(BIN)\AlphegaTimer.dll
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerBillingTest.obj $(GLOBAL_EXE_OBJS) \
-	    $(GLOBAL_LIBS) $(SYSLIBS)
+                                    $(GLOBAL_MAIN_OBJS) $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) \
+                                    $(BIN)\AlphegaNet.dll $(BIN)\AlphegaTimer.dll
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\GlobalManagerBillingTest.obj $(GLOBAL_MAIN_OBJS) \
+	    $(GLOBAL_EXE_OBJS) $(GLOBAL_LIBS) $(SYSLIBS)
 
 # The slave, the IP country table and the CAS chat manager with everything the exe links except
 # the main process; stand-ins for the main process' setter and CDBQuery's execution.

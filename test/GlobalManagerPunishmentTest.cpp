@@ -20,6 +20,7 @@
 #include "GlobalManager/ContentUser.h"
 #include "GlobalManager/GlobalManagerDB.h"
 #include "GlobalManager/GlobalManagerJobs.h"
+#include "GlobalManager/GlobalManagerMainProcess.h"
 #include "GlobalManager/GlobalManagerMainFwd.h"
 #include "GlobalManager/GlobalManagerSvcFwd.h"
 #include "GlobalManager/ServiceManagerJobs.h"
@@ -159,8 +160,8 @@ public:
 
 BS_IMPLEMENT_DYNCREATE(CTestTask, &CServerProcessBase::classCServerProcessBase)
 
-// Stands in for g_pGlobalManagerProcess (its owner task is NULL).
-class CTestMainProcess : public CServerProcessMain
+// g_pGlobalManagerProcess: the real main process, not started (its owner task is not set).
+class CTestMainProcess : public CGlobalManagerMainProcess
 {
 };
 
@@ -296,13 +297,6 @@ static CMsg* Req(const Bytes& data)
         p->WriteBytes(&data[0], (WORD)data.size());
     p->m_dwSessionID = s_dwServer;
     return p;
-}
-
-// ---------------------------------------------------------------------------------------------
-// Stand-in for the main process' setter (GlobalManagerJobs.obj calls it).
-
-void GlobalManagerMain_SetLastPlayTimeReset(DWORD)
-{
 }
 
 // ---------------------------------------------------------------------------------------------
