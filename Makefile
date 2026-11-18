@@ -221,7 +221,8 @@ GLOBAL_OBJS = \
 GLOBAL_SVC_OBJS = \
 	$(OBJ)\GlobalManager\ServiceManagerProcess.obj \
 	$(OBJ)\GlobalManager\ServiceManagerControl.obj \
-	$(OBJ)\GlobalManager\ServiceManagerAccount.obj
+	$(OBJ)\GlobalManager\ServiceManagerAccount.obj \
+	$(OBJ)\GlobalManager\ServiceManagerPatch.obj
 
 # AgentServer application (JMX_CommonServers\AgentServer), built by "nmake agent". AgentServer is a
 # 2011 build: its sources and AgentTest are compiled with AGENT_DEFS and linked with AGENT_LIBS,
