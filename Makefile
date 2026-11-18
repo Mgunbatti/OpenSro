@@ -313,7 +313,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\GlobalManagerPunishmentTest.exe $(BIN)\GlobalManagerBillingTest.exe \
         $(BIN)\GlobalManagerSlaveTest.exe $(BIN)\GlobalManagerMainTest.exe \
         $(BIN)\Framework201108Test.exe \
-        $(BIN)\NewScheduleTest.exe
+        $(BIN)\NewScheduleTest.exe \
+        $(BIN)\StringCheckTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -558,6 +559,9 @@ $(OBJ)\test\Framework201101Test.obj: test\Framework201101Test.cpp
 $(OBJ)\test\Framework201108Test.obj: test\Framework201108Test.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\Framework201108Test.cpp
 
+$(OBJ)\test\StringCheckTest.obj: test\StringCheckTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\StringCheckTest.cpp
+
 $(OBJ)\test\NewScheduleTest.obj: test\NewScheduleTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\NewScheduleTest.cpp
 
@@ -670,6 +674,9 @@ $(BIN)\Framework201101Test.exe: $(OBJ)\test\Framework201101Test.obj $(GLOBAL_LIB
 # Linked with the August 2011 builds of the libraries.
 $(BIN)\Framework201108Test.exe: $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\Framework201108Test.obj $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\StringCheckTest.exe: $(OBJ)\test\StringCheckTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\StringCheckTest.obj $(SHARD_LIBS) $(SYSLIBS)
 
 $(BIN)\NewScheduleTest.exe: $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS) $(SYSLIBS)
@@ -841,6 +848,7 @@ test: all
 	$(BIN)\GlobalManagerMainTest.exe
 	$(BIN)\Framework201108Test.exe
 	$(BIN)\NewScheduleTest.exe
+	$(BIN)\StringCheckTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
