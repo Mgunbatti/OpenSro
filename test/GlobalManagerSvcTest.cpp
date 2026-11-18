@@ -562,11 +562,12 @@ void OverlapJob_SetupConcurrentUserLogJob(CTask* pTask, SM_JOB* pJob, DWORD dwSe
 }
 SM_JOB* OverlapJob_AllocAutomatedPunishmentJob() { return NewJob("AutomatedPunishment"); }
 void OverlapJob_SetupAutomatedPunishmentJob(CTask* pTask, SM_JOB* pJob,
-                                            std::string* pstrUserID, DWORD dwJID,
-                                            DWORD dwShardID, DWORD dwType, DWORD dwParam)
+                                            std::string* pstrUserID, std::string* pstr2,
+                                            std::string* pstr3, std::string* pstr4,
+                                            DWORD dwParam)
 {
-    Describe(pJob, pTask, " %s %u %u %u %u", pstrUserID->c_str(), dwJID, dwShardID, dwType,
-             dwParam);
+    Describe(pJob, pTask, " %s %s %s %s %u", pstrUserID->c_str(), pstr2->c_str(),
+             pstr3->c_str(), pstr4->c_str(), dwParam);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1460,12 +1461,15 @@ static void TestJobHandlers()
 
     // Automated punishments; the posting result is returned.
     std::string str("victim");
-    CHECK(s_pSM->RegisterAutomatedPunishment(&str, 5, 10, 2, 9));
-    CHECK(PostedJob("AutomatedPunishment victim 5 10 2 9"));
+    std::string str2("a");
+    std::string str3("b");
+    std::string str4("c");
+    CHECK(s_pSM->RegisterAutomatedPunishment(&str, &str2, &str3, &str4, 9));
+    CHECK(PostedJob("AutomatedPunishment victim a b c 9"));
     s_pMain->m_bAcceptJobs = false;
-    s_pSM->RegisterAutomatedPunishment(&str, 5, 10, 2, 9);
+    s_pSM->RegisterAutomatedPunishment(&str, &str2, &str3, &str4, 9);
     s_pMain->m_bAcceptJobs = true;
-    CHECK(PostedJob("AutomatedPunishment victim 5 10 2 9"));
+    CHECK(PostedJob("AutomatedPunishment victim a b c 9"));
     CHECK(s_pMain->m_vecJobs.empty());
     CHECK(NoPackets());
 }

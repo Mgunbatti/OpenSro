@@ -90,5 +90,6 @@ void OverlapJob_SetupConcurrentUserLogJob(CTask* pTask, SM_JOB* pJob, DWORD dwSe
 // COverlapJob_AutomatedPunishmentJob: UserCertifier_AllocJob_427620 / sub_427690.
 SM_JOB* OverlapJob_AllocAutomatedPunishmentJob();
 void OverlapJob_SetupAutomatedPunishmentJob(CTask* pTask, SM_JOB* pJob,
-                                            std::string* pstrUserID, DWORD dwJID,
-                                            DWORD dwShardID, DWORD dwType, DWORD dwParam);
+                                            std::string* pstrUserID, std::string* pstr2,
+                                            std::string* pstr3, std::string* pstr4,
+                                            DWORD dwParam);

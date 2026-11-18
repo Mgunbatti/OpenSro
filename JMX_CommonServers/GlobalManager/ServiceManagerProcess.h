@@ -171,9 +171,10 @@ public:
     bool SendPatchToDownloadServers();
     // sub_4479D0: a RefreshSecurityData_n_SendToSM job for the session.
     void RefreshSecurityData(DWORD dwSessionID);
-    // sub_44A960: an AutomatedPunishmentJob; logged when it cannot be posted.
-    bool RegisterAutomatedPunishment(std::string* pstrUserID, DWORD dwJID, DWORD dwShardID,
-                                     DWORD dwType, DWORD dwParam);
+    // sub_44A960: an AutomatedPunishmentJob (the account and three texts of the validation
+    // history, then a number); logged when it cannot be posted.
+    bool RegisterAutomatedPunishment(std::string* pstrUserID, std::string* pstr2,
+                                     std::string* pstr3, std::string* pstr4, DWORD dwParam);
 
     // Requests of the SMC (registered by the constructor).
     void OnMsg_7001(CMsg*, DWORD, DWORD, CMassiveMsg*);     // 0x443540 login

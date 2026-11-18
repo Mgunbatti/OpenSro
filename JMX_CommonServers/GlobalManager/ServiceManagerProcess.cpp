@@ -385,12 +385,12 @@ void CServiceManagerProcess::RefreshSecurityData(DWORD dwSessionID)
     PostJob(pJob);
 }
 
-bool CServiceManagerProcess::RegisterAutomatedPunishment(std::string* pstrUserID, DWORD dwJID,
-                                                         DWORD dwShardID, DWORD dwType,
-                                                         DWORD dwParam)
+bool CServiceManagerProcess::RegisterAutomatedPunishment(std::string* pstrUserID,
+                                                         std::string* pstr2, std::string* pstr3,
+                                                         std::string* pstr4, DWORD dwParam)
 {
     SM_JOB* pJob = OverlapJob_AllocAutomatedPunishmentJob();
-    OverlapJob_SetupAutomatedPunishmentJob(m_pTask, pJob, pstrUserID, dwJID, dwShardID, dwType,
+    OverlapJob_SetupAutomatedPunishmentJob(m_pTask, pJob, pstrUserID, pstr2, pstr3, pstr4,
                                            dwParam);
     bool bPosted = PostJob(pJob);
     if (!bPosted)
