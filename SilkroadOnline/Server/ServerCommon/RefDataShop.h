@@ -423,20 +423,3 @@ RefShop* RefData_FindShop(CReferenceData* pData, const std::string& strCodeName,
 // RefPrice_GetCurrencyTypeTable (0x49f630, filled by RefPrice_InitCurrencyTypeTable 0x49f690):
 // the kind of each of the 16 currencies (3: silk).
 const int* RefPrice_GetCurrencyTypeTable();
-
-// ---------------------------------------------------------------------------------------------
-// Item and magic option checks of the scrap item rows. They belong to the object and magic option
-// tables; RefDataShopPending.cpp holds stand-ins until those are ported.
-
-// RefObjItem_IsValidDurabilityOrStack (0x51adc0, SM_rf_obj).
-BOOL RefObjItem_IsValidDurabilityOrStack(const RefObjCommonRow* pRefObj, DWORD dwData);
-// RefObj_IsValidSlotForItem (0x51ada0, SM_rf_obj).
-BOOL RefObj_IsValidSlotForItem(const RefObjCommonRow* pRefObj, BYTE btOptLevel);
-// RefData_IsMagicOptEntryAllowed (0x51ad30, SM_rf_magicopt).
-BOOL RefData_IsMagicOptEntryAllowed(const RefObjCommonRow* pRefObj, WORD wMagicOptID);
-// CRefInstanceGenerator::FindMagicOptLevelEntry (0x51aa10, SM_rf_magicopt) on the tables at
-// CReferenceData+0x268: NULL when there is none.
-RefMagicOptLevel* RefData_FindMagicOptLevelEntry(CReferenceData* pData, WORD wMagicOptID);
-// MagOptEachLevel_FindByID (0x49e780, SM_rf_magicopt) and vf03 / vf04 of its value object: the
-// value range of a magic option level; FALSE when the level has no such entry.
-BOOL RefMagicOptLevel_GetValueRange(const RefMagicOptLevel* pEntry, DWORD& dwMin, DWORD& dwMax);

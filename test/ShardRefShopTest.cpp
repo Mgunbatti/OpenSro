@@ -4,6 +4,7 @@
 // SHARD_DEFS.
 
 #include "ServerCommon/ReferenceData.h"
+#include "ServerCommon/RefDataObj.h"
 
 #include <string.h>
 
@@ -108,17 +109,21 @@ struct FakeTable
     }
 };
 
-// Object rows: ID at +8, TypeID at +0x80, the available operations at +0x8C.
-static BYTE s_abItem[0x260];
-static BYTE s_abGood[0x260];
+// Object rows (RefObjItem): ID, TypeID, the available operations (Flags), and the durability /
+// stack bounds the scrap item rows are checked against.
+static BYTE s_abItem[sizeof(RefObjItem)];
+static BYTE s_abGood[sizeof(RefObjItem)];
 
 static RefObjCommonRow* AddObject(CReferenceData& data, BYTE* pab, const char* pszCodeName,
                                   DWORD dwID, WORD wTypeID)
 {
-    RefObjCommonRow* pObj = (RefObjCommonRow*)pab;
-    *(DWORD*)(pab + 0x8) = dwID;
-    *(WORD*)(pab + 0x80) = wTypeID;
-    *(DWORD*)(pab + 0x8C) = 2;                      // can be sold
+    RefObjItem* pObj = (RefObjItem*)pab;
+    pObj->ID = dwID;
+    pObj->TypeID = wTypeID;
+    pObj->Flags = REFOBJ_CAN_SELL;
+    pObj->MaxStack = 10;
+    pObj->Dur.L = 1.0f;
+    pObj->Dur.U = 10.0f;
     data.m_hashRefObj[dwID] = pObj;
     data.m_hashRefObjByCodeName[pszCodeName] = pObj;
     return pObj;
@@ -163,7 +168,7 @@ static void PutPrice(CDBRecStream* pRow, const char* pszPackage, DWORD dwDevice,
 static void TestShopTables(CReferenceData& data, RefTableVector& tables)
 {
     // TypeID 3/1/6/2 (an item), 3/3/3/8 (a trade good)
-    RefObjCommonRow* pItem = AddObject(data, s_abItem, "ITEM_A", 101, 0x130C);
+    RefObjCommonRow* pItem = AddObject(data, s_abItem, "ITEM_A", 101, 0x132C);
     AddObject(data, s_abGood, "ITEM_GOOD", 102, 0x46C);
 
     FakeTable<CRefPackageItem> package;

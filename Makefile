@@ -244,7 +244,7 @@ SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj \
 	$(OBJ)\ServerCommon\RefDataObj.obj \
 	$(OBJ)\ServerCommon\RefDataDrop.obj \
 	$(OBJ)\ServerCommon\RefDataTeleport.obj \
-	$(OBJ)\ServerCommon\RefDataShop.obj $(OBJ)\ServerCommon\RefDataShopPending.obj \
+	$(OBJ)\ServerCommon\RefDataShop.obj \
 	$(OBJ)\ServerCommon\RefDataMisc.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.

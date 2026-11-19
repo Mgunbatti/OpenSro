@@ -7,6 +7,7 @@
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
 #include "ServerCommon/RefDataMisc.h"
+#include "ServerCommon/RefDataObj.h"
 #include "ServerCommon/ReferenceData.h"
 
 // The source paths of the assert dialogs.
@@ -596,7 +597,8 @@ static DWORD RefRow_Read(CRefRow& row, RefScrapOfPackageItem& r)
     r.m_pRefObjItem = pRefItem;
     if (r.Service)
     {
-        if (!RefObjItem_IsValidDurabilityOrStack(pRefItem, r.m_dwData))
+        if (!RefObjItem_IsValidDurabilityOrStack(static_cast<const RefObjItem*>(pRefItem),
+                                                 r.m_dwData))
         {
             BSMessageBoxPrintf("error data that is a durability or maxstack of a item. "
                                "[PackageID: %s, ItemCode: %s]",
@@ -631,8 +633,8 @@ static DWORD RefRow_Read(CRefRow& row, RefScrapOfPackageItem& r)
                     DebugBreak();
                 return 0;
             }
-            RefMagicOptLevel* pEntry = RefData_FindMagicOptLevelEntry(RefShop_GetReferenceData(),
-                                                                      wMagicOptID);
+            RefMagicOptLevel* pEntry =
+                RefShop_GetReferenceData()->m_MagicOpt.FindMagicOptLevelEntry(wMagicOptID);
             if (!pEntry)
             {
                 BSMessageBoxPrintf("(%s) can't find %d from MagOptEachLevel. "
@@ -640,9 +642,7 @@ static DWORD RefRow_Read(CRefRow& row, RefScrapOfPackageItem& r)
                                    strPackageItem.c_str(), (int)wMagicOptID);
                 return 0;
             }
-            DWORD dwMin, dwMax;
-            if (!RefMagicOptLevel_GetValueRange(pEntry, dwMin, dwMax) || dwMin > dwValue ||
-                dwMax < dwValue)
+            if (!MagOptEachLevel_IsValueInRange(pEntry->pGroup, dwValue, pEntry->MLevel))
             {
                 BSMessageBoxPrintf("(%s) error data out of range to MagicoptionValue",
                                    strPackageItem.c_str());
