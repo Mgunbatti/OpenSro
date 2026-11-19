@@ -765,3 +765,236 @@ CRefGachaNpcMap::CRefGachaNpcMap()
 CRefGachaNpcMap::~CRefGachaNpcMap()
 {
 }
+
+// ---------------------------------------------------------------------------------------------
+// Shop records
+
+// 0x61c8b0 / 0x61c8d0 slots 2 / 3, 0x61ffc0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShopObject, CDBRecStream, CDBRecStream, "_REFSHOPOBJECT")
+
+CRefShopObject::CRefShopObject()
+{
+}
+
+CRefShopObject::~CRefShopObject()
+{
+}
+
+// 0x52a450 ctor, 0x51f670 / 0x51f690 slots 2 / 3, 0x620230 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShopTabGroup, CDBRecStream, CDBRecStream, "_REFSHOPTABGROUP")
+
+CRefShopTabGroup::CRefShopTabGroup()
+{
+}
+
+CRefShopTabGroup::~CRefShopTabGroup()
+{
+}
+
+// 0x52a2f0 ctor, 0x51f8e0 / 0x51f900 slots 2 / 3, 0x6204a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShopGroup, CDBRecStream, CDBRecStream, "_REFSHOPGROUP")
+
+CRefShopGroup::CRefShopGroup()
+{
+}
+
+CRefShopGroup::~CRefShopGroup()
+{
+}
+
+// 0x52a3a0 ctor, 0x51f910 / 0x51f930 slots 2 / 3, 0x620710 table description.
+SR_IMPLEMENT_REF_RECORD(CRefMappingShopGroup, CDBRecStream, CDBRecStream, "_REFMAPPINGSHOPGROUP")
+
+CRefMappingShopGroup::CRefMappingShopGroup()
+{
+}
+
+CRefMappingShopGroup::~CRefMappingShopGroup()
+{
+}
+
+// 0x529e20 ctor, 0x51f6a0 / 0x51f6c0 slots 2 / 3, 0x620980 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTreatItemOfShop, CDBRecStream, CDBRecStream, "_REFTREATITEMOFSHOP")
+
+CRefTreatItemOfShop::CRefTreatItemOfShop()
+{
+}
+
+CRefTreatItemOfShop::~CRefTreatItemOfShop()
+{
+}
+
+// 0x529d70 ctor, 0x529dd0 dtor, 0x51f6d0 / 0x51f6f0 slots 2 / 3, 0x620bf0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefAccessPermissionOfShop, CDBRecStream, CDBRecStream,
+                        "_REFACCESSPERMISSIONOFSHOP")
+
+CRefAccessPermissionOfShop::CRefAccessPermissionOfShop()
+{
+}
+
+CRefAccessPermissionOfShop::~CRefAccessPermissionOfShop()
+{
+}
+
+// 0x529ed0 ctor, 0x51f700 / 0x51f720 slots 2 / 3, 0x620e60 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRewardPolicyToSellPackageItem, CDBRecStream, CDBRecStream,
+                        "_REFREWARDPOLICYTOSELLPACKAGEITEM")
+
+CRefRewardPolicyToSellPackageItem::CRefRewardPolicyToSellPackageItem()
+{
+}
+
+CRefRewardPolicyToSellPackageItem::~CRefRewardPolicyToSellPackageItem()
+{
+}
+
+// 0x529f80 ctor, 0x51f730 / 0x51f750 slots 2 / 3, 0x6210d0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRewardPolicyToBuyScrapItem, CDBRecStream, CDBRecStream,
+                        "_REFREWARDPOLICYTOBUYSCRAPITEM")
+
+CRefRewardPolicyToBuyScrapItem::CRefRewardPolicyToBuyScrapItem()
+{
+}
+
+CRefRewardPolicyToBuyScrapItem::~CRefRewardPolicyToBuyScrapItem()
+{
+}
+
+// 0x52a030 ctor, 0x51f760 / 0x51f780 slots 2 / 3, 0x621340 table description.
+SR_IMPLEMENT_REF_RECORD(CRefConditionToSellPackageItem, CDBRecStream, CDBRecStream,
+                        "_REFCONDITIONTOSELLPACKAGEITEM")
+
+CRefConditionToSellPackageItem::CRefConditionToSellPackageItem()
+{
+}
+
+CRefConditionToSellPackageItem::~CRefConditionToSellPackageItem()
+{
+}
+
+// 0x52a240 ctor, 0x51f790 / 0x51f7b0 slots 2 / 3, 0x6215b0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefConditionToBuyScrapItem, CDBRecStream, CDBRecStream,
+                        "_REFCONDITIONTOBUYSCRAPITEM")
+
+CRefConditionToBuyScrapItem::CRefConditionToBuyScrapItem()
+{
+}
+
+CRefConditionToBuyScrapItem::~CRefConditionToBuyScrapItem()
+{
+}
+
+// 0x52a0e0 ctor, 0x51f7c0 / 0x51f7e0 slots 2 / 3, 0x621820 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRewardPolicyToSellScrapItem, CDBRecStream, CDBRecStream,
+                        "_REFREWARDPOLICYTOSELLSCRAPITEM")
+
+CRefRewardPolicyToSellScrapItem::CRefRewardPolicyToSellScrapItem()
+{
+}
+
+CRefRewardPolicyToSellScrapItem::~CRefRewardPolicyToSellScrapItem()
+{
+}
+
+// 0x52a190 ctor, 0x51f7f0 / 0x51f810 slots 2 / 3, 0x621a90 table description.
+SR_IMPLEMENT_REF_RECORD(CRefConditionToSellScrapItem, CDBRecStream, CDBRecStream,
+                        "_REFCONDITIONTOSELLSCRAPITEM")
+
+CRefConditionToSellScrapItem::CRefConditionToSellScrapItem()
+{
+}
+
+CRefConditionToSellScrapItem::~CRefConditionToSellScrapItem()
+{
+}
+
+// 0x529cc0 ctor, 0x51f820 / 0x51f840 slots 2 / 3, 0x621d00 table description.
+SR_IMPLEMENT_REF_RECORD(CRefPricePolicyOfItem, CDBRecStream, CDBRecStream, "_REFPRICEPOLICYOFITEM")
+
+CRefPricePolicyOfItem::CRefPricePolicyOfItem()
+{
+}
+
+CRefPricePolicyOfItem::~CRefPricePolicyOfItem()
+{
+}
+
+// 0x529c10 ctor, 0x51f880 / 0x51f8a0 slots 2 / 3, 0x621f70 table description.
+SR_IMPLEMENT_REF_RECORD(CRefPackageItem, CDBRecStream, CDBRecStream, "_REFPACKAGEITEM")
+
+CRefPackageItem::CRefPackageItem()
+{
+}
+
+CRefPackageItem::~CRefPackageItem()
+{
+}
+
+// 0x529b60 ctor, 0x51f8b0 / 0x51f8d0 slots 2 / 3, 0x6221e0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefScrapOfPackageItem, CDBRecStream, CDBRecStream,
+                        "_REFSCRAPOFPACKAGEITEM")
+
+CRefScrapOfPackageItem::CRefScrapOfPackageItem()
+{
+}
+
+CRefScrapOfPackageItem::~CRefScrapOfPackageItem()
+{
+}
+
+// 0x529ab0 ctor, 0x51f850 / 0x51f870 slots 2 / 3, 0x622450 table description.
+SR_IMPLEMENT_REF_RECORD(CRefMappingShopWithTab, CDBRecStream, CDBRecStream,
+                        "_REFMAPPINGSHOPWITHTAB")
+
+CRefMappingShopWithTab::CRefMappingShopWithTab()
+{
+}
+
+CRefMappingShopWithTab::~CRefMappingShopWithTab()
+{
+}
+
+// 0x52a500 ctor, 0x51f940 / 0x51f960 slots 2 / 3, 0x6226c0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShopGoods, CDBRecStream, CDBRecStream, "_REFSHOPGOODS")
+
+CRefShopGoods::CRefShopGoods()
+{
+}
+
+CRefShopGoods::~CRefShopGoods()
+{
+}
+
+// 0x52a5b0 ctor, 0x51f970 / 0x51f990 slots 2 / 3, 0x622930 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShopTab, CDBRecStream, CDBRecStream, "_REFSHOPTAB")
+
+CRefShopTab::CRefShopTab()
+{
+}
+
+CRefShopTab::~CRefShopTab()
+{
+}
+
+// 0x52a660 ctor, 0x51f9a0 / 0x51f9c0 slots 2 / 3, 0x622ba0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShop, CDBRecStream, CDBRecStream, "_REFSHOP")
+
+CRefShop::CRefShop()
+{
+}
+
+CRefShop::~CRefShop()
+{
+}
+
+// 0x52cf10 ctor, 0x5203f0 / 0x520410 slots 2 / 3, 0x622e10 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShopItemStockPeriod, CDBRecStream, CDBRecStream,
+                        "_REFSHOPITEMSTOCKPERIOD")
+
+CRefShopItemStockPeriod::CRefShopItemStockPeriod()
+{
+}
+
+CRefShopItemStockPeriod::~CRefShopItemStockPeriod()
+{
+}

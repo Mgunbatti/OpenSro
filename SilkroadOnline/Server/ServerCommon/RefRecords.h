@@ -1070,3 +1070,246 @@ public:
 
 C_ASSERT(sizeof(CRefGachaNpcMap) == 0x28);
 C_ASSERT(FIELD_OFFSET(CRefGachaNpcMap, Service) == 24);
+
+// ---------------------------------------------------------------------------------------------
+// Shop records
+
+// _REFSHOPOBJECT
+class CRefShopObject : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShopObject)
+
+public:
+    CRefShopObject();
+    virtual ~CRefShopObject();
+};
+
+C_ASSERT(sizeof(CRefShopObject) == 0x30);
+
+// _REFSHOPTABGROUP
+class CRefShopTabGroup : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShopTabGroup)
+
+public:
+    CRefShopTabGroup();
+    virtual ~CRefShopTabGroup();
+};
+
+C_ASSERT(sizeof(CRefShopTabGroup) == 0x30);
+
+// _REFSHOPGROUP
+class CRefShopGroup : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShopGroup)
+
+public:
+    CRefShopGroup();
+    virtual ~CRefShopGroup();
+};
+
+C_ASSERT(sizeof(CRefShopGroup) == 0x30);
+
+// _REFMAPPINGSHOPGROUP
+class CRefMappingShopGroup : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefMappingShopGroup)
+
+public:
+    CRefMappingShopGroup();
+    virtual ~CRefMappingShopGroup();
+};
+
+C_ASSERT(sizeof(CRefMappingShopGroup) == 0x30);
+
+// _REFTREATITEMOFSHOP
+class CRefTreatItemOfShop : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTreatItemOfShop)
+
+public:
+    CRefTreatItemOfShop();
+    virtual ~CRefTreatItemOfShop();
+};
+
+C_ASSERT(sizeof(CRefTreatItemOfShop) == 0x30);
+
+// _REFACCESSPERMISSIONOFSHOP
+class CRefAccessPermissionOfShop : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefAccessPermissionOfShop)
+
+public:
+    CRefAccessPermissionOfShop();
+    virtual ~CRefAccessPermissionOfShop();
+};
+
+C_ASSERT(sizeof(CRefAccessPermissionOfShop) == 0x30);
+
+// _REFREWARDPOLICYTOSELLPACKAGEITEM
+class CRefRewardPolicyToSellPackageItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefRewardPolicyToSellPackageItem)
+
+public:
+    CRefRewardPolicyToSellPackageItem();
+    virtual ~CRefRewardPolicyToSellPackageItem();
+};
+
+C_ASSERT(sizeof(CRefRewardPolicyToSellPackageItem) == 0x30);
+
+// _REFREWARDPOLICYTOBUYSCRAPITEM
+class CRefRewardPolicyToBuyScrapItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefRewardPolicyToBuyScrapItem)
+
+public:
+    CRefRewardPolicyToBuyScrapItem();
+    virtual ~CRefRewardPolicyToBuyScrapItem();
+};
+
+C_ASSERT(sizeof(CRefRewardPolicyToBuyScrapItem) == 0x30);
+
+// _REFCONDITIONTOSELLPACKAGEITEM
+class CRefConditionToSellPackageItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefConditionToSellPackageItem)
+
+public:
+    CRefConditionToSellPackageItem();
+    virtual ~CRefConditionToSellPackageItem();
+};
+
+C_ASSERT(sizeof(CRefConditionToSellPackageItem) == 0x30);
+
+// _REFCONDITIONTOBUYSCRAPITEM
+class CRefConditionToBuyScrapItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefConditionToBuyScrapItem)
+
+public:
+    CRefConditionToBuyScrapItem();
+    virtual ~CRefConditionToBuyScrapItem();
+};
+
+C_ASSERT(sizeof(CRefConditionToBuyScrapItem) == 0x30);
+
+// _REFREWARDPOLICYTOSELLSCRAPITEM
+class CRefRewardPolicyToSellScrapItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefRewardPolicyToSellScrapItem)
+
+public:
+    CRefRewardPolicyToSellScrapItem();
+    virtual ~CRefRewardPolicyToSellScrapItem();
+};
+
+C_ASSERT(sizeof(CRefRewardPolicyToSellScrapItem) == 0x30);
+
+// _REFCONDITIONTOSELLSCRAPITEM
+class CRefConditionToSellScrapItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefConditionToSellScrapItem)
+
+public:
+    CRefConditionToSellScrapItem();
+    virtual ~CRefConditionToSellScrapItem();
+};
+
+C_ASSERT(sizeof(CRefConditionToSellScrapItem) == 0x30);
+
+// _REFPRICEPOLICYOFITEM
+class CRefPricePolicyOfItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefPricePolicyOfItem)
+
+public:
+    CRefPricePolicyOfItem();
+    virtual ~CRefPricePolicyOfItem();
+};
+
+C_ASSERT(sizeof(CRefPricePolicyOfItem) == 0x30);
+
+// _REFPACKAGEITEM
+class CRefPackageItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefPackageItem)
+
+public:
+    CRefPackageItem();
+    virtual ~CRefPackageItem();
+};
+
+C_ASSERT(sizeof(CRefPackageItem) == 0x30);
+
+// _REFSCRAPOFPACKAGEITEM
+class CRefScrapOfPackageItem : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefScrapOfPackageItem)
+
+public:
+    CRefScrapOfPackageItem();
+    virtual ~CRefScrapOfPackageItem();
+};
+
+C_ASSERT(sizeof(CRefScrapOfPackageItem) == 0x30);
+
+// _REFMAPPINGSHOPWITHTAB
+class CRefMappingShopWithTab : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefMappingShopWithTab)
+
+public:
+    CRefMappingShopWithTab();
+    virtual ~CRefMappingShopWithTab();
+};
+
+C_ASSERT(sizeof(CRefMappingShopWithTab) == 0x30);
+
+// _REFSHOPGOODS
+class CRefShopGoods : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShopGoods)
+
+public:
+    CRefShopGoods();
+    virtual ~CRefShopGoods();
+};
+
+C_ASSERT(sizeof(CRefShopGoods) == 0x30);
+
+// _REFSHOPTAB
+class CRefShopTab : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShopTab)
+
+public:
+    CRefShopTab();
+    virtual ~CRefShopTab();
+};
+
+C_ASSERT(sizeof(CRefShopTab) == 0x30);
+
+// _REFSHOP
+class CRefShop : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShop)
+
+public:
+    CRefShop();
+    virtual ~CRefShop();
+};
+
+C_ASSERT(sizeof(CRefShop) == 0x30);
+
+// _REFSHOPITEMSTOCKPERIOD
+class CRefShopItemStockPeriod : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefShopItemStockPeriod)
+
+public:
+    CRefShopItemStockPeriod();
+    virtual ~CRefShopItemStockPeriod();
+};
+
+C_ASSERT(sizeof(CRefShopItemStockPeriod) == 0x30);
