@@ -333,7 +333,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ShardRefRecordTest.exe \
         $(BIN)\ShardInstanceRecordTest.exe \
         $(BIN)\ShardReferenceDataTest.exe \
-        $(BIN)\ShardRefQuestTest.exe
+        $(BIN)\ShardRefQuestTest.exe \
+        $(BIN)\ShardRefObjTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -605,6 +606,9 @@ $(OBJ)\test\ShardReferenceDataTest.obj: test\ShardReferenceDataTest.cpp
 $(OBJ)\test\ShardRefQuestTest.obj: test\ShardRefQuestTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefQuestTest.cpp
 
+$(OBJ)\test\ShardRefObjTest.obj: test\ShardRefObjTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefObjTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -743,6 +747,11 @@ $(BIN)\ShardReferenceDataTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(S
 $(BIN)\ShardRefQuestTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
                               $(OBJ)\test\ShardRefQuestTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefQuestTest.obj $(SHARD_REFDATA_OBJS) \
+	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\ShardRefObjTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
+                             $(OBJ)\test\ShardRefObjTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefObjTest.obj $(SHARD_REFDATA_OBJS) \
 	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
@@ -916,6 +925,7 @@ test: all
 	$(BIN)\ShardInstanceRecordTest.exe
 	$(BIN)\ShardReferenceDataTest.exe
 	$(BIN)\ShardRefQuestTest.exe
+	$(BIN)\ShardRefObjTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
 
