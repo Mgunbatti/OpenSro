@@ -474,6 +474,18 @@ $(OBJ)\ServerCommon:
 {SilkroadOnline\Server\ServerCommon}.cpp{$(OBJ)\ServerCommon}.obj:
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ServerCommon\ $<
 
+# SR_ShardManager messenger and party manager (SilkroadOnline\Server\ShardManager, SM_social3).
+# They need classes of other groups (SocialExtern.h); "nmake shard_social3" compiles them.
+SHARD_SOCIAL3_OBJS = $(OBJ)\ShardManager\Messenger.obj
+
+$(OBJ)\ShardManager:
+	@if not exist $@ mkdir $@
+
+{SilkroadOnline\Server\ShardManager}.cpp{$(OBJ)\ShardManager}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
+
+shard_social3: $(OBJ)\ShardManager $(SHARD_SOCIAL3_OBJS)
+
 {JMX_CommonServers\GlobalManager}.cpp{$(OBJ)\GlobalManager}.obj:
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\GlobalManager\ $<
 
