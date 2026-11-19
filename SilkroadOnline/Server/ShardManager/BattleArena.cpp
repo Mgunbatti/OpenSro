@@ -1154,3 +1154,152 @@ void CBattleArenaMgr::CheckAndGoGuild()
         batch.Flush();
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The answers of the check (0xB4D1); the match type is not range checked (SM-162)
+
+void CBattleArenaMgr::ConfirmPlayUserRandom(CMsg* pMsg, BYTE byKind, BYTE byMatch)
+{
+    ByteMap* apMap[1] = { &m_amapRandom[byMatch] };
+    ConfirmSoloUsers(pMsg, byKind, byMatch, apMap, 1,
+                     "Unknown JID(%d) in CBattleArenaMgr::ConfirmPlayUserRandom() %d %d");
+}
+
+void CBattleArenaMgr::ConfirmPlayUserJob(CMsg* pMsg, BYTE byKind, BYTE byMatch)
+{
+    ByteMap* apMap[2] = { &m_amapJobB[byMatch], &m_amapJobA[byMatch] };
+    ConfirmSoloUsers(pMsg, byKind, byMatch, apMap, 2,
+                     "Unknown JID(%d) in CBattleArenaMgr::OnCheckAndGo_Ack() %d %d");
+}
+
+void CBattleArenaMgr::ConfirmPlayUserParty(CMsg* pMsg, BYTE byKind, BYTE byMatch)
+{
+    ConfirmGroupUsers(pMsg, byKind, byMatch, m_amapPartyOfUser[byMatch],
+                      m_amapPartyLevel[byMatch], m_amapPartyMember[byMatch],
+                      "Unknown Party Member(%d) in CBattleArenaMgr::ConfirmPlayUserParty() %d %d");
+}
+
+void CBattleArenaMgr::ConfirmPlayUserGuild(CMsg* pMsg, BYTE byKind, BYTE byMatch)
+{
+    ConfirmGroupUsers(pMsg, byKind, byMatch, m_amapGuildOfUser[byMatch],
+                      m_amapGuildLevel[byMatch], m_amapGuildMember[byMatch],
+                      "Unknown Guild Member(%d) in CBattleArenaMgr::ConfirmPlayUserGuild() %d %d");
+}
+
+// Result 0: the level is stored for the team building; any other result drops the registration
+// and kicks the player with it. Unknown players are only logged.
+void CBattleArenaMgr::ConfirmSoloUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch,
+                                       ByteMap* const* apMap, int nMap,
+                                       const char* pszUnknownFormat)
+{
+    if (!pMsg)
+        return;
+    while (pMsg->GetUnreadSize() >= 6)
+    {
+        DWORD dwJID = 0;
+        BYTE byResult = 0;
+        BYTE byLevel = 0;
+        *pMsg >> dwJID >> byResult >> byLevel;
+
+        ByteMap* pMap = NULL;
+        ByteMap::iterator it;
+        for (int i = 0; i < nMap; ++i)
+        {
+            it = apMap[i]->find(dwJID);
+            if (it != apMap[i]->end())
+            {
+                pMap = apMap[i];
+                break;
+            }
+        }
+        if (!pMap)
+        {
+            LogPrintf(0x1000000, pszUnknownFormat, dwJID, byKind, byMatch);
+            continue;
+        }
+
+        --m_adwCheckCount[byKind][byMatch];
+        CUser* pUser = ClientManager_FindUserByJID(dwJID);
+        if (!pUser || !User_GetCharID(pUser))
+        {
+            pMap->erase(it);
+        }
+        else if (byResult)
+        {
+            pMap->erase(it);
+            SendKickUser(dwJID, byResult);
+        }
+        else
+        {
+            it->second = byLevel;
+        }
+    }
+}
+
+// The level of the member and the highest level of its party / guild are stored. Players with a
+// result, unknown and offline players (the last two with 3) are kicked at the end and leave the
+// member map of their group; the level of a player with a result is stored all the same.
+void CBattleArenaMgr::ConfirmGroupUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch,
+                                        DwordMap& mapGroupOfUser, ByteMap& mapGroupLevel,
+                                        GroupMap& mapGroupMember, const char* pszUnknownFormat)
+{
+    ByteMap mapKick;
+    while (pMsg->GetUnreadSize() >= 6)
+    {
+        DWORD dwJID = 0;
+        BYTE byResult = 0;
+        BYTE byLevel = 0;
+        *pMsg >> dwJID >> byResult >> byLevel;
+
+        DwordMap::iterator it = mapGroupOfUser.find(dwJID);
+        if (it == mapGroupOfUser.end())
+        {
+            LogPrintf(0x1000000, pszUnknownFormat, dwJID, byKind, byMatch);
+            mapKick.insert(ByteMap::value_type(dwJID, 3));
+            continue;
+        }
+
+        --m_adwCheckCount[byKind][byMatch];
+        CUser* pUser = ClientManager_FindUserByJID(dwJID);
+        if (!pUser || !User_GetCharID(pUser))
+        {
+            mapKick.insert(ByteMap::value_type(dwJID, 3));
+            continue;
+        }
+        if (byResult)
+            mapKick.insert(ByteMap::value_type(dwJID, byResult));
+
+        it = mapGroupOfUser.find(dwJID);
+        if (it == mapGroupOfUser.end())
+            continue;
+        DWORD dwGroupID = it->second;
+        ByteMap::iterator itLevel = mapGroupLevel.find(dwGroupID);
+        if (itLevel == mapGroupLevel.end())
+            mapGroupLevel.insert(ByteMap::value_type(dwGroupID, byLevel));
+        else if (itLevel->second < byLevel)
+            itLevel->second = byLevel;
+
+        GroupMap::iterator itGroup = mapGroupMember.find(dwGroupID);
+        if (itGroup != mapGroupMember.end())
+        {
+            ByteMap::iterator itMember = itGroup->second.find(dwJID);
+            if (itMember != itGroup->second.end())
+                itMember->second = byLevel;
+        }
+    }
+
+    for (ByteMap::iterator itKick = mapKick.begin(); itKick != mapKick.end(); ++itKick)
+    {
+        DWORD dwJID = itKick->first;
+        SendKickUser(dwJID, itKick->second);
+        DwordMap::iterator it = mapGroupOfUser.find(dwJID);
+        if (it == mapGroupOfUser.end())
+            continue;
+        GroupMap::iterator itGroup = mapGroupMember.find(it->second);
+        if (itGroup == mapGroupMember.end())
+            continue;
+        ByteMap::iterator itMember = itGroup->second.find(dwJID);
+        if (itMember != itGroup->second.end())
+            itGroup->second.erase(itMember);
+    }
+}
