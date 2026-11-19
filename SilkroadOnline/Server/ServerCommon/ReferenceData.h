@@ -85,6 +85,15 @@ public:
         return *this;
     }
 
+    // RefData_SkipServiceFilteredColumn (0x49f880): skips the next column by the size its table
+    // description gives it (nothing when the description has no such column).
+    CRefRow& Skip();
+
+    CDBRecStream* Stream() const
+    {
+        return m_pRow;
+    }
+
 private:
     CDBRecStream* m_pRow;
 };
@@ -194,6 +203,138 @@ int RefRec_Read(const CRefSiegeDungeon& rec, RefSiegeDungeonData& r);           
 int RefRec_Read(const CRefSiegeQuest& rec, RefSiegeQuest& r);                          // 0x4980d0
 int RefRec_Read(const CRefSiegeQuestReward& rec, RefSiegeQuestRewardData& r);          // 0x498110
 
+// Parsed _RefServerEvent row (92 bytes): RefServerEvent::InitMembers 0x4a6a80 / DestroyMembers
+// 0x514270. Column names are not known.
+struct RefServerEvent
+{
+    BYTE             Service;                    // +0
+    DWORD            ID;                         // +4   key of the map
+    BYTE             b08;                        // +8
+    DWORD            dw0C;                       // +C
+    std::string      str10;                      // +10
+    TIMESTAMP_STRUCT tsBegin;                    // +2C
+    TIMESTAMP_STRUCT tsEnd;                      // +3C
+    BYTE             b4C;                        // +4C
+    BYTE             b4D;                        // +4D
+    WORD             w4E;                        // +4E
+    BYTE             b50;                        // +50  (after a column that is read and dropped)
+    DWORD            dw54;                       // +54
+    BYTE             b58;                        // +58
+};
+
+C_ASSERT(sizeof(RefServerEvent) == 92);
+
+// _RefServerEventReward row (24 bytes, vftable 0x78d284). The one virtual reads the row: the
+// base row from _RefServerEventReward, the derived part from the table of its type.
+class RefServerEventReward
+{
+public:
+    enum
+    {
+        TYPE_EXP_UP_FOR_PLAYERS = 1,
+        TYPE_PLAIN = 2,
+        TYPE_SPAWN_MONSTER = 3,
+    };
+
+    // RefServerEventReward::vf00 (0x498ea0): FALSE for a row out of service or of an unknown
+    // server event.
+    virtual BOOL Read(CRefRow& row);
+
+    BYTE             Service;                    // +4
+    DWORD            ID;                         // +8   key of the reward map
+    DWORD            ServerEventID;              // +C
+    DWORD            dw10;                       // +10
+    BYTE             b14;                        // +14
+    BYTE             Type;                       // +15  TYPE_*
+    BYTE             b16;                        // +16
+};
+
+C_ASSERT(sizeof(RefServerEventReward) == 24);
+
+// _RefServerEventReward_ExpUPForPlayers (36 bytes, vftable 0x78d28c).
+class RefServerEventReward_ExpUPForPlayers : public RefServerEventReward
+{
+public:
+    // CopyBase (0x498fe0) twice: the base columns are copied, the rest is left as it is.
+    explicit RefServerEventReward_ExpUPForPlayers(const RefServerEventReward& base)
+        : RefServerEventReward(base)
+    {
+    }
+
+    // 0x499010: FALSE for a row without its first column; the two percentages are clamped to
+    // [0, 1].
+    virtual BOOL Read(CRefRow& row);
+
+    DWORD            dw18;                       // +18
+    float            fRate1;                     // +1C  percent / 100
+    float            fRate2;                     // +20  percent / 100
+};
+
+C_ASSERT(sizeof(RefServerEventReward_ExpUPForPlayers) == 36);
+
+// _RefServerEventReward_SpawnMonster (40 bytes, vftable 0x78d294).
+class RefServerEventReward_SpawnMonster : public RefServerEventReward
+{
+public:
+    explicit RefServerEventReward_SpawnMonster(const RefServerEventReward& base)
+        : RefServerEventReward(base)
+    {
+    }
+
+    // 0x499190: always TRUE.
+    virtual BOOL Read(CRefRow& row);
+
+    WORD             w18;                        // +18  a DWORD column kept as WORD
+    float            af1C[3];                    // +1C
+};
+
+C_ASSERT(sizeof(RefServerEventReward_SpawnMonster) == 40);
+
+// Parsed _RefRentItem row (60 bytes, InitMembers 0x513e80); the key string is not part of it.
+struct RefRentItem
+{
+    DWORD               dw00;                    // +0
+    BYTE                b04;                     // +4
+    BYTE                b05;                     // +5
+    DWORD               dwFlags;                 // +8   bit 1: the value list below is read
+    TIMESTAMP_STRUCT    ts0C;                    // +C
+    TIMESTAMP_STRUCT    ts1C;                    // +1C
+    std::vector<DWORD>  vecValue;                // +2C  up to 5 values
+};
+
+C_ASSERT(sizeof(RefRentItem) == 60);
+
+// Parsed _RefQuestReward row (156 bytes): InitMembers 0x4a6ee0 / DestroyMembers 0x513d30.
+struct RefQuestReward
+{
+    DWORD            QuestID;                    // +0   key of the map
+    BYTE             b04;                        // +4
+    BYTE             b05;                        // +5
+    DWORD            dw08;                       // +8
+    DWORD            dw0C;                       // +C
+    DWORD            dw10;                       // +10
+    DWORD            dw14;                       // +14
+    int              n18;                        // +18  > 0 only for the temple quests
+    std::string      QuestCodeName;              // +1C
+    BYTE             b38;                        // +38
+    BYTE             b39;                        // +39
+    DWORD            dw3C;                       // +3C
+    std::string      str40;                      // +40
+    DWORD            dw5C;                       // +5C
+    std::string      str60;                      // +60
+    DWORD            dw7C;                       // +7C
+    std::string      str80;                      // +80
+};
+
+C_ASSERT(sizeof(RefQuestReward) == 156);
+
+int RefRow_Read(CRefRow& row, RefServerEvent& r);                // 0x498c70
+// RefRentItem::Read (0x499240): strKey is the hash_map key.
+int RefRow_Read(CRefRow& row, RefRentItem& r, std::string& strKey);
+int RefRow_Read(CRefRow& row, RefQuestReward& r);                // 0x499410
+// RefQuest_LoadRow (0x497550, RefData_CopyRecord_497570 is the copy): the ID, 0 out of service.
+int RefRec_Read(const CRefQuest& rec, RefQuest& r);
+
 // Opaque _RefObjCommon row (see InstanceRecords.h).
 struct RefObjCommonRow;
 
@@ -234,6 +375,12 @@ public:
     typedef std::map<std::string, RefGameWorldNPCVector>        RefGameWorldNPCMap;
     typedef std::map<int, RefObjCharExtraSkill*>                RefObjCharExtraSkillMap;
     typedef std::map<std::string, RefGameWorldConfig*>          RefGameWorldConfigMap;
+    typedef std::map<DWORD, RefQuest*>                          RefQuestMap;
+    typedef std::map<DWORD, RefServerEvent*>                    RefServerEventMap;
+    typedef std::map<DWORD, RefServerEventReward*>              RefServerEventRewardMap;
+    typedef std::multimap<DWORD, DWORD>                         RefServerEventRewardIdMap;
+    typedef stdext::hash_map<std::string, RefRentItem*>         RefRentItemHashMap;
+    typedef std::map<DWORD, RefQuestReward*>                    RefQuestRewardMap;
 
     // Static object of the original (dynamic initializer 0x50a9b0): sets g_pReferenceData.
     CReferenceData();
@@ -252,12 +399,18 @@ public:
 
     // RefData_HashFindAt108 (0x42e280): the object row of an id, NULL when there is none.
     RefObjCommonRow* FindRefObj(int nRefObjID);
+    // CRefInstanceGenerator::FindServerEvent: NULL when there is none.
+    RefServerEvent* FindServerEvent(DWORD dwID);
+    // RefData_FindServerEventReward (0x47d980): NULL when there is none.
+    RefServerEventReward* FindServerEventReward(DWORD dwID);
 
 public:
     RefTableVector*             m_pTables;                          // +000
     BYTE                        m_ab004[0x64];                      // +004  (not ported yet)
     RefObjHashMap               m_hashRefObj;                       // +068  _RefObjCommon by ID
-    BYTE                        m_ab090[0x96C];                     // +090  (not ported yet)
+    BYTE                        m_ab090[0x810];                     // +090  (not ported yet)
+    RefQuestMap                 m_mapQuest;                         // +8A0  by ID
+    BYTE                        m_ab8AC[0x150];                     // +8AC  (not ported yet)
     RefSiegeFortressVector      m_vecSiegeFortress;                 // +9FC
     RefSiegeFortressGuardMap    m_mmapSiegeFortressGuard;           // +A0C  by FortressID
     RefSiegeFortressItemForgeMap m_mmapSiegeFortressItemForge;      // +A18  by FortressID
@@ -274,7 +427,13 @@ public:
     RefGameWorldNPCMap          m_mapGameWorldNPC;                  // +AA4
     RefObjCharExtraSkillMap     m_mapObjCharExtraSkill;             // +AB0  by RefObjID
     RefGameWorldConfigMap       m_mapGameWorldConfig;               // +ABC  by GroupCodeName128
-    BYTE                        m_abAC8[0xC0];                      // +AC8  (not ported yet)
+    BYTE                        m_abAC8[0x20];                      // +AC8  (not ported yet)
+    RefServerEventMap           m_mapServerEvent;                   // +AE8  by ID
+    RefServerEventRewardMap     m_mapServerEventReward;             // +AF4  by reward ID
+    RefServerEventRewardIdMap   m_mmapServerEventRewardID;          // +B00  event ID -> reward ID
+    RefRentItemHashMap          m_hashRentItem;                     // +B0C  by the key column
+    RefQuestRewardMap           m_mapQuestReward;                   // +B34  by QuestID
+    BYTE                        m_abB40[0x48];                      // +B40  (not ported yet)
     RefUIStringMap              m_mapUIString;                      // +B88  by GroupCodeName128
     RefTriggerBindMap           m_mmapGameWorldBindTriggerCategory; // +B94
     RefTriggerCategoryMap       m_mapTriggerCategory;               // +BA0
@@ -297,6 +456,7 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObj) == 0x68);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_ab090) == 0x90);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapQuest) == 0x8A0);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortress) == 0x9FC);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortressBattleRank) == 0xA24);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSiegeLvlSummonMonster) == 0xA44);
@@ -304,6 +464,9 @@ C_ASSERT(FIELD_OFFSET(CReferenceData, m_mmapSiegeQuestReward) == 0xA80);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapShardContentConfig) == 0xA98);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldNPC) == 0xAA4);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldConfig) == 0xABC);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapServerEvent) == 0xAE8);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRentItem) == 0xB0C);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapQuestReward) == 0xB34);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapUIString) == 0xB88);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldGroupConfig) == 0xC54);
 C_ASSERT(sizeof(CReferenceData) == 0xC60);

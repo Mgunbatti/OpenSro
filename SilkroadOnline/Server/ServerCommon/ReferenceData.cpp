@@ -1,6 +1,7 @@
 #include "ServerCommon/ReferenceData.h"
 
 #include <string.h>
+#include <time.h>
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
@@ -50,6 +51,27 @@ CRefRow& CRefRow::operator>>(std::string& value)
         m_pRow->m_nReadPos += wLength;
     }
     m_pRow->m_nReadPos += wFieldSize - wLength - 4;
+    ++m_pRow->m_nFieldCount;
+    return *this;
+}
+
+CRefRow& CRefRow::Skip()
+{
+    CDBTableInfo* pInfo = m_pRow->GetTableInfo();
+    for (DBFieldGroupMap::iterator itGroup = pInfo->m_mapGroups.begin();
+         itGroup != pInfo->m_mapGroups.end(); ++itGroup)
+    {
+        DBColumnVector& vecColumns = itGroup->second.vecColumns;
+        for (size_t i = 0; i < vecColumns.size(); ++i)
+        {
+            if (vecColumns.at(i).nOrdinal == (int)m_pRow->m_nFieldCount + 1)
+            {
+                m_pRow->m_nReadPos += vecColumns.at(i).nSize;
+                ++m_pRow->m_nFieldCount;
+                return *this;
+            }
+        }
+    }
     ++m_pRow->m_nFieldCount;
     return *this;
 }
@@ -193,6 +215,166 @@ int RefRow_Read(CRefRow& row, RefObjCharExtraSkill& r)
     for (int i = 0; i < 20; ++i)
         row >> r.aSkillID[i];
     return (int)dwService;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Server event, rent item and quest reward readers
+
+// Util_SystemTimeDiffSeconds (0x461240): seconds from tsFrom to tsTo, both local times
+// (CTime with the DST flag -1).
+static __int64 RefData_TimestampDiffSeconds(const TIMESTAMP_STRUCT& tsFrom,
+                                            const TIMESTAMP_STRUCT& tsTo)
+{
+    const TIMESTAMP_STRUCT* apts[2] = { &tsFrom, &tsTo };
+    __time64_t at[2];
+    for (int i = 0; i < 2; ++i)
+    {
+        struct tm t;
+        memset(&t, 0, sizeof(t));
+        t.tm_year = apts[i]->year - 1900;
+        t.tm_mon = apts[i]->month - 1;
+        t.tm_mday = apts[i]->day;
+        t.tm_hour = apts[i]->hour;
+        t.tm_min = apts[i]->minute;
+        t.tm_sec = apts[i]->second;
+        t.tm_isdst = -1;
+        at[i] = _mktime64(&t);
+    }
+    return at[1] - at[0];
+}
+
+// GM_GetLocalTimestamp (0x41b490): the local time, fraction 0.
+static void RefData_GetLocalTimestamp(TIMESTAMP_STRUCT& ts)
+{
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    ts.year = st.wYear;
+    ts.month = st.wMonth;
+    ts.day = st.wDay;
+    ts.hour = st.wHour;
+    ts.minute = st.wMinute;
+    ts.second = st.wSecond;
+    ts.fraction = 0;
+}
+
+// The row is kept when its end time is not past.
+int RefRow_Read(CRefRow& row, RefServerEvent& r)
+{
+    row >> r.Service;
+    if (!r.Service)
+        return 0;
+    DWORD dwDropped;
+    row >> r.ID >> r.b08 >> r.dw0C >> r.str10 >> r.tsBegin >> r.tsEnd >> r.b4C >> r.b4D >> r.w4E >>
+        dwDropped >> r.b50 >> r.dw54 >> r.b58;
+    TIMESTAMP_STRUCT tsNow;
+    RefData_GetLocalTimestamp(tsNow);
+    return RefData_TimestampDiffSeconds(r.tsEnd, tsNow) <= 0;
+}
+
+BOOL RefServerEventReward::Read(CRefRow& row)
+{
+    row >> Service;
+    if (!Service)
+        return FALSE;
+    row >> ID >> ServerEventID >> dw10 >> b14 >> Type >> b16;
+    return CReferenceData::GetInstance()->FindServerEvent(ServerEventID) != NULL;
+}
+
+static void RefData_ClampUnit(float& f)
+{
+    if (f > 1.0f)
+        f = 1.0f;
+    else if (f < 0.0f)
+        f = 0.0f;
+}
+
+BOOL RefServerEventReward_ExpUPForPlayers::Read(CRefRow& row)
+{
+    BYTE bPercent1;
+    BYTE bPercent2;
+    row >> dw18 >> bPercent1 >> bPercent2;
+    if (!dw18)
+        return FALSE;
+    fRate1 = (float)(bPercent1 / 100.0);
+    fRate2 = (float)(bPercent2 / 100.0);
+    RefData_ClampUnit(fRate1);
+    RefData_ClampUnit(fRate2);
+    return TRUE;
+}
+
+BOOL RefServerEventReward_SpawnMonster::Read(CRefRow& row)
+{
+    DWORD dwValue;
+    row >> dwValue >> af1C[0] >> af1C[1] >> af1C[2];
+    w18 = (WORD)dwValue;
+    return TRUE;
+}
+
+// Service, the key, the columns; with bit 1 of the flags and a count of 1..5, five value
+// columns of which the first <count> are kept and the others skipped.
+int RefRow_Read(CRefRow& row, RefRentItem& r, std::string& strKey)
+{
+    DWORD dwService;
+    row >> dwService;
+    if (!dwService)
+        return 0;
+    BYTE bCount;
+    row >> strKey >> r.dw00 >> r.b04 >> r.b05 >> r.dwFlags >> r.ts0C >> r.ts1C >> bCount;
+    if ((r.dwFlags & 2) != 0 && bCount && bCount <= 5)
+    {
+        for (int i = 0; i < 5; ++i)
+        {
+            DWORD dwValue = 0;
+            if (bCount)
+            {
+                row >> dwValue;
+                r.vecValue.push_back(dwValue);
+                --bCount;
+            }
+            else
+            {
+                row.Skip();
+            }
+        }
+    }
+    return 1;
+}
+
+// CompareStringA with the default locale and no flags: TRUE for equal strings.
+static BOOL RefData_StrEqual(const char* psz1, const char* psz2)
+{
+    return CompareStringA(0x400, 0, psz1, lstrlenA(psz1), psz2, lstrlenA(psz2)) == CSTR_EQUAL;
+}
+
+// The quest must be known. A positive n18 is allowed for the two temple quests only.
+int RefRow_Read(CRefRow& row, RefQuestReward& r)
+{
+    BYTE bService;
+    row >> bService;
+    if (!bService)
+        return 0;
+    row >> r.QuestID;
+    CReferenceData::RefQuestMap& mapQuest = CReferenceData::GetInstance()->m_mapQuest;
+    CReferenceData::RefQuestMap::iterator it = mapQuest.find(r.QuestID);
+    if (it == mapQuest.end() || !it->second)
+        return 0;
+    for (int i = 0; i < 8; ++i)
+        row.Skip();
+    row >> r.dw08 >> r.dw0C >> r.dw10 >> r.dw14 >> r.n18 >> r.QuestCodeName >> r.b38 >> r.b39 >>
+        r.b04 >> r.b05 >> r.dw3C >> r.str40 >> r.dw5C >> r.str60 >> r.dw7C >> r.str80;
+    if (r.n18 <= 0)
+        return 1;
+    if (RefData_StrEqual(r.QuestCodeName.c_str(), "TEMPLE_ANUBIS"))
+        return 1;
+    return RefData_StrEqual(r.QuestCodeName.c_str(), "TEMPLE_HAROERIS");
+}
+
+int RefRec_Read(const CRefQuest& rec, RefQuest& r)
+{
+    if (!rec.m_Data.Service)
+        return 0;
+    r = rec.m_Data;
+    return r.ID;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -467,6 +649,156 @@ int RefData_LoadGameWorldNPC(CReferenceData* pData, CDBRecord* pRecord)
     return 1;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Quest, server event, rent item and quest reward loaders
+
+// RefData_AddRow<Table> (e.g. RefData_AddRowRefQuest 0x4d2ad0): a row the reader rejects is
+// freed; a key that is already in the map frees the row and fails the build.
+template <class TRec, class T, class TMap, TMap CReferenceData::*pMap>
+int RefData_AddRowUnique(CReferenceData* pData, CDBRecord* pRecord)
+{
+    T* pRow = new T;
+    typename TMap::key_type key = RefRec_Read(*static_cast<TRec*>(pRecord), *pRow);
+    if (!key)
+    {
+        delete pRow;
+        return 1;
+    }
+    typename TMap::iterator it = (pData->*pMap).find(key);
+    if (it != (pData->*pMap).end() && it->second)
+    {
+        delete pRow;
+        BSAssertFail();
+        return 0;
+    }
+    (pData->*pMap).insert(typename TMap::value_type(key, pRow));
+    return 1;
+}
+
+// CRefInstanceGenerator::LoadServerEvent (0x4a69a0): rows in service that have not ended; a
+// duplicate ID fails the build.
+int RefData_LoadServerEvent(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    RefServerEvent* pRow = new RefServerEvent;
+    if (!RefRow_Read(row, *pRow))
+    {
+        delete pRow;
+        return 1;
+    }
+    if (pData->m_mapServerEvent.find(pRow->ID) != pData->m_mapServerEvent.end())
+    {
+        // BUG(SM-007): the duplicate row is not freed.
+        BSAssertFail();
+        return 0;
+    }
+    pData->m_mapServerEvent.insert(std::make_pair(pRow->ID, pRow));
+    return 1;
+}
+
+// CRefInstanceGenerator::LoadServerEventReward (0x4a6ad0): the base row decides the class of
+// the reward; the reward is also listed under its server event.
+int RefData_LoadServerEventReward(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    RefServerEventReward base;
+    if (!base.Read(row))
+        return 1;
+    RefServerEventReward* pReward;
+    switch (base.Type)
+    {
+    case RefServerEventReward::TYPE_EXP_UP_FOR_PLAYERS:
+        pReward = new RefServerEventReward_ExpUPForPlayers(base);
+        break;
+    case RefServerEventReward::TYPE_PLAIN:
+        pReward = new RefServerEventReward(base);
+        break;
+    case RefServerEventReward::TYPE_SPAWN_MONSTER:
+        pReward = new RefServerEventReward_SpawnMonster(base);
+        break;
+    default:
+        BSAssertFail();
+        return 0;
+    }
+    if (pData->m_mapServerEventReward.find(pReward->ID) != pData->m_mapServerEventReward.end())
+    {
+        // BUG(SM-007): the duplicate reward is not freed.
+        BSAssertFail();
+        return 0;
+    }
+    pData->m_mapServerEventReward.insert(std::make_pair(pReward->ID, pReward));
+    CReferenceData::GetInstance()->m_mmapServerEventRewardID.insert(
+        std::make_pair(pReward->ServerEventID, pReward->ID));
+    return 1;
+}
+
+// CRefInstanceGenerator::ReadServerEventRewardDetail (0x4a6c90): the derived columns of a
+// reward (its class reads them); a row of an unknown reward is skipped.
+int RefData_ReadServerEventRewardDetail(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    DWORD dwID;
+    row >> dwID;
+    CReferenceData::RefServerEventRewardMap::iterator it =
+        pData->m_mapServerEventReward.find(dwID);
+    if (it == pData->m_mapServerEventReward.end())
+        return 1;
+    return it->second->Read(row);
+}
+
+// RefData_BuildRefServerEventReward (0x4d0650), slots 0x61..0x63: the base table, then the two
+// detail tables. A failing row asserts twice and stops the build.
+static int RefData_BuildServerEventReward(CReferenceData* pData, RefTableEntry* pTable,
+                                          unsigned int nSlot)
+{
+    if (pTable->m_listRows.size() == 0)
+        return 0;
+    for (CDBRecordList::iterator it = pTable->m_listRows.begin(); it != pTable->m_listRows.end();
+         ++it)
+    {
+        int nResult = 0;
+        if (*it)
+        {
+            if (nSlot == 0x61)
+                nResult = RefData_LoadServerEventReward(pData, *it);
+            else if (nSlot > 0x61 && nSlot <= 0x63)
+                nResult = RefData_ReadServerEventRewardDetail(pData, *it);
+        }
+        if (!nResult)
+        {
+            BSAssertFail();
+            BSAssertFail();
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// CRefInstanceGenerator::LoadRentItem (0x4a6d10): keyed by the key column.
+int RefData_LoadRentItem(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    std::string strKey;
+    RefRentItem* pRow = new RefRentItem;
+    // BUG(SM-011): a row out of service is not freed and fails the whole build.
+    if (!RefRow_Read(row, *pRow, strKey))
+        return 0;
+    pData->m_hashRentItem.insert(std::make_pair(strKey, pRow));
+    return 1;
+}
+
+// CRefInstanceGenerator::LoadQuestReward (0x4a6e30): keyed by QuestID.
+int RefData_LoadQuestReward(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    RefQuestReward* pRow = new RefQuestReward;
+    if (RefRow_Read(row, *pRow))
+        pData->m_mapQuestReward.insert(std::make_pair(pRow->QuestID, pRow));
+    else
+        delete pRow;
+    return 1;
+}
+
 // A table whose builder is not ported yet: nothing is built and the build goes on.
 static int RefData_BuildPending(CReferenceData*, RefTableEntry*, unsigned int)
 {
@@ -506,7 +838,10 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, P, P, P, P, P, P, P,                                                 // 0x20
     P, P, P, P, P, P, P, P,                                                 // 0x28
     P, P, P, P, P, P, P, P,                                                 // 0x30
-    P, P, P, P, P, P, P, P,                                                 // 0x38
+    P, P, P, P,                                                             // 0x38
+    REF_LOADED((RefData_AddRowUnique<CRefQuest, RefQuest, CReferenceData::RefQuestMap,
+                &CReferenceData::m_mapQuest>)),                             // 0x3C
+    P, P, P,
     P, P, P, P, P, P, P, P,                                                 // 0x40
     REF_LOADED((RefData_LoadSiegeVector<CRefSiegeFortress, RefSiegeFortress,
                 &CReferenceData::m_vecSiegeFortress>)),                     // 0x48
@@ -526,7 +861,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
                 &RefSiegeDungeonData::FortressID, &CReferenceData::m_mapSiegeDungeon>)),
     REF_LOADED(RefData_LoadSiegeQuest),                                     // 0x51
     REF_LOADED(RefData_LoadSiegeQuestReward),
-    P, P, P, P, P,                                                          // 0x53
+    P, P,                                                                   // 0x53
+    REF_LOADED(RefData_LoadRentItem),                                       // 0x55
+    P, P,
     P, P,                                                                   // 0x58
     REF_KEYED(RefShardContentConfig, RefShardContentConfigMap, m_mapShardContentConfig,
               std::string, CodeName128),                                    // 0x5A
@@ -537,7 +874,12 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     REF_KEYED(RefGameWorldConfig, RefGameWorldConfigMap, m_mapGameWorldConfig, std::string,
               GroupCodeName128),                                            // 0x5E
     RefData_BuildAlchemyMeritPending,
-    P, P, P, P, P, P, P, P,                                                 // 0x60
+    REF_LOADED(RefData_LoadServerEvent),                                    // 0x60
+    RefData_BuildServerEventReward,
+    RefData_BuildServerEventReward,
+    RefData_BuildServerEventReward,
+    REF_LOADED(RefData_LoadQuestReward),                                    // 0x64
+    P, P, P,
     P, P,                                                                   // 0x68
     REF_KEYED(RefUIString, RefUIStringMap, m_mapUIString, std::string, GroupCodeName128),
     REF_KEYED(RefTriggerBind, RefTriggerBindMap, m_mmapGameWorldBindTriggerCategory, int, ID1),
@@ -606,6 +948,12 @@ CReferenceData::~CReferenceData()
     RefData_DeleteValues(m_mapSiegeDungeon);
     RefData_DeleteValues(m_mmapSiegeQuest);
     RefData_DeleteValues(m_mmapSiegeQuestReward);
+    RefData_DeleteValues(m_mapQuest);
+    RefData_DeleteValues(m_mapServerEvent);
+    RefData_DeleteValues(m_mapServerEventReward);
+    m_mmapServerEventRewardID.clear();
+    RefData_DeleteValues(m_hashRentItem);
+    RefData_DeleteValues(m_mapQuestReward);
     m_mapGameWorldNPC.clear();
     RefData_DeleteValues(m_mapObjCharExtraSkill);
     RefData_DeleteValues(m_mapGameWorldConfig);
@@ -678,6 +1026,22 @@ RefObjCommonRow* CReferenceData::FindRefObj(int nRefObjID)
 {
     RefObjHashMap::iterator it = m_hashRefObj.find(nRefObjID);
     if (it == m_hashRefObj.end())
+        return NULL;
+    return it->second;
+}
+
+RefServerEvent* CReferenceData::FindServerEvent(DWORD dwID)
+{
+    RefServerEventMap::iterator it = m_mapServerEvent.find(dwID);
+    if (it == m_mapServerEvent.end())
+        return NULL;
+    return it->second;
+}
+
+RefServerEventReward* CReferenceData::FindServerEventReward(DWORD dwID)
+{
+    RefServerEventRewardMap::iterator it = m_mapServerEventReward.find(dwID);
+    if (it == m_mapServerEventReward.end())
         return NULL;
     return it->second;
 }
