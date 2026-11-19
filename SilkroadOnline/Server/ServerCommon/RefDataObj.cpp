@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "BSLib/BSDebug.h"
+#include "ServerCommon/RefDataQuest.h"
 #include "ServerFramework/ServerDataExtern.h"
 
 static const char s_szReferenceDataFile[] =
@@ -820,8 +821,9 @@ void RefData_PostProcessObjCommon(CReferenceData* pData)
         else
             pObj->OrgObjID = pOrg->ID;
     }
-    // Not ported yet: BuildHunterMonsterList / BuildThiefMonsterList (3 bands of 140 levels; the
-    // member type of m_vecHunterMonster / m_vecThiefMonster has one level too few).
+    // BuildHunterMonsterList / BuildThiefMonsterList (RefDataMisc.cpp).
+    RefData_BuildHunterMonsterList(pData);
+    RefData_BuildThiefMonsterList(pData);
     // BuildMercenaryList (0x4aaaa0).
     for (it = hashObj.begin(); it != hashObj.end(); ++it)
     {
@@ -848,7 +850,9 @@ void RefData_PostProcessObjCommon(CReferenceData* pData)
             BSAssertFail();
         pData->m_vecMonsterByLevel.at(nLevel).push_back(pObj);
     }
-    // Not ported yet: BuildTrapMonsterList ("TQ") and BuildEventItemList.
+    // BuildTrapMonsterList (RefDataMisc.cpp) and BuildEventItemList (0x4ab0a0, RefDataQuest.cpp).
+    RefData_BuildTrapMonsterList(pData, std::string("TQ"));
+    RefData_BuildEventItemList(pData);
     // BuildSiegeGuarderList (0x4aab70): the first failure stops the list.
     for (it = hashObj.begin(); it != hashObj.end(); ++it)
     {
