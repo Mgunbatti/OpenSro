@@ -3,16 +3,17 @@
 #include <string>
 
 #include "BSLib/DB/Database.h"
+#include "ServerCommon/RecordT.h"
 
 // Reference record classes of SR_ShardManager (ServerCommon; CShardDB::RegisterRefTables opens one
 // CDBTable per class, CTableKeeper::RegisterTable_<T> gives it a CCustomAllocator<T, ...>).
 //
-// Every class has the CBase slots 0 / 1, slot 2 GetTableName and slot 3 GetTableInfo (its static
-// CDBTableInfo); slots 4..8 are the August 2011 defaults of CDBRecord / CDBRecStream. The table
-// descriptions are set up by a dynamic initializer per class (InitTableInfo, the
-// StaticInit_TableInfo functions of the analysis): table name, flags DBTABLE_04, the two empty
-// field groups 0 and 1 (so CDBTable::DescribeColumns takes every column of the table into group
-// 1 with offsets of its own), the record class and m_nDataOffset.
+// Every class is a CDBRecordT (RecordT.h): runtime class with factory, slots 2 / 3 and the table
+// description; slots 4..8 are the August 2011 defaults of CDBRecord / CDBRecStream. The table
+// descriptions have flags DBTABLE_04 and only the two empty field groups 0 and 1 (so
+// CDBTable::DescribeColumns takes every column of the table into group 1 with offsets of its
+// own). The comments in the .cpp list the original constructor, destructor, slot 2 / 3 and table
+// description addresses of each class (now its CDBRecordT instance).
 //
 // Two kinds of record:
 // - CDBRecord records (m_nDataOffset 24): the columns land in the members after the CDBRecord
@@ -21,15 +22,6 @@
 // - CDBRecStream records (m_nDataOffset 48, not used by their GetData): the columns are appended
 //   to the stream buffer and parsed by the reference data readers. Some classes keep a parsed
 //   row (m_Row) or bytes no constructor touches after the CDBRecStream part.
-
-// Declares the runtime class with its factory, the table description and slots 2 / 3.
-#define SR_DECLARE_REF_RECORD(class_name)                                                  \
-    BS_DECLARE_DYNCREATE(class_name)                                                        \
-public:                                                                                     \
-    static CDBTableInfo s_TableInfo;                                                        \
-    static int InitTableInfo();                                                             \
-    virtual const char* GetTableName();                                                     \
-    virtual CDBTableInfo* GetTableInfo();
 
 // _RefSkill row (560 bytes): RefSkill::InitMembers 0x4a43d0 / DestroyMembers 0x515670 are the
 // implicit constructor / destructor; RefSkill::CopyFrom (0x4971d0) shows the offsets.
@@ -457,30 +449,18 @@ public:
 C_ASSERT(sizeof(CRefObjDerived) == 0x30);
 
 // _REFREGION
-class CRefRegion : public CDBRecStream
+struct RefRegionData
 {
-    SR_DECLARE_REF_RECORD(CRefRegion)
-
-public:
-    CRefRegion();
-    virtual ~CRefRegion();
-
-public:
     DWORD            m_adw30[2];                 // +30  not initialised
 };
+
+SR_RECORD(CRefRegion, CDBRecStream, RefRegionData)
 
 C_ASSERT(sizeof(CRefRegion) == 0x38);
 
 // _REFLEVEL
-class CRefLevel : public CDBRecord
+struct RefLevelData
 {
-    SR_DECLARE_REF_RECORD(CRefLevel)
-
-public:
-    CRefLevel();
-    virtual ~CRefLevel();
-
-public:
     BYTE             Lvl;                        // +18
     __int64          Exp_C;                      // +20
     int              Exp_M;                      // +28
@@ -492,19 +472,16 @@ public:
     int              JobExp_Hunter;              // +40
 };
 
+SR_RECORD(CRefLevel, CDBRecord, RefLevelData)
+
 C_ASSERT(sizeof(CRefLevel) == 0x48);
 C_ASSERT(FIELD_OFFSET(CRefLevel, Lvl) == 24);
 
 // _REFCLIMATE
-class CRefClimate : public CDBRecord
+struct RefClimateData
 {
-    SR_DECLARE_REF_RECORD(CRefClimate)
+    RefClimateData();
 
-public:
-    CRefClimate();
-    virtual ~CRefClimate();
-
-public:
     int              ID;                         // +18
     BYTE             InitialWeather;             // +1C
     BYTE             InitialAmount;              // +1D
@@ -520,296 +497,156 @@ public:
     BYTE             ProbRain;                   // +2D
 };
 
+SR_RECORD(CRefClimate, CDBRecord, RefClimateData)
+
 C_ASSERT(sizeof(CRefClimate) == 0x30);
 C_ASSERT(FIELD_OFFSET(CRefClimate, ID) == 24);
 
 // _REFREGIONBINDASSOCSERVER
-class CRefRegionBindAssocServer : public CDBRecord
+struct RefRegionBindAssocServerData
 {
-    SR_DECLARE_REF_RECORD(CRefRegionBindAssocServer)
-
-public:
-    CRefRegionBindAssocServer();
-    virtual ~CRefRegionBindAssocServer();
-
-public:
     std::string      AreaName;                   // +18
     int              AssocServer;                // +34
 };
+
+SR_RECORD(CRefRegionBindAssocServer, CDBRecord, RefRegionBindAssocServerData)
 
 C_ASSERT(sizeof(CRefRegionBindAssocServer) == 0x38);
 C_ASSERT(FIELD_OFFSET(CRefRegionBindAssocServer, AreaName) == 24);
 
 // _REFCHARGEN
-class CRefCharGenData : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefCharGenData)
-
-public:
-    CRefCharGenData();
-    virtual ~CRefCharGenData();
-};
+SR_RECORD(CRefCharGenData, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefCharGenData) == 0x30);
 
 // _REFOBJCOMMON
-class CRefObjCommon : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefObjCommon)
-
-public:
-    CRefObjCommon();
-    virtual ~CRefObjCommon();
-};
+SR_RECORD(CRefObjCommon, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefObjCommon) == 0x30);
 
 // _REFOBJITEM
-class CRefObjItem : public CRefObjDerived
-{
-    SR_DECLARE_REF_RECORD(CRefObjItem)
-
-public:
-    CRefObjItem();
-    virtual ~CRefObjItem();
-};
+SR_RECORD(CRefObjItem, CRefObjDerived, void)
 
 C_ASSERT(sizeof(CRefObjItem) == 0x30);
 
 // _REFOBJCHAR
-class CRefObjChar : public CRefObjDerived
-{
-    SR_DECLARE_REF_RECORD(CRefObjChar)
-
-public:
-    CRefObjChar();
-    virtual ~CRefObjChar();
-};
+SR_RECORD(CRefObjChar, CRefObjDerived, void)
 
 C_ASSERT(sizeof(CRefObjChar) == 0x30);
 
 // _REFOBJSTRUCT
-class CRefObjStruct : public CRefObjDerived
-{
-    SR_DECLARE_REF_RECORD(CRefObjStruct)
-
-public:
-    CRefObjStruct();
-    virtual ~CRefObjStruct();
-};
+SR_RECORD(CRefObjStruct, CRefObjDerived, void)
 
 C_ASSERT(sizeof(CRefObjStruct) == 0x30);
 
 // _REFOBJCHAREXTRASKILL
-class CRefObjCharExtraSkill : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefObjCharExtraSkill)
-
-public:
-    CRefObjCharExtraSkill();
-    virtual ~CRefObjCharExtraSkill();
-};
+SR_RECORD(CRefObjCharExtraSkill, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefObjCharExtraSkill) == 0x30);
 
 // _REFSKILL
-class CRefSkill : public CDBRecord
+struct RefSkillData
 {
-    SR_DECLARE_REF_RECORD(CRefSkill)
-
-public:
-    CRefSkill();
-    virtual ~CRefSkill();
-
-public:
     RefSkill         m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefSkill, CDBRecord, RefSkillData)
 
 C_ASSERT(sizeof(CRefSkill) == 0x248);
 C_ASSERT(FIELD_OFFSET(CRefSkill, m_Data) == 24);
 
 // _REFSKILLMASTERY
-class CRefSkillMastery : public CDBRecord
+struct RefSkillMasteryData
 {
-    SR_DECLARE_REF_RECORD(CRefSkillMastery)
-
-public:
-    CRefSkillMastery();
-    virtual ~CRefSkillMastery();
-
-public:
     int              ID;                         // +18
     std::string      Code;                       // +1C
     BYTE             Weapon;                     // +38
 };
 
+SR_RECORD(CRefSkillMastery, CDBRecord, RefSkillMasteryData)
+
 C_ASSERT(sizeof(CRefSkillMastery) == 0x40);
 C_ASSERT(FIELD_OFFSET(CRefSkillMastery, ID) == 24);
 
 // _REFMAGICOPT
-class CRefMagicOpt : public CDBRecord
+struct RefMagicOptData
 {
-    SR_DECLARE_REF_RECORD(CRefMagicOpt)
-
-public:
-    CRefMagicOpt();
-    virtual ~CRefMagicOpt();
-
-public:
     RefMagicOpt      m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefMagicOpt, CDBRecord, RefMagicOptData)
 
 C_ASSERT(sizeof(CRefMagicOpt) == 0x200);
 C_ASSERT(FIELD_OFFSET(CRefMagicOpt, m_Data) == 24);
 
 // _REFMAGICOPTASSIGN
-class CRefMagicOptAssign : public CDBRecord
+struct RefMagicOptAssignData
 {
-    SR_DECLARE_REF_RECORD(CRefMagicOptAssign)
-
-public:
-    CRefMagicOptAssign();
-    virtual ~CRefMagicOptAssign();
-
-public:
     RefMagicOptAssign m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefMagicOptAssign, CDBRecord, RefMagicOptAssignData)
 
 C_ASSERT(sizeof(CRefMagicOptAssign) == 0x2E0);
 C_ASSERT(FIELD_OFFSET(CRefMagicOptAssign, m_Data) == 24);
 
 // _REFMAGICOPTGROUP
-class CRefMagicOptGroup : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefMagicOptGroup)
-
-public:
-    CRefMagicOptGroup();
-    virtual ~CRefMagicOptGroup();
-};
+SR_RECORD(CRefMagicOptGroup, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefMagicOptGroup) == 0x30);
 
 // _REFSETITEMGROUP
-class CRefSetItemGroup : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefSetItemGroup)
-
-public:
-    CRefSetItemGroup();
-    virtual ~CRefSetItemGroup();
-};
+SR_RECORD(CRefSetItemGroup, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefSetItemGroup) == 0x30);
 
 // _REFABILITYBYITEMOPTLEVEL
-class CRefAbilityByItemOptLevel : public CDBRecStream
+struct RefAbilityByItemOptLevelData
 {
-    SR_DECLARE_REF_RECORD(CRefAbilityByItemOptLevel)
-
-public:
-    CRefAbilityByItemOptLevel();
-    virtual ~CRefAbilityByItemOptLevel();
-
-public:
     DWORD            m_adw30[2];                 // +30  not initialised
 };
+
+SR_RECORD(CRefAbilityByItemOptLevel, CDBRecStream, RefAbilityByItemOptLevelData)
 
 C_ASSERT(sizeof(CRefAbilityByItemOptLevel) == 0x38);
 
 // _REFMAGICOPTBYITEMOPTLEVEL
-class CRefMagicOptByItemOptLevel : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefMagicOptByItemOptLevel)
-
-public:
-    CRefMagicOptByItemOptLevel();
-    virtual ~CRefMagicOptByItemOptLevel();
-};
+SR_RECORD(CRefMagicOptByItemOptLevel, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefMagicOptByItemOptLevel) == 0x30);
 
 // _REFSKILLBYITEMOPTLEVEL
-class CRefSkillByItemOptLevel : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefSkillByItemOptLevel)
-
-public:
-    CRefSkillByItemOptLevel();
-    virtual ~CRefSkillByItemOptLevel();
-};
+SR_RECORD(CRefSkillByItemOptLevel, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefSkillByItemOptLevel) == 0x30);
 
 // _REFALCHEMYMERIT
-class CRefAlchemyMerit : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefAlchemyMerit)
-
-public:
-    CRefAlchemyMerit();
-    virtual ~CRefAlchemyMerit();
-};
+SR_RECORD(CRefAlchemyMerit, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefAlchemyMerit) == 0x30);
 
 // _REFHWANLEVEL
-class CRefHWANLevel : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefHWANLevel)
-
-public:
-    CRefHWANLevel();
-    virtual ~CRefHWANLevel();
-};
+SR_RECORD(CRefHWANLevel, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefHWANLevel) == 0x30);
 
 // TAB_REFAISKILL
-class CRefAISkill : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefAISkill)
-
-public:
-    CRefAISkill();
-    virtual ~CRefAISkill();
-};
+SR_RECORD(CRefAISkill, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefAISkill) == 0x30);
 
 // TAB_REFHIVE
-class CRefHive : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefHive)
-
-public:
-    CRefHive();
-    virtual ~CRefHive();
-};
+SR_RECORD(CRefHive, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefHive) == 0x30);
 
 // TAB_REFTACTICS
-class CRefTactics : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefTactics)
-
-public:
-    CRefTactics();
-    virtual ~CRefTactics();
-};
+SR_RECORD(CRefTactics, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefTactics) == 0x30);
 
 // TAB_REFNEST
-class CRefNest : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefNest)
-
-public:
-    CRefNest();
-    virtual ~CRefNest();
-};
+SR_RECORD(CRefNest, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefNest) == 0x30);
 
@@ -817,212 +654,108 @@ C_ASSERT(sizeof(CRefNest) == 0x30);
 // World, teleport, quest and event records
 
 // _REFTELEPORT
-class CRefTeleport : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefTeleport)
-
-public:
-    CRefTeleport();
-    virtual ~CRefTeleport();
-};
+SR_RECORD(CRefTeleport, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefTeleport) == 0x30);
 
 // _REFTELELINK
-class CRefTeleLink : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefTeleLink)
-
-public:
-    CRefTeleLink();
-    virtual ~CRefTeleLink();
-};
+SR_RECORD(CRefTeleLink, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefTeleLink) == 0x30);
 
 // _REFOPTIONALTELEPORT
-class CRefOptionalTeleport : public CDBRecStream
+struct RefOptionalTeleportData
 {
-    SR_DECLARE_REF_RECORD(CRefOptionalTeleport)
-
-public:
-    CRefOptionalTeleport();
-    virtual ~CRefOptionalTeleport();
-
-public:
     RefOptionalTeleport m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefOptionalTeleport, CDBRecStream, RefOptionalTeleportData)
 
 C_ASSERT(sizeof(CRefOptionalTeleport) == 0x70);
 C_ASSERT(FIELD_OFFSET(CRefOptionalTeleport, m_Row) == 48);
 
 // _REFEVENTZONE
-class CRefEventZone : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefEventZone)
-
-public:
-    CRefEventZone();
-    virtual ~CRefEventZone();
-};
+SR_RECORD(CRefEventZone, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefEventZone) == 0x30);
 
 // _REFEVENT
-class CRefEvent : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefEvent)
-
-public:
-    CRefEvent();
-    virtual ~CRefEvent();
-};
+SR_RECORD(CRefEvent, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefEvent) == 0x30);
 
 // _REFCHARDEFAULT_QUEST
-class CRefDefaultQuest : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDefaultQuest)
-
-public:
-    CRefDefaultQuest();
-    virtual ~CRefDefaultQuest();
-};
+SR_RECORD(CRefDefaultQuest, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDefaultQuest) == 0x30);
 
 // _REFQUEST
-class CRefQuest : public CDBRecord
+struct RefQuestData
 {
-    SR_DECLARE_REF_RECORD(CRefQuest)
-
-public:
-    CRefQuest();
-    virtual ~CRefQuest();
-
-public:
     RefQuest         m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefQuest, CDBRecord, RefQuestData)
 
 C_ASSERT(sizeof(CRefQuest) == 0x108);
 C_ASSERT(FIELD_OFFSET(CRefQuest, m_Data) == 24);
 
 // _RefQuestReward
-class CRefQuestReward : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefQuestReward)
-
-public:
-    CRefQuestReward();
-    virtual ~CRefQuestReward();
-};
+SR_RECORD(CRefQuestReward, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefQuestReward) == 0x30);
 
 // _RefQuestRewardItems
-class CRefQuestRewardItems : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefQuestRewardItems)
-
-public:
-    CRefQuestRewardItems();
-    virtual ~CRefQuestRewardItems();
-};
+SR_RECORD(CRefQuestRewardItems, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefQuestRewardItems) == 0x30);
 
 // _RefEventReward
-class CRefEventReward : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefEventReward)
-
-public:
-    CRefEventReward();
-    virtual ~CRefEventReward();
-};
+SR_RECORD(CRefEventReward, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefEventReward) == 0x30);
 
 // _RefEventRewardItems
-class CRefEventRewardItems : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefEventRewardItems)
-
-public:
-    CRefEventRewardItems();
-    virtual ~CRefEventRewardItems();
-};
+SR_RECORD(CRefEventRewardItems, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefEventRewardItems) == 0x30);
 
 // _REFGAME_WORLD
-class CRefGameWorld : public CDBRecord
+struct RefGameWorldData
 {
-    SR_DECLARE_REF_RECORD(CRefGameWorld)
-
-public:
-    CRefGameWorld();
-    virtual ~CRefGameWorld();
-
-public:
     RefGameWorld     m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefGameWorld, CDBRecord, RefGameWorldData)
 
 C_ASSERT(sizeof(CRefGameWorld) == 0x68);
 C_ASSERT(FIELD_OFFSET(CRefGameWorld, m_Data) == 24);
 
 // _REFGAMEWORLDNPC
-class CRefGameWorldNPC : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefGameWorldNPC)
-
-public:
-    CRefGameWorldNPC();
-    virtual ~CRefGameWorldNPC();
-};
+SR_RECORD(CRefGameWorldNPC, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefGameWorldNPC) == 0x30);
 
 // _REFGAME_WORLD_CONFIG
-class CRefGameWorldConfig : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefGameWorldConfig)
-
-public:
-    CRefGameWorldConfig();
-    virtual ~CRefGameWorldConfig();
-};
+SR_RECORD(CRefGameWorldConfig, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefGameWorldConfig) == 0x30);
 
 // _REFINSTANCE_WORLD_REGION
-class CRefInstanceWorldRegion : public CDBRecord
+struct RefInstanceWorldRegionData
 {
-    SR_DECLARE_REF_RECORD(CRefInstanceWorldRegion)
-
-public:
-    CRefInstanceWorldRegion();
-    virtual ~CRefInstanceWorldRegion();
-
-public:
     int              WorldID;                    // +18
     short            RegionID;                   // +1C
 };
+
+SR_RECORD(CRefInstanceWorldRegion, CDBRecord, RefInstanceWorldRegionData)
 
 C_ASSERT(sizeof(CRefInstanceWorldRegion) == 0x20);
 C_ASSERT(FIELD_OFFSET(CRefInstanceWorldRegion, WorldID) == 24);
 
 // _REFINSTANCE_WORLD_START_POS
-class CRefInstanceWorldStartPos : public CDBRecord
+struct RefInstanceWorldStartPosData
 {
-    SR_DECLARE_REF_RECORD(CRefInstanceWorldStartPos)
-
-public:
-    CRefInstanceWorldStartPos();
-    virtual ~CRefInstanceWorldStartPos();
-
-public:
     int              WorldID;                    // +18
     short            RegionID;                   // +1C
     int              PosX;                       // +20
@@ -1031,240 +764,126 @@ public:
     int              Param;                      // +2C
 };
 
+SR_RECORD(CRefInstanceWorldStartPos, CDBRecord, RefInstanceWorldStartPosData)
+
 C_ASSERT(sizeof(CRefInstanceWorldStartPos) == 0x30);
 C_ASSERT(FIELD_OFFSET(CRefInstanceWorldStartPos, WorldID) == 24);
 
 // _REFSHARDCONTENTCONFIG
-class CRefShardContentConfig : public CDBRecStream
+struct RefShardContentConfigData
 {
-    SR_DECLARE_REF_RECORD(CRefShardContentConfig)
-
-public:
-    CRefShardContentConfig();
-    virtual ~CRefShardContentConfig();
-
-public:
     RefShardContentConfig m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefShardContentConfig, CDBRecStream, RefShardContentConfigData)
 
 C_ASSERT(sizeof(CRefShardContentConfig) == 0xA8);
 C_ASSERT(FIELD_OFFSET(CRefShardContentConfig, m_Row) == 48);
 
 // _RefUIString_Mt
-class CRefUIString : public CDBRecStream
+struct RefUIStringData
 {
-    SR_DECLARE_REF_RECORD(CRefUIString)
-
-public:
-    CRefUIString();
-    virtual ~CRefUIString();
-
-public:
     RefUIString      m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefUIString, CDBRecStream, RefUIStringData)
 
 C_ASSERT(sizeof(CRefUIString) == 0xA8);
 C_ASSERT(FIELD_OFFSET(CRefUIString, m_Row) == 48);
 
 // _RefServerEvent
-class CRefServerEvent : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefServerEvent)
-
-public:
-    CRefServerEvent();
-    virtual ~CRefServerEvent();
-};
+SR_RECORD(CRefServerEvent, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefServerEvent) == 0x30);
 
 // _RefServerEventReward
-class CRefServerEventReward : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefServerEventReward)
-
-public:
-    CRefServerEventReward();
-    virtual ~CRefServerEventReward();
-};
+SR_RECORD(CRefServerEventReward, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefServerEventReward) == 0x30);
 
 // _RefServerEventReward_ExpUPForPlayers
-class CRefServerEventReward_ExpUPForPlayers : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefServerEventReward_ExpUPForPlayers)
-
-public:
-    CRefServerEventReward_ExpUPForPlayers();
-    virtual ~CRefServerEventReward_ExpUPForPlayers();
-};
+SR_RECORD(CRefServerEventReward_ExpUPForPlayers, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefServerEventReward_ExpUPForPlayers) == 0x30);
 
 // _RefServerEventReward_SpawnMonster
-class CRefServerEventReward_SpawnMonster : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefServerEventReward_SpawnMonster)
-
-public:
-    CRefServerEventReward_SpawnMonster();
-    virtual ~CRefServerEventReward_SpawnMonster();
-};
+SR_RECORD(CRefServerEventReward_SpawnMonster, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefServerEventReward_SpawnMonster) == 0x30);
 
 // _RefRentItem
-class CRefRentItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRentItem)
-
-public:
-    CRefRentItem();
-    virtual ~CRefRentItem();
-};
+SR_RECORD(CRefRentItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRentItem) == 0x30);
 
 // _RefCollectionBook_Theme
-class CRefCollectionBook_Theme : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefCollectionBook_Theme)
-
-public:
-    CRefCollectionBook_Theme();
-    virtual ~CRefCollectionBook_Theme();
-};
+SR_RECORD(CRefCollectionBook_Theme, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefCollectionBook_Theme) == 0x30);
 
 // _RefCollectionBook_Item
-class CRefCollectionBook_Item : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefCollectionBook_Item)
-
-public:
-    CRefCollectionBook_Item();
-    virtual ~CRefCollectionBook_Item();
-};
+SR_RECORD(CRefCollectionBook_Item, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefCollectionBook_Item) == 0x30);
 
 // TAB_REFRANKING_TRADERACTIVITY
-class CRefRankingTraderActivity : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRankingTraderActivity)
-
-public:
-    CRefRankingTraderActivity();
-    virtual ~CRefRankingTraderActivity();
-};
+SR_RECORD(CRefRankingTraderActivity, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRankingTraderActivity) == 0x30);
 
 // TAB_REFRANKING_ROBBERACTIVITY
-class CRefRankingRobberActivity : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRankingRobberActivity)
-
-public:
-    CRefRankingRobberActivity();
-    virtual ~CRefRankingRobberActivity();
-};
+SR_RECORD(CRefRankingRobberActivity, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRankingRobberActivity) == 0x30);
 
 // TAB_REFRANKING_HUNTERACTIVITY
-class CRefRankingHunterActivity : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRankingHunterActivity)
-
-public:
-    CRefRankingHunterActivity();
-    virtual ~CRefRankingHunterActivity();
-};
+SR_RECORD(CRefRankingHunterActivity, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRankingHunterActivity) == 0x30);
 
 // TAB_REFRANKING_TRADERCONTRIBUTION
-class CRefRankingTraderContribution : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRankingTraderContribution)
-
-public:
-    CRefRankingTraderContribution();
-    virtual ~CRefRankingTraderContribution();
-};
+SR_RECORD(CRefRankingTraderContribution, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRankingTraderContribution) == 0x30);
 
 // TAB_REFRANKING_ROBBERCONTRIBUTION
-class CRefRankingRobberContribution : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRankingRobberContribution)
-
-public:
-    CRefRankingRobberContribution();
-    virtual ~CRefRankingRobberContribution();
-};
+SR_RECORD(CRefRankingRobberContribution, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRankingRobberContribution) == 0x30);
 
 // TAB_REFRANKING_HUNTERCONTRIBUTION
-class CRefRankingHunterContribution : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRankingHunterContribution)
-
-public:
-    CRefRankingHunterContribution();
-    virtual ~CRefRankingHunterContribution();
-};
+SR_RECORD(CRefRankingHunterContribution, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRankingHunterContribution) == 0x30);
 
 // _REFGACHACODE
-class CRefGachaCode : public CDBRecord
+struct RefGachaCodeData
 {
-    SR_DECLARE_REF_RECORD(CRefGachaCode)
-
-public:
-    CRefGachaCode();
-    virtual ~CRefGachaCode();
-
-public:
     RefGachaCode     m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefGachaCode, CDBRecord, RefGachaCodeData)
 
 C_ASSERT(sizeof(CRefGachaCode) == 0x38);
 C_ASSERT(FIELD_OFFSET(CRefGachaCode, m_Data) == 24);
 
 // _REFGACHAITEMSET
-class CRefGachaItemSet : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefGachaItemSet)
-
-public:
-    CRefGachaItemSet();
-    virtual ~CRefGachaItemSet();
-};
+SR_RECORD(CRefGachaItemSet, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefGachaItemSet) == 0x30);
 
 // _REFGACHANPCMAP
-class CRefGachaNpcMap : public CDBRecord
+struct RefGachaNpcMapData
 {
-    SR_DECLARE_REF_RECORD(CRefGachaNpcMap)
+    RefGachaNpcMapData();
 
-public:
-    CRefGachaNpcMap();
-    virtual ~CRefGachaNpcMap();
-
-public:
     BYTE             Service;                    // +18
     int              NPC_ID;                     // +1C
     int              SelectionGachaID;           // +20
     int              WasteGachaID;               // +24
 };
+
+SR_RECORD(CRefGachaNpcMap, CDBRecord, RefGachaNpcMapData)
 
 C_ASSERT(sizeof(CRefGachaNpcMap) == 0x28);
 C_ASSERT(FIELD_OFFSET(CRefGachaNpcMap, Service) == 24);
@@ -1273,242 +892,102 @@ C_ASSERT(FIELD_OFFSET(CRefGachaNpcMap, Service) == 24);
 // Shop records
 
 // _REFSHOPOBJECT
-class CRefShopObject : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShopObject)
-
-public:
-    CRefShopObject();
-    virtual ~CRefShopObject();
-};
+SR_RECORD(CRefShopObject, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShopObject) == 0x30);
 
 // _REFSHOPTABGROUP
-class CRefShopTabGroup : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShopTabGroup)
-
-public:
-    CRefShopTabGroup();
-    virtual ~CRefShopTabGroup();
-};
+SR_RECORD(CRefShopTabGroup, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShopTabGroup) == 0x30);
 
 // _REFSHOPGROUP
-class CRefShopGroup : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShopGroup)
-
-public:
-    CRefShopGroup();
-    virtual ~CRefShopGroup();
-};
+SR_RECORD(CRefShopGroup, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShopGroup) == 0x30);
 
 // _REFMAPPINGSHOPGROUP
-class CRefMappingShopGroup : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefMappingShopGroup)
-
-public:
-    CRefMappingShopGroup();
-    virtual ~CRefMappingShopGroup();
-};
+SR_RECORD(CRefMappingShopGroup, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefMappingShopGroup) == 0x30);
 
 // _REFTREATITEMOFSHOP
-class CRefTreatItemOfShop : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefTreatItemOfShop)
-
-public:
-    CRefTreatItemOfShop();
-    virtual ~CRefTreatItemOfShop();
-};
+SR_RECORD(CRefTreatItemOfShop, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefTreatItemOfShop) == 0x30);
 
 // _REFACCESSPERMISSIONOFSHOP
-class CRefAccessPermissionOfShop : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefAccessPermissionOfShop)
-
-public:
-    CRefAccessPermissionOfShop();
-    virtual ~CRefAccessPermissionOfShop();
-};
+SR_RECORD(CRefAccessPermissionOfShop, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefAccessPermissionOfShop) == 0x30);
 
 // _REFREWARDPOLICYTOSELLPACKAGEITEM
-class CRefRewardPolicyToSellPackageItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRewardPolicyToSellPackageItem)
-
-public:
-    CRefRewardPolicyToSellPackageItem();
-    virtual ~CRefRewardPolicyToSellPackageItem();
-};
+SR_RECORD(CRefRewardPolicyToSellPackageItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRewardPolicyToSellPackageItem) == 0x30);
 
 // _REFREWARDPOLICYTOBUYSCRAPITEM
-class CRefRewardPolicyToBuyScrapItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRewardPolicyToBuyScrapItem)
-
-public:
-    CRefRewardPolicyToBuyScrapItem();
-    virtual ~CRefRewardPolicyToBuyScrapItem();
-};
+SR_RECORD(CRefRewardPolicyToBuyScrapItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRewardPolicyToBuyScrapItem) == 0x30);
 
 // _REFCONDITIONTOSELLPACKAGEITEM
-class CRefConditionToSellPackageItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefConditionToSellPackageItem)
-
-public:
-    CRefConditionToSellPackageItem();
-    virtual ~CRefConditionToSellPackageItem();
-};
+SR_RECORD(CRefConditionToSellPackageItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefConditionToSellPackageItem) == 0x30);
 
 // _REFCONDITIONTOBUYSCRAPITEM
-class CRefConditionToBuyScrapItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefConditionToBuyScrapItem)
-
-public:
-    CRefConditionToBuyScrapItem();
-    virtual ~CRefConditionToBuyScrapItem();
-};
+SR_RECORD(CRefConditionToBuyScrapItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefConditionToBuyScrapItem) == 0x30);
 
 // _REFREWARDPOLICYTOSELLSCRAPITEM
-class CRefRewardPolicyToSellScrapItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefRewardPolicyToSellScrapItem)
-
-public:
-    CRefRewardPolicyToSellScrapItem();
-    virtual ~CRefRewardPolicyToSellScrapItem();
-};
+SR_RECORD(CRefRewardPolicyToSellScrapItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefRewardPolicyToSellScrapItem) == 0x30);
 
 // _REFCONDITIONTOSELLSCRAPITEM
-class CRefConditionToSellScrapItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefConditionToSellScrapItem)
-
-public:
-    CRefConditionToSellScrapItem();
-    virtual ~CRefConditionToSellScrapItem();
-};
+SR_RECORD(CRefConditionToSellScrapItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefConditionToSellScrapItem) == 0x30);
 
 // _REFPRICEPOLICYOFITEM
-class CRefPricePolicyOfItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefPricePolicyOfItem)
-
-public:
-    CRefPricePolicyOfItem();
-    virtual ~CRefPricePolicyOfItem();
-};
+SR_RECORD(CRefPricePolicyOfItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefPricePolicyOfItem) == 0x30);
 
 // _REFPACKAGEITEM
-class CRefPackageItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefPackageItem)
-
-public:
-    CRefPackageItem();
-    virtual ~CRefPackageItem();
-};
+SR_RECORD(CRefPackageItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefPackageItem) == 0x30);
 
 // _REFSCRAPOFPACKAGEITEM
-class CRefScrapOfPackageItem : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefScrapOfPackageItem)
-
-public:
-    CRefScrapOfPackageItem();
-    virtual ~CRefScrapOfPackageItem();
-};
+SR_RECORD(CRefScrapOfPackageItem, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefScrapOfPackageItem) == 0x30);
 
 // _REFMAPPINGSHOPWITHTAB
-class CRefMappingShopWithTab : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefMappingShopWithTab)
-
-public:
-    CRefMappingShopWithTab();
-    virtual ~CRefMappingShopWithTab();
-};
+SR_RECORD(CRefMappingShopWithTab, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefMappingShopWithTab) == 0x30);
 
 // _REFSHOPGOODS
-class CRefShopGoods : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShopGoods)
-
-public:
-    CRefShopGoods();
-    virtual ~CRefShopGoods();
-};
+SR_RECORD(CRefShopGoods, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShopGoods) == 0x30);
 
 // _REFSHOPTAB
-class CRefShopTab : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShopTab)
-
-public:
-    CRefShopTab();
-    virtual ~CRefShopTab();
-};
+SR_RECORD(CRefShopTab, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShopTab) == 0x30);
 
 // _REFSHOP
-class CRefShop : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShop)
-
-public:
-    CRefShop();
-    virtual ~CRefShop();
-};
+SR_RECORD(CRefShop, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShop) == 0x30);
 
 // _REFSHOPITEMSTOCKPERIOD
-class CRefShopItemStockPeriod : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefShopItemStockPeriod)
-
-public:
-    CRefShopItemStockPeriod();
-    virtual ~CRefShopItemStockPeriod();
-};
+SR_RECORD(CRefShopItemStockPeriod, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefShopItemStockPeriod) == 0x30);
 
@@ -1516,206 +995,87 @@ C_ASSERT(sizeof(CRefShopItemStockPeriod) == 0x30);
 // Drop records
 
 // _REFMONSTER_ASSIGNEDITEMDROP
-class CRefMonster_AssignedItemDrop : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefMonster_AssignedItemDrop)
-
-public:
-    CRefMonster_AssignedItemDrop();
-    virtual ~CRefMonster_AssignedItemDrop();
-};
+SR_RECORD(CRefMonster_AssignedItemDrop, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefMonster_AssignedItemDrop) == 0x30);
 
 // _REFCUSTOMIZINGRESERVEDITEMDROPFORMONSTER
-class CRefCustomizingReservedItemDropForMonster : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefCustomizingReservedItemDropForMonster)
-
-public:
-    CRefCustomizingReservedItemDropForMonster();
-    virtual ~CRefCustomizingReservedItemDropForMonster();
-};
+SR_RECORD(CRefCustomizingReservedItemDropForMonster, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefCustomizingReservedItemDropForMonster) == 0x30);
 
 // _REFMONSTER_ASSIGNEDITEMRNDDROP
-class CRefMonster_AssignedItemRndDrop : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefMonster_AssignedItemRndDrop)
-
-public:
-    CRefMonster_AssignedItemRndDrop();
-    virtual ~CRefMonster_AssignedItemRndDrop();
-};
+SR_RECORD(CRefMonster_AssignedItemRndDrop, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefMonster_AssignedItemRndDrop) == 0x30);
 
 // _REFDROPITEMGROUP
-class CRefDropItemGroup : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropItemGroup)
-
-public:
-    CRefDropItemGroup();
-    virtual ~CRefDropItemGroup();
-};
+SR_RECORD(CRefDropItemGroup, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropItemGroup) == 0x30);
 
 // _REFDROPGOLD
-class CRefDropGold : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropGold)
-
-public:
-    CRefDropGold();
-    virtual ~CRefDropGold();
-};
+SR_RECORD(CRefDropGold, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropGold) == 0x30);
 
 // _REFDROPOPTLVLSEL
-class CRefDropOptLevelSel : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropOptLevelSel)
-
-public:
-    CRefDropOptLevelSel();
-    virtual ~CRefDropOptLevelSel();
-};
+SR_RECORD(CRefDropOptLevelSel, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropOptLevelSel) == 0x30);
 
 // _REFDROPCLASSSEL_EQUIP
-class CRefDropClassSel_Equip : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_Equip)
-
-public:
-    CRefDropClassSel_Equip();
-    virtual ~CRefDropClassSel_Equip();
-};
+SR_RECORD(CRefDropClassSel_Equip, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_Equip) == 0x30);
 
 // _REFDROPCLASSSEL_RAREEQUIP
-class CRefDropClassSel_RareEquip : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_RareEquip)
-
-public:
-    CRefDropClassSel_RareEquip();
-    virtual ~CRefDropClassSel_RareEquip();
-};
+SR_RECORD(CRefDropClassSel_RareEquip, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_RareEquip) == 0x30);
 
 // _REFDROPCLASSSEL_RECOVER
-class CRefDropClassSel_Recover : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_Recover)
-
-public:
-    CRefDropClassSel_Recover();
-    virtual ~CRefDropClassSel_Recover();
-};
+SR_RECORD(CRefDropClassSel_Recover, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_Recover) == 0x30);
 
 // _REFDROPCLASSSEL_CURE
-class CRefDropClassSel_Cure : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_Cure)
-
-public:
-    CRefDropClassSel_Cure();
-    virtual ~CRefDropClassSel_Cure();
-};
+SR_RECORD(CRefDropClassSel_Cure, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_Cure) == 0x30);
 
 // _REFDROPCLASSSEL_AMMO
-class CRefDropClassSel_Ammo : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_Ammo)
-
-public:
-    CRefDropClassSel_Ammo();
-    virtual ~CRefDropClassSel_Ammo();
-};
+SR_RECORD(CRefDropClassSel_Ammo, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_Ammo) == 0x30);
 
 // _REFDROPCLASSSEL_SCROLL
-class CRefDropClassSel_Scroll : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_Scroll)
-
-public:
-    CRefDropClassSel_Scroll();
-    virtual ~CRefDropClassSel_Scroll();
-};
+SR_RECORD(CRefDropClassSel_Scroll, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_Scroll) == 0x30);
 
 // _REFDROPCLASSSEL_REINFORCE
-class CRefDropClassSel_Reinforce : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_Reinforce)
-
-public:
-    CRefDropClassSel_Reinforce();
-    virtual ~CRefDropClassSel_Reinforce();
-};
+SR_RECORD(CRefDropClassSel_Reinforce, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_Reinforce) == 0x30);
 
 // _REFDROPCLASSSEL_ALCHEMY_TABLET
-class CRefDropClassSel_AlchemyTablet : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_AlchemyTablet)
-
-public:
-    CRefDropClassSel_AlchemyTablet();
-    virtual ~CRefDropClassSel_AlchemyTablet();
-};
+SR_RECORD(CRefDropClassSel_AlchemyTablet, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_AlchemyTablet) == 0x30);
 
 // _REFDROPCLASSSEL_ALCHEMY_MAGICSTONE
-class CRefDropClassSel_AlchemyMagicStone : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_AlchemyMagicStone)
-
-public:
-    CRefDropClassSel_AlchemyMagicStone();
-    virtual ~CRefDropClassSel_AlchemyMagicStone();
-};
+SR_RECORD(CRefDropClassSel_AlchemyMagicStone, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_AlchemyMagicStone) == 0x30);
 
 // _REFDROPCLASSSEL_ALCHEMY_ATTRSTONE
-class CRefDropClassSel_AlchemyATTRStone : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropClassSel_AlchemyATTRStone)
-
-public:
-    CRefDropClassSel_AlchemyATTRStone();
-    virtual ~CRefDropClassSel_AlchemyATTRStone();
-};
+SR_RECORD(CRefDropClassSel_AlchemyATTRStone, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropClassSel_AlchemyATTRStone) == 0x30);
 
 // _REFDROPITEMASSIGN
-class CRefDropItemAssign : public CDBRecStream
-{
-    SR_DECLARE_REF_RECORD(CRefDropItemAssign)
-
-public:
-    CRefDropItemAssign();
-    virtual ~CRefDropItemAssign();
-};
+SR_RECORD(CRefDropItemAssign, CDBRecStream, void)
 
 C_ASSERT(sizeof(CRefDropItemAssign) == 0x30);
 
@@ -1723,49 +1083,36 @@ C_ASSERT(sizeof(CRefDropItemAssign) == 0x30);
 // Siege fortress records
 
 // _REFSIEGEFORTRESS
-class CRefSiegeFortress : public CDBRecord
+struct RefSiegeFortressData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeFortress)
-
-public:
-    CRefSiegeFortress();
-    virtual ~CRefSiegeFortress();
-
-public:
     RefSiegeFortress m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefSiegeFortress, CDBRecord, RefSiegeFortressData)
 
 C_ASSERT(sizeof(CRefSiegeFortress) == 0xD8);
 C_ASSERT(FIELD_OFFSET(CRefSiegeFortress, m_Data) == 24);
 
 // _REFSIEGEFORTRESSGUARD
-class CRefSiegeFortressGuard : public CDBRecord
+struct RefSiegeFortressGuardData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeFortressGuard)
+    RefSiegeFortressGuardData();
 
-public:
-    CRefSiegeFortressGuard();
-    virtual ~CRefSiegeFortressGuard();
-
-public:
     BYTE             Service;                    // +18
     int              FortressID;                 // +1C
     int              GuardRefObjID;              // +20
 };
 
+SR_RECORD(CRefSiegeFortressGuard, CDBRecord, RefSiegeFortressGuardData)
+
 C_ASSERT(sizeof(CRefSiegeFortressGuard) == 0x28);
 C_ASSERT(FIELD_OFFSET(CRefSiegeFortressGuard, Service) == 24);
 
 // _REFSIEGEFORTRESSITEMFORGE
-class CRefSiegeFortressItemForge : public CDBRecord
+struct RefSiegeFortressItemForgeData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeFortressItemForge)
+    RefSiegeFortressItemForgeData();
 
-public:
-    CRefSiegeFortressItemForge();
-    virtual ~CRefSiegeFortressItemForge();
-
-public:
     BYTE             Service;                    // +18
     int              FortressID;                 // +1C
     int              RefItemID;                  // +20
@@ -1774,69 +1121,53 @@ public:
     int              ForgeTimeMin;               // +2C
 };
 
+SR_RECORD(CRefSiegeFortressItemForge, CDBRecord, RefSiegeFortressItemForgeData)
+
 C_ASSERT(sizeof(CRefSiegeFortressItemForge) == 0x30);
 C_ASSERT(FIELD_OFFSET(CRefSiegeFortressItemForge, Service) == 24);
 
 // _REFSIEGEFORTRESSBATTLERANK
-class CRefSiegeFortressBattleRank : public CDBRecord
+struct RefSiegeFortressBattleRankData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeFortressBattleRank)
-
-public:
-    CRefSiegeFortressBattleRank();
-    virtual ~CRefSiegeFortressBattleRank();
-
-public:
     RefSiegeFortressBattleRank m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefSiegeFortressBattleRank, CDBRecord, RefSiegeFortressBattleRankData)
 
 C_ASSERT(sizeof(CRefSiegeFortressBattleRank) == 0x60);
 C_ASSERT(FIELD_OFFSET(CRefSiegeFortressBattleRank, m_Data) == 24);
 
 // _REFSIEGESTRUCTUPGRADE
-class CRefSiegeStructUpgrade : public CDBRecord
+struct RefSiegeStructUpgradeData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeStructUpgrade)
-
-public:
-    CRefSiegeStructUpgrade();
-    virtual ~CRefSiegeStructUpgrade();
-
-public:
     RefSiegeStructUpgrade m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefSiegeStructUpgrade, CDBRecord, RefSiegeStructUpgradeData)
 
 C_ASSERT(sizeof(CRefSiegeStructUpgrade) == 0xC8);
 C_ASSERT(FIELD_OFFSET(CRefSiegeStructUpgrade, m_Data) == 24);
 
 // _REFSIEGELVLSUMMONMONSTER
-class CRefSiegeLvlSummonMonster : public CDBRecord
+struct RefSiegeLvlSummonMonsterData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeLvlSummonMonster)
+    RefSiegeLvlSummonMonsterData();
 
-public:
-    CRefSiegeLvlSummonMonster();
-    virtual ~CRefSiegeLvlSummonMonster();
-
-public:
     BYTE             Service;                    // +18
     int              RefObjID;                   // +1C
     int              RefOrgObjID;                // +20
 };
 
+SR_RECORD(CRefSiegeLvlSummonMonster, CDBRecord, RefSiegeLvlSummonMonsterData)
+
 C_ASSERT(sizeof(CRefSiegeLvlSummonMonster) == 0x28);
 C_ASSERT(FIELD_OFFSET(CRefSiegeLvlSummonMonster, Service) == 24);
 
 // _REFSIEGEFORTRESSREWARDS
-class CRefSiegeFortressRewards : public CDBRecord
+struct RefSiegeFortressRewardsData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeFortressRewards)
+    RefSiegeFortressRewardsData();
 
-public:
-    CRefSiegeFortressRewards();
-    virtual ~CRefSiegeFortressRewards();
-
-public:
     BYTE             Service;                    // +18
     int              FortressID;                 // +1C
     BYTE             RewardTypeID;               // +20
@@ -1844,19 +1175,16 @@ public:
     BYTE             RewardCount;                // +28
 };
 
+SR_RECORD(CRefSiegeFortressRewards, CDBRecord, RefSiegeFortressRewardsData)
+
 C_ASSERT(sizeof(CRefSiegeFortressRewards) == 0x30);
 C_ASSERT(FIELD_OFFSET(CRefSiegeFortressRewards, Service) == 24);
 
 // _REFSIEGEBLESSBUFF
-class CRefSiegeBlessBuff : public CDBRecord
+struct RefSiegeBlessBuffData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeBlessBuff)
+    RefSiegeBlessBuffData();
 
-public:
-    CRefSiegeBlessBuff();
-    virtual ~CRefSiegeBlessBuff();
-
-public:
     BYTE             Service;                    // +18
     int              BlessID;                    // +1C
     int              FortressID;                 // +20
@@ -1865,19 +1193,16 @@ public:
     int              NeedGP;                     // +30
 };
 
+SR_RECORD(CRefSiegeBlessBuff, CDBRecord, RefSiegeBlessBuffData)
+
 C_ASSERT(sizeof(CRefSiegeBlessBuff) == 0x38);
 C_ASSERT(FIELD_OFFSET(CRefSiegeBlessBuff, Service) == 24);
 
 // _REFSIEGEDUNGEON
-class CRefSiegeDungeon : public CDBRecord
+struct RefSiegeDungeonData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeDungeon)
+    RefSiegeDungeonData();
 
-public:
-    CRefSiegeDungeon();
-    virtual ~CRefSiegeDungeon();
-
-public:
     BYTE             Service;                    // +18
     int              FortressID;                 // +1C
     int              WorldID;                    // +20
@@ -1886,41 +1211,35 @@ public:
     int              EntryGP;                    // +30
 };
 
+SR_RECORD(CRefSiegeDungeon, CDBRecord, RefSiegeDungeonData)
+
 C_ASSERT(sizeof(CRefSiegeDungeon) == 0x38);
 C_ASSERT(FIELD_OFFSET(CRefSiegeDungeon, Service) == 24);
 
 // _REFSIEGEQUEST
-class CRefSiegeQuest : public CDBRecord
+struct RefSiegeQuestData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeQuest)
-
-public:
-    CRefSiegeQuest();
-    virtual ~CRefSiegeQuest();
-
-public:
     RefSiegeQuest    m_Data;                     // +18  the row (GetData)
 };
+
+SR_RECORD(CRefSiegeQuest, CDBRecord, RefSiegeQuestData)
 
 C_ASSERT(sizeof(CRefSiegeQuest) == 0x40);
 C_ASSERT(FIELD_OFFSET(CRefSiegeQuest, m_Data) == 24);
 
 // _REFSIEGEQUESTREWARD
-class CRefSiegeQuestReward : public CDBRecord
+struct RefSiegeQuestRewardData
 {
-    SR_DECLARE_REF_RECORD(CRefSiegeQuestReward)
+    RefSiegeQuestRewardData();
 
-public:
-    CRefSiegeQuestReward();
-    virtual ~CRefSiegeQuestReward();
-
-public:
     BYTE             Service;                    // +18
     int              QuestID;                    // +1C
     BYTE             RewardType;                 // +20
     int              RewardRefID;                // +24
     int              RewardValue;                // +28
 };
+
+SR_RECORD(CRefSiegeQuestReward, CDBRecord, RefSiegeQuestRewardData)
 
 C_ASSERT(sizeof(CRefSiegeQuestReward) == 0x30);
 C_ASSERT(FIELD_OFFSET(CRefSiegeQuestReward, Service) == 24);
@@ -1929,266 +1248,181 @@ C_ASSERT(FIELD_OFFSET(CRefSiegeQuestReward, Service) == 24);
 // Trigger and game world group records
 
 // _RefGameWorldBindTriggerCategory
-class CRefGameWorldBindTriggerCategory : public CDBRecStream
+struct RefGameWorldBindTriggerCategoryData
 {
-    SR_DECLARE_REF_RECORD(CRefGameWorldBindTriggerCategory)
-
-public:
-    CRefGameWorldBindTriggerCategory();
-    virtual ~CRefGameWorldBindTriggerCategory();
-
-public:
     DWORD            m_adw30[4];                 // +30  not initialised
 };
+
+SR_RECORD(CRefGameWorldBindTriggerCategory, CDBRecStream, RefGameWorldBindTriggerCategoryData)
 
 C_ASSERT(sizeof(CRefGameWorldBindTriggerCategory) == 0x40);
 
 // _RefTriggerCategory
-class CRefTriggerCategory : public CDBRecStream
+struct RefTriggerCategoryData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerCategory)
-
-public:
-    CRefTriggerCategory();
-    virtual ~CRefTriggerCategory();
-
-public:
     RefTriggerCategory m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerCategory, CDBRecStream, RefTriggerCategoryData)
 
 C_ASSERT(sizeof(CRefTriggerCategory) == 0x70);
 C_ASSERT(FIELD_OFFSET(CRefTriggerCategory, m_Row) == 48);
 
 // _RefTriggerCategoryBindTrigger
-class CRefTriggerCategoryBindTrigger : public CDBRecStream
+struct RefTriggerCategoryBindTriggerData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerCategoryBindTrigger)
-
-public:
-    CRefTriggerCategoryBindTrigger();
-    virtual ~CRefTriggerCategoryBindTrigger();
-
-public:
     DWORD            m_adw30[4];                 // +30  not initialised
 };
+
+SR_RECORD(CRefTriggerCategoryBindTrigger, CDBRecStream, RefTriggerCategoryBindTriggerData)
 
 C_ASSERT(sizeof(CRefTriggerCategoryBindTrigger) == 0x40);
 
 // _RefTrigger
-class CRefTrigger : public CDBRecStream
+struct RefTriggerData
 {
-    SR_DECLARE_REF_RECORD(CRefTrigger)
-
-public:
-    CRefTrigger();
-    virtual ~CRefTrigger();
-
-public:
     RefTrigger       m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTrigger, CDBRecStream, RefTriggerData)
 
 C_ASSERT(sizeof(CRefTrigger) == 0x78);
 C_ASSERT(FIELD_OFFSET(CRefTrigger, m_Row) == 48);
 
 // _RefTriggerVariable
-class CRefTriggerVariable : public CDBRecStream
+struct RefTriggerVariableData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerVariable)
-
-public:
-    CRefTriggerVariable();
-    virtual ~CRefTriggerVariable();
-
-public:
     RefTriggerVariable m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerVariable, CDBRecStream, RefTriggerVariableData)
 
 C_ASSERT(sizeof(CRefTriggerVariable) == 0x90);
 C_ASSERT(FIELD_OFFSET(CRefTriggerVariable, m_Row) == 48);
 
 // _RefTriggerBindEvent
-class CRefTriggerBindEvent : public CDBRecStream
+struct RefTriggerBindEventData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerBindEvent)
-
-public:
-    CRefTriggerBindEvent();
-    virtual ~CRefTriggerBindEvent();
-
-public:
     DWORD            m_adw30[4];                 // +30  not initialised
 };
+
+SR_RECORD(CRefTriggerBindEvent, CDBRecStream, RefTriggerBindEventData)
 
 C_ASSERT(sizeof(CRefTriggerBindEvent) == 0x40);
 
 // _RefTriggerBindCondition
-class CRefTriggerBindCondition : public CDBRecStream
+struct RefTriggerBindConditionData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerBindCondition)
-
-public:
-    CRefTriggerBindCondition();
-    virtual ~CRefTriggerBindCondition();
-
-public:
     DWORD            m_adw30[4];                 // +30  not initialised
 };
+
+SR_RECORD(CRefTriggerBindCondition, CDBRecStream, RefTriggerBindConditionData)
 
 C_ASSERT(sizeof(CRefTriggerBindCondition) == 0x40);
 
 // _RefTriggerBindAction
-class CRefTriggerBindAction : public CDBRecStream
+struct RefTriggerBindActionData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerBindAction)
-
-public:
-    CRefTriggerBindAction();
-    virtual ~CRefTriggerBindAction();
-
-public:
     DWORD            m_adw30[4];                 // +30  not initialised
 };
+
+SR_RECORD(CRefTriggerBindAction, CDBRecStream, RefTriggerBindActionData)
 
 C_ASSERT(sizeof(CRefTriggerBindAction) == 0x40);
 
 // _RefTriggerCommon
-class CRefTriggerCommon : public CDBRecStream
+struct RefTriggerCommonData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerCommon)
-
-public:
-    CRefTriggerCommon();
-    virtual ~CRefTriggerCommon();
-
-public:
     RefTriggerCommon m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerCommon, CDBRecStream, RefTriggerCommonData)
 
 C_ASSERT(sizeof(CRefTriggerCommon) == 0x78);
 C_ASSERT(FIELD_OFFSET(CRefTriggerCommon, m_Row) == 48);
 
 // _RefTriggerEvent
-class CRefTriggerEvent : public CDBRecStream
+struct RefTriggerEventData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerEvent)
-
-public:
-    CRefTriggerEvent();
-    virtual ~CRefTriggerEvent();
-
-public:
     DWORD            m_adw30[2];                 // +30  not initialised
 };
+
+SR_RECORD(CRefTriggerEvent, CDBRecStream, RefTriggerEventData)
 
 C_ASSERT(sizeof(CRefTriggerEvent) == 0x38);
 
 // _RefTriggerCondition
-class CRefTriggerCondition : public CDBRecStream
+struct RefTriggerConditionData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerCondition)
-
-public:
-    CRefTriggerCondition();
-    virtual ~CRefTriggerCondition();
-
-public:
     RefTriggerCondition m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerCondition, CDBRecStream, RefTriggerConditionData)
 
 C_ASSERT(sizeof(CRefTriggerCondition) == 0x90);
 C_ASSERT(FIELD_OFFSET(CRefTriggerCondition, m_Row) == 48);
 
 // _RefTriggerAction
-class CRefTriggerAction : public CDBRecStream
+struct RefTriggerActionData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerAction)
-
-public:
-    CRefTriggerAction();
-    virtual ~CRefTriggerAction();
-
-public:
     RefTriggerAction m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerAction, CDBRecStream, RefTriggerActionData)
 
 C_ASSERT(sizeof(CRefTriggerAction) == 0x58);
 C_ASSERT(FIELD_OFFSET(CRefTriggerAction, m_Row) == 48);
 
 // _RefTriggerConditionParam
-class CRefTriggerConditionParam : public CDBRecStream
+struct RefTriggerConditionParamData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerConditionParam)
-
-public:
-    CRefTriggerConditionParam();
-    virtual ~CRefTriggerConditionParam();
-
-public:
     RefTriggerConditionParam m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerConditionParam, CDBRecStream, RefTriggerConditionParamData)
 
 C_ASSERT(sizeof(CRefTriggerConditionParam) == 0xA8);
 C_ASSERT(FIELD_OFFSET(CRefTriggerConditionParam, m_Row) == 48);
 
 // _RefTriggerActionParam
-class CRefTriggerActionParam : public CDBRecStream
+struct RefTriggerActionParamData
 {
-    SR_DECLARE_REF_RECORD(CRefTriggerActionParam)
-
-public:
-    CRefTriggerActionParam();
-    virtual ~CRefTriggerActionParam();
-
-public:
     RefTriggerActionParam m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefTriggerActionParam, CDBRecStream, RefTriggerActionParamData)
 
 C_ASSERT(sizeof(CRefTriggerActionParam) == 0xA8);
 C_ASSERT(FIELD_OFFSET(CRefTriggerActionParam, m_Row) == 48);
 
 // _RefGameWorldBindGameWorldGroup
-class CRefGameWorldBindGameWorldGroup : public CDBRecStream
+struct RefGameWorldBindGameWorldGroupData
 {
-    SR_DECLARE_REF_RECORD(CRefGameWorldBindGameWorldGroup)
-
-public:
-    CRefGameWorldBindGameWorldGroup();
-    virtual ~CRefGameWorldBindGameWorldGroup();
-
-public:
     DWORD            m_adw30[4];                 // +30  not initialised
 };
+
+SR_RECORD(CRefGameWorldBindGameWorldGroup, CDBRecStream, RefGameWorldBindGameWorldGroupData)
 
 C_ASSERT(sizeof(CRefGameWorldBindGameWorldGroup) == 0x40);
 
 // _RefGameWorldGroup
-class CRefGameWorldGroup : public CDBRecStream
+struct RefGameWorldGroupData
 {
-    SR_DECLARE_REF_RECORD(CRefGameWorldGroup)
-
-public:
-    CRefGameWorldGroup();
-    virtual ~CRefGameWorldGroup();
-
-public:
     RefGameWorldGroup m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefGameWorldGroup, CDBRecStream, RefGameWorldGroupData)
 
 C_ASSERT(sizeof(CRefGameWorldGroup) == 0x88);
 C_ASSERT(FIELD_OFFSET(CRefGameWorldGroup, m_Row) == 48);
 
 // _RefGameWorldGroup_Config
-class CRefGameWorldGroup_Config : public CDBRecStream
+struct RefGameWorldGroup_ConfigData
 {
-    SR_DECLARE_REF_RECORD(CRefGameWorldGroup_Config)
-
-public:
-    CRefGameWorldGroup_Config();
-    virtual ~CRefGameWorldGroup_Config();
-
-public:
     RefGameWorldGroupConfig m_Row;                      // +30  parsed row
 };
+
+SR_RECORD(CRefGameWorldGroup_Config, CDBRecStream, RefGameWorldGroup_ConfigData)
 
 C_ASSERT(sizeof(CRefGameWorldGroup_Config) == 0xA8);
 C_ASSERT(FIELD_OFFSET(CRefGameWorldGroup_Config, m_Row) == 48);
