@@ -276,6 +276,8 @@ C_ASSERT(sizeof(RefObjItem) == 0x540);
 BOOL RefObjItem_IsWithinMaxStack(const RefObjItem* pItem, WORD wCount);
 // RefObj_IsEquipItem (0x51ac90): asserts a NULL object and returns FALSE.
 BOOL RefObj_IsEquipItem(const RefObjCommon* pObj);
+// RefObj_IsEquipOfCountry (0x4eaa20): equipment of the country (race).
+BOOL RefObj_IsEquipOfCountry(const RefObjCommon* pObj, BYTE btCountry);
 // RefObj_IsValidSlotForItem (0x51ada0): equipment below slot 12, anything else slot 0.
 BOOL RefObj_IsValidSlotForItem(const RefObjCommon* pObj, BYTE btSlot);
 // RefObjItem_GetDurabilityRange (0x51ae20): accessories 1..1, TypeID 3/1/13/4 0..0, other
@@ -337,9 +339,12 @@ public:
     BYTE             Knockdown;                  // +258
     int              KO_RecoverTime;             // +25C  3000 when 0 and Knockdown is set
     int              DefaultSkill[10];           // +260
-    std::vector<RefObjCharUnk30> m_vec288;       // +288  TODO(type)
-    std::vector<RefObjCharUnk30> m_vec298;       // +298  TODO(type)
-    std::vector<DWORD> m_avec2A8[16];            // +2A8  TODO(type)
+    // The drop lists of a monster, filled by the drop tables (element types of RefDataDrop.h:
+    // slot 0x56 _RefMonster_AssignedItemDrop, RefMonsterAssignedItemRndDropEntry,
+    // RefCustomizingReservedItemDropEntry).
+    std::vector<RefObjCharUnk30> m_vecAssignedItemDrop;          // +288  TODO(type)
+    std::vector<RefObjCharUnk30> m_vecAssignedItemRndDrop;       // +298  TODO(type)
+    std::vector<DWORD> m_avecCustomizingReservedItemDrop[16];    // +2A8  TODO(type)
     RefObjCharExcept Except[10];                 // +3A8
     float            DecreaseHGPPerSec;          // +3F8
     int              m_n3FC;                     // +3FC  the last column
@@ -350,8 +355,10 @@ public:
 C_ASSERT(FIELD_OFFSET(RefObjChar, Lvl) == 0x198);
 C_ASSERT(FIELD_OFFSET(RefObjChar, InventorySize) == 0x224);
 C_ASSERT(FIELD_OFFSET(RefObjChar, ExpToGive) == 0x250);
+C_ASSERT(FIELD_OFFSET(RefObjChar, m_vecAssignedItemDrop) == 0x288);
+C_ASSERT(FIELD_OFFSET(RefObjChar, m_vecAssignedItemRndDrop) == 0x298);
 C_ASSERT(FIELD_OFFSET(RefObjChar, DefaultSkill) == 0x260);
-C_ASSERT(FIELD_OFFSET(RefObjChar, m_avec2A8) == 0x2A8);
+C_ASSERT(FIELD_OFFSET(RefObjChar, m_avecCustomizingReservedItemDrop) == 0x2A8);
 C_ASSERT(FIELD_OFFSET(RefObjChar, Except) == 0x3A8);
 C_ASSERT(FIELD_OFFSET(RefObjChar, HasDefaultSkill) == 0x400);
 C_ASSERT(sizeof(RefObjChar) == 0x408);

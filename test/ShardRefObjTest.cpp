@@ -278,6 +278,7 @@ static void TestObjCommon(CReferenceData& data, RefTableVector& tables)
     CHECK(pItem->PDStr.L == 0.5f && pItem->MaxMagicOptCount == 3);
     CHECK(RefObjItem_IsValidDurabilityOrStack(pItem, 30) && !RefObjItem_IsValidDurability(pItem, 51));
     CHECK(RefObj_IsValidSlotForItem(pItem, 11) && !RefObj_IsValidSlotForItem(pItem, 12));
+    CHECK(RefObj_IsEquipOfCountry(pItem, 3) && !RefObj_IsEquipOfCountry(pItem, 0));
 
     CHECK(data.FindRefObjByCodeName("STORE_CH_GATE") == data.FindRefObj(30));
     RefObjCommon* pDummy = data.FindRefObj(-1);
