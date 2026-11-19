@@ -2,7 +2,10 @@
 
 #include <windows.h>
 
+#include <list>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "BSLib/NewSchedule/ScheduleExecutor.h"
 
@@ -33,6 +36,30 @@ void UniqueSpawn_BroadcastL3Uniques_34BB(BYTE byFlag);
 // TrainingCamp_DBUpdateHonorRank (0x459a00) on the training camp manager (dword_8A8930, asserts
 // when there is none).
 void TrainingCamp_DBUpdateHonorRank();
+
+// The KEY=VALUE pairs of a _Schedule parameter string; ScheduleParamParser_Parse (0x666260)
+// returns 1 when the string could be parsed.
+typedef std::vector<std::pair<std::string, std::string> > ScheduleParamList;
+BOOL ScheduleParamParser_Parse(const std::string& strParam, ScheduleParamList* pParams);
+
+// The open times of a temple gate job (the list +0 and the open time +C of the job member the
+// temple gate jobs pass).
+struct sTempleOpenSchedule
+{
+    std::list<DWORD>    lstTime;            // +0   open time and the notices before it
+    DWORD               dwOpenTime;         // +C
+};
+
+// ---------------------------------------------------------------------------------------------
+// The schedule parameter helpers of the temple gate jobs (SM_world4, ShardScheduleParam.cpp)
+
+// ScheduleParam_BuildOpenTimeList (0x666680): dwBegin + WORLD_OPEN_TIME minutes for each
+// WORLD_OPEN_TIME entry (the last one is the open time), then the open time - NOTIFY_BEFORE_OPEN
+// minutes for each NOTIFY_BEFORE_OPEN entry, sorted. FALSE without a WORLD_OPEN_TIME entry.
+BOOL ScheduleParam_BuildOpenTimeList(const std::string& strParam, sTempleOpenSchedule* pOpen,
+                                     DWORD dwBegin);
+// ScheduleParam_GetInt (0x6669c0): atol of the first value of strKey.
+BOOL ScheduleParam_GetInt(const std::string& strParam, std::string strKey, int* pnValue);
 
 // IShard_ScheduleJob (0x78 bytes; ctor 0x6644d0).
 class IShard_ScheduleJob : public NewSchedule::IScheduleJob
@@ -107,3 +134,30 @@ class CShardSJ_MentorHonor : public IShard_ScheduleJob
 public:
     SHARD_SCHEDULE_JOB_SLOTS()
 };
+
+// The flag world participation phase (SCHEDULE_DEF_FLAG_WORLD_PARTICIPATION; slots 5 and 7 in
+// FlagWorld.cpp).
+class CShard_FlagWorldParticipation : public IShard_ScheduleJob
+{
+public:
+    SHARD_SCHEDULE_JOB_SLOTS()
+};
+
+C_ASSERT(sizeof(CShard_FlagWorldParticipation) == 0x78);
+
+// The flag world game (SCHEDULE_DEF_FLAG_WORLD; the class name is spelled so in the original).
+// Begins 5 minutes before the game: 1 minute before it the game servers hear of it, at the game
+// start the participant levels are requested (slots 5 to 7 in FlagWorld.cpp).
+class CSahrd_FlagWorld : public IShard_ScheduleJob
+{
+public:
+    SHARD_SCHEDULE_JOB_SLOTS()
+
+    BYTE            m_byStage;          // +78  0 begun, 1 one minute notice sent, 2 game started
+    DWORD           m_dwBegin;          // +7C
+    DWORD           m_dwOneMinuteLeft;  // +80  begin + 240 s
+    DWORD           m_dwGameStart;      // +84  begin + 300 s
+};
+
+C_ASSERT(FIELD_OFFSET(CSahrd_FlagWorld, m_byStage) == 0x78);
+C_ASSERT(sizeof(CSahrd_FlagWorld) == 0x88);
