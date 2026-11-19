@@ -69,3 +69,46 @@ struct GameWorldCharPos
 };
 
 C_ASSERT(FIELD_OFFSET(GameWorldCharPos, awCreateTime) == 0x28);
+
+// ---------------------------------------------------------------------------------------------
+// Used by the flag world, the battle arena and the siege fortress (SM_world4)
+
+// CUser + 0x1C4: the session of the game server the user is on.
+DWORD User_GetSessionID(const CUser* pUser);
+// CUser + 0x68: the party of the user (NULL without one); CUser + 0x78: the key the party
+// manager removes the member by.
+void* User_GetParty(const CUser* pUser);
+DWORD User_GetPartyMemberKey(const CUser* pUser);
+
+// Provided by the party group: CPartyManager::RemoveMember (0x44f580) on the party manager
+// (dword_8A892C, asserts when there is none).
+void PartyManager_RemoveMember(void* pParty, DWORD dwMemberKey, int nReason);
+
+// Provided by the guild group: CGuildManager::ResetSiegeAuthority (0x43c5a0) on
+// GetSingleton_CGuildManager (0x40bab0).
+void GuildManager_ResetSiegeAuthority(DWORD dwGuildID);
+
+// Provided by SM_main: the siege schedule state of the main process (CMainProcess + 0x42310;
+// the same declaration as SM_world3's ShardScheduleExtern.h).
+struct SHARD_SIEGE_SCHEDULE
+{
+    BYTE        ab00[0x25];
+    BYTE        bSiegeRunning;      // +25 between siege begin and end
+    BYTE        bTaxPeriod;         // +26 inside the tax period
+    BYTE        b27;
+    SYSTEMTIME  stPrevSiegeBegin;   // +28
+    SYSTEMTIME  stSiegeBegin;       // +38
+    SYSTEMTIME  stSiegeEnd;         // +48
+    SYSTEMTIME  stTaxBegin;         // +58 the SCHEDULE_DEF_SIEGE_REQUEST_PERIOD period
+    SYSTEMTIME  stTaxEnd;           // +68
+};
+
+C_ASSERT(FIELD_OFFSET(SHARD_SIEGE_SCHEDULE, stPrevSiegeBegin) == 0x28);
+C_ASSERT(FIELD_OFFSET(SHARD_SIEGE_SCHEDULE, stTaxEnd) == 0x68);
+
+SHARD_SIEGE_SCHEDULE* MainProcess_GetSiegeSchedule();
+
+namespace NewSchedule { class CScheduleManager; }
+
+// Provided by SM_world3: the static CShard_ScheduleManager (0x8A7B24).
+NewSchedule::CScheduleManager* ShardScheduleManager_Get();
