@@ -480,8 +480,8 @@ struct RefDefaultQuestRow
 };
 
 C_ASSERT(sizeof(RefDefaultQuestRow) == 0x24);
-// _RefGachaItemSet (RefGachaItemSet::dtor 0x497900: CGachaFreeParam +152, 4 param strings +24).
-struct RefGachaItemSetRow { BYTE ab[0x9C]; };              // TODO(type)
+// _RefGachaItemSet row (0x9C bytes, RefDataMisc.h).
+struct RefGachaItemSetRow;
 // _RefAbilityByItemOptLevel row (16 bytes, vftable of RefAbilityByItemOptLevel; ctor 0x498140).
 // The one virtual reads a row and returns its key in the maps of the item option levels:
 // RefItemID in the high DWORD, OptLevel in the low one (0 for a row that is dropped).

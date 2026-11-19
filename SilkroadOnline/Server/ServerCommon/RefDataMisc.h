@@ -56,6 +56,116 @@ int RefData_BuildCollectionBookItem(CReferenceData* pData, RefTableEntry* pTable
 // checks go on.
 BOOL RefData_ValidateCollectionBook(CReferenceData* pData);
 
+// ---------------------------------------------------------------------------------------------
+// Gacha item sets (slot 0x47)
+
+// One "<T:...>" part of a "[BIIV]" free parameter (16 bytes, not initialised by the original).
+struct CGachaFreeParamEntry
+{
+    enum
+    {
+        TYPE_DURABILITY = 'D',                   // D:value
+        TYPE_MAGIC_OPTION = 'M',                 // M:code,level,value
+        TYPE_OPT_LEVEL = 'O',                    // O:value
+        TYPE_VALUE = 'V',                        // V:value
+    };
+
+    BYTE             bValid;                     // +0   1
+    BYTE             btType;                     // +1   TYPE_*
+    BYTE             btLevel;                    // +2   M: the MLevel
+    DWORD            dwCode;                     // +4   M: the parameter code (Util_PackFourCC)
+    __int64          nValue;                     // +8
+};
+
+C_ASSERT(sizeof(CGachaFreeParamEntry) == 0x10);
+
+// The free parameters of a gacha item (vftable of CGachaFreeParam, ctor 0x48ccd0).
+class CGachaFreeParam
+{
+public:
+    CGachaFreeParam()
+    {
+    }
+
+    // 0x48cd40 (vf00 0x48cd20): the entries are freed.
+    virtual ~CGachaFreeParam();
+
+    // CGachaFreeParam::Parse (0x48ce90): the "<...>" parts of a text that contains "[BIIV]" are
+    // appended. A sixth part or a second part of one type (of one code for 'M') asserts and is
+    // appended anyway. A '<' without its '>' makes the loop start over (see SM-071).
+    void Parse(const std::string& strDesc);
+
+    std::vector<CGachaFreeParamEntry*> m_vecEntry; // +4
+};
+
+C_ASSERT(sizeof(CGachaFreeParam) == 0x14);
+
+// CGachaFreeParam::ParseToken (0x48c9a0): "T:..." into the entry; an unknown type asserts.
+void CGachaFreeParam_ParseToken(const std::string& strToken, CGachaFreeParamEntry& entry);
+// Util_PackFourCC (0x48ce00): up to 4 characters, right aligned, the first one in the high byte
+// ("intv" = 0x696E7476); an empty or longer text asserts.
+DWORD Util_PackFourCC(const std::string& str);
+
+// One ParamN / DescN column pair (RefParam::ctor 0x515260, the RefParam of the object rows).
+struct RefGachaParam
+{
+    RefGachaParam()
+        : Param(0)
+    {
+    }
+
+    int              Param;                      // +0
+    std::string      Desc;                       // +4
+};
+
+C_ASSERT(sizeof(RefGachaParam) == 0x20);
+
+// _RefGachaItemSet row (0x9C bytes): RefGachaItemSet::InitMembers 0x5155f0 / dtor 0x497900.
+// Column names are not known except the object and its count.
+struct RefGachaItemSetRow
+{
+    RefGachaItemSetRow()
+        : Service(0), dw04(0), RefItemID(0), w0C(0), Count(0), dw10(0), b14(0), pFreeParam(NULL)
+    {
+    }
+
+    ~RefGachaItemSetRow()
+    {
+        if (pFreeParam)
+            delete pFreeParam;
+        pFreeParam = NULL;
+    }
+
+    BYTE             Service;                    // +0
+    DWORD            dw04;                       // +4
+    DWORD            RefItemID;                  // +8
+    WORD             w0C;                        // +C
+    WORD             Count;                      // +E
+    DWORD            dw10;                       // +10
+    BYTE             b14;                        // +14
+    RefGachaParam    Param[4];                   // +18
+    CGachaFreeParam* pFreeParam;                 // +98  owned
+};
+
+C_ASSERT(FIELD_OFFSET(RefGachaItemSetRow, Param) == 0x18);
+C_ASSERT(sizeof(RefGachaItemSetRow) == 0x9C);
+
+// The reader, loader and builder are in RefDataGacha.cpp, which uses two checks of the object
+// rows (RefDataObj.h): RefObjItem_IsValidDurabilityOrStack (0x51adc0) and RefObj_IsValidSlotForItem
+// (0x51ada0).
+
+// RefGachaItemSet::Read (0x497980): Service (BYTE), the columns and the four Param / Desc pairs;
+// the free parameters of each Desc with a Param are parsed and checked against the item (an
+// error asserts; a durability or slot out of range is clamped). The Service column is the
+// result.
+int RefRow_Read(CRefRow& row, RefGachaItemSetRow& r);
+// CRefInstanceGenerator::LoadGachaItemSet (0x4a44b0): a row in service is appended to
+// m_vecGachaItemSet, any other freed.
+int RefData_LoadGachaItemSet(CReferenceData* pData, CDBRecord* pRecord);
+// Slot 0x47 (RefData_BuildRefGachaItemSet 0x4cfb90): the rows; BuildWinLoseRewardTable
+// (0x4ab710), which the original calls next, is not ported yet.
+int RefData_BuildGachaItemSet(CReferenceData* pData, RefTableEntry* pTable, unsigned int nSlot);
+
 // CRefInstanceGenerator::FindObjByCodeName (0x4a0980, the name of the analysis): the rent item
 // of a code name (m_hashRentItem), NULL when there is none.
 RefRentItem* RefData_FindRentItem(CReferenceData* pData, const char* pszCodeName);

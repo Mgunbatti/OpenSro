@@ -724,3 +724,89 @@ BOOL BUF_CHARACTER_STATUS::Parse(const std::string& strData, int* pnPos)
     m_vecStatus.push_back(atol(strToken.c_str()));
     return TRUE;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Gacha free parameters
+
+CGachaFreeParam::~CGachaFreeParam()
+{
+    for (unsigned int i = 0; i < m_vecEntry.size(); ++i)
+        delete m_vecEntry.at(i);
+    m_vecEntry.clear();
+    std::vector<CGachaFreeParamEntry*>().swap(m_vecEntry);
+}
+
+DWORD Util_PackFourCC(const std::string& str)
+{
+    if (!str.size() || str.size() > 4)
+        BSAssertFail();
+    BYTE ab[4] = { 0, 0, 0, 0 };
+    unsigned int nOffset = 4 - str.size();
+    for (unsigned int i = 0; i < str.size(); ++i)
+        ab[nOffset + i] = (BYTE)str.at(i);
+    return (DWORD)ab[0] << 24 | (DWORD)ab[1] << 16 | (DWORD)ab[2] << 8 | ab[3];
+}
+
+void CGachaFreeParam_ParseToken(const std::string& strToken, CGachaFreeParamEntry& entry)
+{
+    entry.bValid = 1;
+    entry.btType = (BYTE)strToken.substr(0, 1).c_str()[0];
+    std::string::size_type nColon = strToken.find(":", 1);
+    if (nColon == std::string::npos)
+        BSAssertFail();
+    std::string::size_type nPos = nColon + 1;
+    switch (entry.btType)
+    {
+    case CGachaFreeParamEntry::TYPE_MAGIC_OPTION:
+        {
+            std::string::size_type nComma1 = strToken.find(",", nPos);
+            if (nComma1 == std::string::npos)
+                BSAssertFail();
+            entry.dwCode = Util_PackFourCC(strToken.substr(nPos, nComma1 - nPos));
+            std::string::size_type nComma2 = strToken.find(",", nComma1 + 1);
+            entry.btLevel =
+                (BYTE)atol(strToken.substr(nComma1 + 1, nComma2 - (nComma1 + 1)).c_str());
+            std::string::size_type nComma3 = strToken.find(",", nComma2 + 1);
+            entry.nValue = _atoi64(strToken.substr(nComma2 + 1, nComma3 - (nComma2 + 1)).c_str());
+        }
+        break;
+    case CGachaFreeParamEntry::TYPE_DURABILITY:
+    case CGachaFreeParamEntry::TYPE_OPT_LEVEL:
+    case CGachaFreeParamEntry::TYPE_VALUE:
+        entry.nValue = _atoi64(strToken.substr(nPos).c_str());
+        break;
+    default:
+        BSAssertFail();
+        break;
+    }
+}
+
+void CGachaFreeParam::Parse(const std::string& strDesc)
+{
+    if (strDesc.find("[BIIV]", 0) == std::string::npos)
+        return;
+    std::string::size_type nPos = strDesc.find("<", 0);
+    while (nPos != std::string::npos)
+    {
+        if (m_vecEntry.size() >= 5)
+            BSAssertFail();
+        ++nPos;
+        // BUG(SM-071): without a '>' the search below starts over at 0 and never ends.
+        std::string::size_type nEnd = strDesc.find(">", nPos);
+        std::string strToken = strDesc.substr(nPos, nEnd - nPos);
+        CGachaFreeParamEntry* pEntry = new CGachaFreeParamEntry;
+        CGachaFreeParam_ParseToken(strToken, *pEntry);
+        for (unsigned int i = 0; i < m_vecEntry.size(); ++i)
+        {
+            const CGachaFreeParamEntry* pOld = m_vecEntry.at(i);
+            if (pOld->bValid == 1 && pOld->btType == pEntry->btType &&
+                (pOld->btType != CGachaFreeParamEntry::TYPE_MAGIC_OPTION ||
+                 pOld->dwCode == pEntry->dwCode))
+            {
+                BSAssertFail();
+            }
+        }
+        m_vecEntry.push_back(pEntry);
+        nPos = strDesc.find("<", nEnd + 1);
+    }
+}

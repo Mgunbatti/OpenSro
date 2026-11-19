@@ -789,10 +789,12 @@ $(BIN)\ShardRefShopTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_R
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefShopTest.obj $(SHARD_REFDATA_OBJS) \
 	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
-$(BIN)\ShardRefMiscTest.exe:       $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
-                                   $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_LIBS)
+# RefDataGacha.obj needs the object row checks of SM_rf_obj; the test has stand-ins for them.
+$(BIN)\ShardRefMiscTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
+                             $(OBJ)\ServerCommon\RefDataGacha.obj \
+                             $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_REFDATA_OBJS) \
-	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+	    $(OBJ)\ServerCommon\RefDataGacha.obj $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
