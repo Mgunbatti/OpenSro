@@ -1,5 +1,7 @@
 #include "ShardManager/BattleArena.h"
 
+#include <stdlib.h>
+
 #include <string>
 
 #include "BSLib/BSDebug.h"
@@ -8,6 +10,7 @@
 #include "ServerFramework/MassiveMsg.h"
 #include "ServerFramework/ServerDataExtern.h"
 #include "ServerCommon/ReferenceData.h"
+#include "ShardManager/FlagWorld.h"
 #include "ShardManager/GameWorld.h"
 #include "ShardManager/ShardScheduleJob.h"
 #include "ShardManager/ShardWorldExtern.h"
@@ -15,6 +18,7 @@
 enum
 {
     OP_BATTLEARENA_NOTICE       = 0x34D2,   // to the game servers
+    OP_BATTLEARENA_CHECK        = 0x74D1,   // to one game server, answered with 0xB4D1
     OP_BATTLEARENA_REGISTER_ACK = 0xB4D0
 };
 
@@ -74,8 +78,8 @@ sBattleArenaTeam::sBattleArenaTeam()
     m_wWorldID = 0;
     m_wLayerID = 0;
     m_byCount = 0;
-    m_by1 = 0;
-    m_dw20 = 0;
+    m_byBracket = 0;
+    m_dwLevelSum = 0;
 }
 
 void sBattleArenaTeam::AddMember(DWORD dwJID)
@@ -585,6 +589,23 @@ void CBattleArenaMgr::WriteStopResurrect(CMsg* pMsg, BYTE byKind)
 void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
 {
     SendParticipationEnded(byKind);
+    ClearRegistrations(byKind);
+    WriteTypeAndKind(pMsg, BATTLEARENA_GAME_END, byKind);
+    LogPrintf(0, "BattleArena: Game Ended : %d", byKind);
+}
+
+void CBattleArenaMgr::OnGameEnded(BYTE byKind)
+{
+    LogPrintf(0, "BattleArena: Game Ended : %d", byKind);
+    SendParticipationEnded(byKind);
+    ClearRegistrations(byKind);
+    CMsg* pMsg = AllocNotice();
+    WriteTypeAndKind(pMsg, BATTLEARENA_GAME_END, byKind);
+    BroadcastToGameServers(pMsg);
+}
+
+void CBattleArenaMgr::ClearRegistrations(BYTE byKind)
+{
     int i;
     switch (byKind)
     {
@@ -596,7 +617,7 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
         for (i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
         {
             m_amapParty[i].clear();
-            m_amapParty19C[i].clear();
+            m_amapPartyOfUser[i].clear();
             m_amapPartyLevel[i].clear();
             m_alistParty[i].clear();
             for (GroupMap::iterator it = m_amapPartyMember[i].begin();
@@ -609,7 +630,7 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
         for (i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
         {
             m_amapGuild[i].clear();
-            m_amapGuild250[i].clear();
+            m_amapGuildOfUser[i].clear();
             m_amapGuildLevel[i].clear();
             m_alistGuild[i].clear();
             for (GroupMap::iterator it = m_amapGuildMember[i].begin();
@@ -627,8 +648,6 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
         }
         break;
     }
-    WriteTypeAndKind(pMsg, BATTLEARENA_GAME_END, byKind);
-    LogPrintf(0, "BattleArena: Game Ended : %d", byKind);
 }
 
 RefGameWorld* CBattleArenaMgr::GetRefGameWorld(BYTE byMatchType, BYTE byMatch)
@@ -944,4 +963,194 @@ void CBattleArenaMgr::StartGame(BYTE byKind, BYTE byMatch)
     // BUG(SM-162): no range check of the kind.
     BYTE* pbClosed = &m_abClosed[0];
     pbClosed[byKind] = 0;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The check of the registered players (0x74D1 {kind, match, JIDs...} to each game server)
+
+namespace
+{
+
+// The check requests of one kind and match type: one message per game server session. A message
+// is sent as soon as its payload grows over the limit; the rest go out at the end.
+class CArenaCheckBatch
+{
+public:
+    typedef std::map<DWORD, CMsg*> SessionMsgMap;
+
+    CArenaCheckBatch(BYTE byKind, BYTE byMatch, WORD wLimit)
+        : m_byKind(byKind), m_byMatch(byMatch), m_wLimit(wLimit)
+    {
+    }
+
+    void Add(DWORD dwSessionID, DWORD dwJID)
+    {
+        SessionMsgMap::iterator it = m_mapMsg.find(dwSessionID);
+        if (it == m_mapMsg.end())
+        {
+            CMsg* pMsg = g_pBSNet->AllocMsg(FALSE);
+            pMsg->SetOpcode(OP_BATTLEARENA_CHECK);
+            pMsg->WriteBytes(&m_byKind, 1);
+            pMsg->WriteBytes(&m_byMatch, 1);
+            pMsg->WriteBytes(&dwJID, 4);
+            m_mapMsg.insert(SessionMsgMap::value_type(dwSessionID, pMsg));
+            return;
+        }
+        CMsg* pMsg = it->second;
+        pMsg->WriteBytes(&dwJID, 4);
+        if (pMsg->GetPayloadSize() > m_wLimit)
+        {
+            g_pBSNet->SendMsg(dwSessionID, pMsg);
+            g_pBSNet->ReleaseMsg(pMsg);
+            m_mapMsg.erase(it);
+        }
+    }
+
+    void Flush()
+    {
+        for (SessionMsgMap::iterator it = m_mapMsg.begin(); it != m_mapMsg.end(); ++it)
+        {
+            CMsg* pMsg = it->second;
+            g_pBSNet->SendMsg(it->first, pMsg);
+            g_pBSNet->ReleaseMsg(pMsg);
+        }
+        m_mapMsg.clear();
+    }
+
+private:
+    BYTE            m_byKind;
+    BYTE            m_byMatch;
+    WORD            m_wLimit;
+    SessionMsgMap   m_mapMsg;
+};
+
+// Random and job: registrations of players that are offline (or have no character selected)
+// are dropped, the others are checked.
+void CheckSoloRegistrations(CArenaCheckBatch& batch, CBattleArenaMgr::ByteMap& mapReg,
+                            DWORD& dwCount)
+{
+    CBattleArenaMgr::ByteMap::iterator it = mapReg.begin();
+    while (it != mapReg.end())
+    {
+        DWORD dwJID = it->first;
+        CUser* pUser = ClientManager_FindUserByJID(dwJID);
+        if (!pUser || !User_GetCharID(pUser))
+        {
+            mapReg.erase(it++);
+            continue;
+        }
+        batch.Add(User_GetSessionID(pUser), dwJID);
+        ++dwCount;
+        ++it;
+    }
+}
+
+}
+
+void CBattleArenaMgr::CheckAndGoRandom()
+{
+    for (BYTE byMatch = 0; byMatch < BATTLEARENA_MATCH_COUNT; ++byMatch)
+    {
+        CArenaCheckBatch batch(0, byMatch, 0x190);
+        m_adwCheckCount[0][byMatch] = 0;
+        CheckSoloRegistrations(batch, m_amapRandom[byMatch], m_adwCheckCount[0][byMatch]);
+        batch.Flush();
+    }
+}
+
+void CBattleArenaMgr::CheckAndGoJob()
+{
+    for (BYTE byMatch = 0; byMatch < BATTLEARENA_MATCH_COUNT; ++byMatch)
+    {
+        CArenaCheckBatch batch(3, byMatch, 0x190);
+        m_adwCheckCount[3][byMatch] = 0;
+        CheckSoloRegistrations(batch, m_amapJobB[byMatch], m_adwCheckCount[3][byMatch]);
+        CheckSoloRegistrations(batch, m_amapJobA[byMatch], m_adwCheckCount[3][byMatch]);
+        batch.Flush();
+    }
+}
+
+// The registering player must still be in the registered party; every member of the party is
+// checked and gets a level entry of 0 (ConfirmPlayUserParty fills it in).
+void CBattleArenaMgr::CheckAndGoParty()
+{
+    for (BYTE byMatch = 0; byMatch < BATTLEARENA_MATCH_COUNT; ++byMatch)
+    {
+        // The party messages are flushed above 0x192 bytes, the others above 0x190.
+        CArenaCheckBatch batch(1, byMatch, 0x192);
+        DWORD& dwCount = m_adwCheckCount[1][byMatch];
+        dwCount = 0;
+        DwordMap& mapReg = m_amapParty[byMatch];
+        DwordMap::iterator it = mapReg.begin();
+        while (it != mapReg.end())
+        {
+            CUser* pUser = ClientManager_FindUserByJID(it->first);
+            void* pParty = NULL;
+            if (pUser && it->second == User_GetPartyID(pUser))
+                pParty = PartyManager_FindParty(User_GetPartyID(pUser));
+            if (!pParty)
+            {
+                mapReg.erase(it++);
+                continue;
+            }
+
+            DWORD dwPartyID = Party_GetID(pParty);
+            ByteMap mapLevel;
+            DWORD dwMembers = Party_GetMemberCount(pParty);
+            for (DWORD i = 0; i < dwMembers; ++i)
+            {
+                CUser* pMember = Party_GetMember(pParty, i);
+                DWORD dwJID = User_GetJID(pMember);
+                batch.Add(User_GetSessionID(pMember), dwJID);
+                m_amapPartyOfUser[byMatch].insert(DwordMap::value_type(dwJID, dwPartyID));
+                mapLevel.insert(ByteMap::value_type(dwJID, 0));
+                ++dwCount;
+            }
+            m_amapPartyMember[byMatch].insert(GroupMap::value_type(dwPartyID, mapLevel));
+            ++it;
+        }
+        batch.Flush();
+    }
+}
+
+// The members listed at the registration (char IDs) are checked when they are online; offline
+// ones are dropped from the list, and the list itself is dropped afterwards.
+void CBattleArenaMgr::CheckAndGoGuild()
+{
+    for (BYTE byMatch = 0; byMatch < BATTLEARENA_MATCH_COUNT; ++byMatch)
+    {
+        CArenaCheckBatch batch(2, byMatch, 0x190);
+        DWORD& dwCount = m_adwCheckCount[2][byMatch];
+        dwCount = 0;
+        DwordMap& mapReg = m_amapGuild[byMatch];
+        for (DwordMap::iterator it = mapReg.begin(); it != mapReg.end(); ++it)
+        {
+            DWORD dwGuildID = it->second;
+            MemberListMap::iterator itList = m_amapGuildMemberList[byMatch].find(dwGuildID);
+            if (itList == m_amapGuildMemberList[byMatch].end())
+                continue;
+
+            ByteMap mapLevel;
+            std::list<DWORD>& listChar = itList->second;
+            std::list<DWORD>::iterator itChar = listChar.begin();
+            while (itChar != listChar.end())
+            {
+                CUser* pUser = ClientManager_FindUserByCharID(*itChar);
+                if (!pUser)
+                {
+                    itChar = listChar.erase(itChar);
+                    continue;
+                }
+                DWORD dwJID = User_GetJID(pUser);
+                mapLevel.insert(ByteMap::value_type(dwJID, 0));
+                batch.Add(User_GetSessionID(pUser), dwJID);
+                m_amapGuildOfUser[byMatch].insert(DwordMap::value_type(dwJID, dwGuildID));
+                ++dwCount;
+                ++itChar;
+            }
+            m_amapGuildMember[byMatch].insert(GroupMap::value_type(dwGuildID, mapLevel));
+            m_amapGuildMemberList[byMatch].erase(itList);
+        }
+        batch.Flush();
+    }
 }

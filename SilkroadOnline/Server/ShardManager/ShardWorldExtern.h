@@ -121,3 +121,23 @@ DWORD Party_GetMemberCount(void* pParty);
 // Provided by SM_main: CMainProcess + 0x423B0: one BYTE per battle arena match type (occupy, score,
 // flag), 0 while the match type is switched off.
 BYTE MainProcess_IsArenaMatchOpen(BYTE byMatch);
+
+// ---------------------------------------------------------------------------------------------
+// Used by the battle arena game flow (SM_world5)
+
+// CUser + 0x78: the JID (the field User_GetPartyMemberKey returns; CPartyManager::RemoveMember
+// takes it as the member key).
+DWORD User_GetJID(const CUser* pUser);
+// CUser + 0x68 as the party ID (the field User_GetParty returns; CPartyManager::FindParty and
+// RemoveMember take the ID, 0 without a party).
+DWORD User_GetPartyID(const CUser* pUser);
+
+// Provided by the CClientManager owner: the char ID -> user hash_map of g_pClientManager
+// (+0x10C, filled by CClientManager::RegisterCharacter); inlined in the original, asserts when
+// there is no client manager. NULL when not found.
+CUser* ClientManager_FindUserByCharID(DWORD dwCharID);
+
+// Provided by the party group: the party ID (party + 0) and the members (the CUser* vector at
+// party + 0x0C, Party_GetMemberCount entries).
+DWORD Party_GetID(void* pParty);
+CUser* Party_GetMember(void* pParty, DWORD dwIndex);

@@ -23,8 +23,8 @@ enum
     BATTLEARENA_MATCH_COUNT = 3      // 0 occupy, 1 score, 2 flag
 };
 
-// A player of the team building: the JID (or party / guild ID) and the level. The list nodes
-// hold the two dwords like the original's 64-bit value.
+// An entry of the team building: the JID (or party / guild ID) and the level. The list nodes
+// hold the two dwords like the original's 64-bit value; only the low byte of the level counts.
 struct sArenaLevelEntry
 {
     DWORD   dwID;
@@ -44,16 +44,17 @@ struct sBattleArenaTeam
     DWORD PopMember();
 
     BYTE                m_byCount;      // +0
-    BYTE                m_by1;          // +1
+    BYTE                m_byBracket;    // +1   level bracket of the average level
     WORD                m_wWorldID;     // +2
     WORD                m_wLayerID;     // +4
     std::list<DWORD>    m_listMember;   // +8   JIDs
-    DWORD               m_dw20;         // +14  0
-    BYTE                m_by24;         // +18  not set by the constructor
+    DWORD               m_dwLevelSum;   // +14  levels of the members added
+    BYTE                m_byLevel;      // +18  level of the first entry; not set by the constructor
 };
 
 C_ASSERT(FIELD_OFFSET(sBattleArenaTeam, m_listMember) == 8);
-C_ASSERT(FIELD_OFFSET(sBattleArenaTeam, m_dw20) == 20);
+C_ASSERT(FIELD_OFFSET(sBattleArenaTeam, m_dwLevelSum) == 20);
+C_ASSERT(FIELD_OFFSET(sBattleArenaTeam, m_byLevel) == 24);
 C_ASSERT(sizeof(sBattleArenaTeam) == 28);
 
 // ---------------------------------------------------------------------------------------------
@@ -126,18 +127,22 @@ public:
     // CBattleArenaMgr_CloseArenaOnce (0x6750e0): CloseArenaLayers unless the kind is closed.
     void CloseArenaOnce(BYTE byKind);
 
-    // CBattleArenaMgr::CheckAndGo (0x66fbc0) and the rest of the game flow: provided by the
-    // battle arena port of net_SM_world_5 (pending).
+    // CBattleArenaMgr::CheckAndGo (0x66fbc0): asks the game servers (0x74D1) whether the
+    // registered players of the kind can play; m_adwCheckCount counts the open answers.
     void CheckAndGo(BYTE byKind);
     void CheckAndGoRandom();                                            // 0x66fc30
     void CheckAndGoParty();                                             // 0x670040
     void CheckAndGoGuild();                                             // 0x670600
     void CheckAndGoJob();                                               // 0x670bd0
-    void OnGameEnded(BYTE byKind);                                      // 0x674c70
+    // CBattleArenaMgr::OnGameEnded (0x674c70): the GM end of the game: participation ended,
+    // registrations of the kind dropped, 0x34D2 {5, kind}.
+    void OnGameEnded(BYTE byKind);
+    // The answers of 0xB4D1: {JID, result, level} until less than 6 bytes are left.
     void ConfirmPlayUserRandom(CMsg* pMsg, BYTE byKind, BYTE byMatch);  // 0x6710b0
     void ConfirmPlayUserParty(CMsg* pMsg, BYTE byKind, BYTE byMatch);   // 0x671340
     void ConfirmPlayUserGuild(CMsg* pMsg, BYTE byKind, BYTE byMatch);   // 0x671970
     void ConfirmPlayUserJob(CMsg* pMsg, BYTE byKind, BYTE byMatch);     // 0x671fa0
+    // Team building, arena layers and the 0x34D2 notices of the members.
     void StartGameRandom(BYTE byMatch);                                 // 0x6723b0
     void StartGameParty(BYTE byMatch);                                  // 0x672d40
     void StartGameGuild(BYTE byMatch);                                  // 0x673730
@@ -149,22 +154,38 @@ public:
     // CBattleArenaMgr::StartGame (0x6722c0): the teams of the kind, 0x34D2 {4, kind, match}.
     void StartGame(BYTE byKind, BYTE byMatch);
 
+private:
+    // The registrations of the kind are dropped (OnScheduledGameEnd, OnGameEnded).
+    void ClearRegistrations(BYTE byKind);
+    // ConfirmPlayUserRandom / Job: the registration maps are searched in the given order.
+    void ConfirmSoloUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch, ByteMap* const* apMap,
+                          int nMap, const char* pszUnknownFormat);
+    // ConfirmPlayUserParty / Guild.
+    void ConfirmGroupUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch, DwordMap& mapGroupOfUser,
+                           ByteMap& mapGroupLevel, GroupMap& mapGroupMember,
+                           const char* pszUnknownFormat);
+    // StartGameParty / Guild; the kick map is map<DWORD, DWORD> (party) or map<DWORD, BYTE>
+    // (guild) like in the original.
+    template <class TKickMap> void StartGameGroup(BYTE byKind, BYTE byMatch);
+
+public:
     TeamVector      m_avecTeam[BATTLEARENA_KIND_COUNT][BATTLEARENA_MATCH_COUNT];    // +4
-    ByteMap         m_amapRandom[BATTLEARENA_MATCH_COUNT];           // +C4  JID -> value
+    ByteMap         m_amapRandom[BATTLEARENA_MATCH_COUNT];           // +C4  JID -> level
     DwordMap        m_amapParty[BATTLEARENA_MATCH_COUNT];            // +E8  JID -> party ID
     DwordMap        m_amapGuild[BATTLEARENA_MATCH_COUNT];            // +10C JID -> guild ID
-    ByteMap         m_amapJobA[BATTLEARENA_MATCH_COUNT];             // +130 JID -> value (job 0, 2)
-    ByteMap         m_amapJobB[BATTLEARENA_MATCH_COUNT];             // +154 JID -> value (job 1, 3)
+    ByteMap         m_amapJobA[BATTLEARENA_MATCH_COUNT];             // +130 JID -> level (job 0, 2)
+    ByteMap         m_amapJobB[BATTLEARENA_MATCH_COUNT];             // +154 JID -> level (job 1, 3)
     GroupMap        m_amapPartyMember[BATTLEARENA_MATCH_COUNT];      // +178 party -> JID -> level
-    DwordMap        m_amapParty19C[BATTLEARENA_MATCH_COUNT];         // +19C
+    DwordMap        m_amapPartyOfUser[BATTLEARENA_MATCH_COUNT];      // +19C member JID -> party
     ByteMap         m_amapPartyLevel[BATTLEARENA_MATCH_COUNT];       // +1C0 party -> highest level
-    LevelList       m_alistParty[BATTLEARENA_MATCH_COUNT];           // +1E4 parties by level
-    MemberListMap   m_amapGuildMemberList[BATTLEARENA_MATCH_COUNT];  // +208 guild -> listed JIDs
+    LevelList       m_alistParty[BATTLEARENA_MATCH_COUNT];           // +1E4 {party, level}
+    MemberListMap   m_amapGuildMemberList[BATTLEARENA_MATCH_COUNT];  // +208 guild -> char IDs
     GroupMap        m_amapGuildMember[BATTLEARENA_MATCH_COUNT];      // +22C guild -> JID -> level
-    DwordMap        m_amapGuild250[BATTLEARENA_MATCH_COUNT];         // +250
+    DwordMap        m_amapGuildOfUser[BATTLEARENA_MATCH_COUNT];      // +250 member JID -> guild
     ByteMap         m_amapGuildLevel[BATTLEARENA_MATCH_COUNT];       // +274 guild -> highest level
-    LevelList       m_alistGuild[BATTLEARENA_MATCH_COUNT];           // +298 guilds by level
+    LevelList       m_alistGuild[BATTLEARENA_MATCH_COUNT];           // +298 {guild, level}
     DWORD           m_dwParticipationTime;      // +2BC play time in ms (0x74D0 type 8)
+    // Outstanding 0xB4D1 answers per kind and match type (players asked by CheckAndGo).
     DWORD           m_adwCheckCount[BATTLEARENA_KIND_COUNT][BATTLEARENA_MATCH_COUNT]; // +2C0
     DWORD           m_adwParticipation[BATTLEARENA_KIND_COUNT];     // +2F0 1 while it runs
     DWORD           m_adwMatchActive[BATTLEARENA_MATCH_COUNT];       // +300 set by the match jobs
@@ -174,7 +195,14 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapRandom) == 0xC4);
 C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapJobB) == 0x154);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapPartyMember) == 0x178);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapPartyOfUser) == 0x19C);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_alistParty) == 0x1E4);
 C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapGuildMemberList) == 0x208);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapGuildMember) == 0x22C);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_amapGuildOfUser) == 0x250);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_alistGuild) == 0x298);
+C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_adwCheckCount) == 0x2C0);
 C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_dwParticipationTime) == 0x2BC);
 C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_adwParticipation) == 0x2F0);
 C_ASSERT(FIELD_OFFSET(CBattleArenaMgr, m_dtParticipationBegin) == 0x30C);
