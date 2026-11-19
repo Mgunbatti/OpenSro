@@ -460,6 +460,39 @@ static void TestFindRefObj(CReferenceData& data)
     data.m_mapRegion[25000] = (RefRegionRow*)abRegion;
     CHECK(strcmp(RefData_GetRegionName(25000), "CHINA_JANGAN") == 0);
     CHECK(strcmp(RefData_GetRegionName(1), "Unknown Region") == 0);
+
+    // optional teleports: the region is looked up, an unknown one is logged
+    FakeTable<CRefOptionalTeleport> teleport;
+    for (int i = 0; i < 2; ++i)
+    {
+        CDBRecStream* pRow = teleport.AddRow();
+        PutDword(pRow, 1);
+        PutDword(pRow, 30 + i);
+        PutString(pRow, "TELEPORT", 12);
+        PutWord(pRow, i ? 1 : 25000);
+        for (int w = 0; w < 6; ++w)
+            PutWord(pRow, (WORD)(100 + w));
+        for (int d = 0; d < 3; ++d)
+            PutDword(pRow, 7);
+    }
+    CNetEngine engine;
+    IBSNet* pOld = g_pBSNet;
+    g_pBSNet = &engine;
+    LogCapture_Start();
+    CHECK(data.BuildFromTable(&teleport.entry, 0x59) == 1);
+    std::vector<CAPTURED_LOG> logs = LogCapture_Drain();
+    LogCapture_Stop();
+    g_pBSNet = pOld;
+    CHECK(data.m_mapOptionalTeleport.size() == 2);
+    if (data.m_mapOptionalTeleport.size() == 2)
+    {
+        RefOptionalTeleport* p = data.m_mapOptionalTeleport[30];
+        CHECK(p->dwRegion == (DWORD)(DWORD_PTR)abRegion && p->Pos_X == 100);
+        CHECK(p->LevelMax == 105 && p->adw34[2] == 7);
+        CHECK(data.m_mapOptionalTeleport[31]->dwRegion == 0);
+    }
+    CHECK(logs.size() == 1 && logs[0].dwFlags == 0x2000001 &&
+          logs[0].strText == "Invalid Region!![ID:31][ObjName128:TELEPORT]");
     data.m_mapRegion.clear();
     pstrRegion->~basic_string();
 
