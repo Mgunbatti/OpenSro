@@ -623,20 +623,167 @@ BYTE* CDBRecord::GetData()
     return (BYTE*)this + GetTableInfo()->m_nDataOffset;
 }
 
+// DBRecord_TrimTrailingSpaces (0x402c40): ends the fetched CHAR value at nSize - 1 and blanks
+// its trailing spaces; the first character is never looked at.
+static void DBRecord_TrimTrailingSpaces(char* pszValue, int nSize)
+{
+    if (!pszValue)
+    {
+        BSAssertFail();
+        return;
+    }
+    if (!nSize)
+        return;
+    pszValue[nSize - 1] = 0;
+    if (nSize == 1)
+        return;
+    for (char* p = &pszValue[nSize - 2]; p != pszValue; --p)
+    {
+        if (*p != ' ')
+            break;
+        *p = 0;
+    }
+}
+
+// SR_ShardManager 0x402c90
+void CDBRecord::AllocData(int nRowSize)
+{
+    (void)nRowSize;
+    if (GetTableInfo()->m_mapGroups.size() == 0)
+        BSAssertFail();
+    InitData();
+}
+
+// SR_ShardManager 0x402bd0
+void CDBRecord::SetField(const DBColumnInfo* pColumn, const void* pValue)
+{
+    if (pColumn->nType == DBTYPE_STRING)
+    {
+        char* pszValue = (char*)pValue;
+        DBRecord_TrimTrailingSpaces(pszValue, pColumn->nSize);
+        std::string* pString = (std::string*)(GetData() + pColumn->nOffset);
+        pString->assign(pszValue, strlen(pszValue));
+    }
+    else
+    {
+        memcpy(GetData() + pColumn->nOffset, pValue, pColumn->nSize);
+    }
+}
+
+// SR_ShardManager 0x41a890
+void CDBRecord::Reserved08(DWORD dwParam)
+{
+    (void)dwParam;
+}
+
+// SR_ShardManager 0x61a850
+CDBRecStream::CDBRecStream()
+{
+    m_nFieldCount = 0;
+    m_nWritePos = 0;
+    m_nReadPos = 0;
+    m_nCapacity = 0;
+    m_pBuffer = NULL;
+}
+
+// SR_ShardManager 0x61a7b0
+CDBRecStream::~CDBRecStream()
+{
+    if (m_pBuffer)
+    {
+        operator delete(m_pBuffer);
+        m_pBuffer = NULL;
+    }
+    m_nFieldCount = 0;
+    m_nWritePos = 0;
+    m_nReadPos = 0;
+    m_nCapacity = 0;
+}
+
+// SR_ShardManager 0x61a590
+void CDBRecStream::AllocData(int nRowSize)
+{
+    if (m_pBuffer && (DWORD)nRowSize > m_nCapacity)
+    {
+        operator delete(m_pBuffer);
+        m_pBuffer = NULL;
+    }
+    if (!m_pBuffer)
+    {
+        m_pBuffer = (BYTE*)operator new(nRowSize);
+        m_nCapacity = nRowSize;
+    }
+    InitData();
+}
+
 // SR_ShardManager 0x61a580
 void CDBRecStream::InitData()
 {
-    m_dw28 = 0;
-    m_dw20 = 0;
-    m_dw1C = 0;
+    m_nFieldCount = 0;
+    m_nWritePos = 0;
+    m_nReadPos = 0;
 }
 
 // SR_ShardManager 0x61a560
 BYTE* CDBRecStream::GetData()
 {
-    if (!m_dw18)
+    if (!m_pBuffer)
         BSAssertFail();
-    return (BYTE*)m_dw18;
+    return m_pBuffer;
+}
+
+// SR_ShardManager 0x61a430. A string is written as its length (cut to the column size - 4),
+// the column size and column size - 4 bytes of the fetch buffer (zeros for an empty string).
+void CDBRecStream::SetField(const DBColumnInfo* pColumn, const void* pValue)
+{
+    if (pColumn->nType == DBTYPE_STRING)
+    {
+        char* pszValue = (char*)pValue;
+        DBRecord_TrimTrailingSpaces(pszValue, pColumn->nSize);
+        if (lstrlenA(pszValue) >= 0xFFFF)
+            BSAssertFail();
+        WORD wLength = (WORD)lstrlenA(pszValue);
+        WORD wColumnSize = (WORD)pColumn->nSize;
+        if ((int)wLength > pColumn->nSize - 4)
+            wLength = (WORD)(pColumn->nSize - 4);
+        WriteRaw(2, &wLength);
+        WriteRaw(2, &wColumnSize);
+        DWORD dwBytes = (DWORD)wColumnSize - 4;
+        void* pZeros = NULL;
+        if (wLength == 0)
+        {
+            if (dwBytes == 0)
+                BSAssertFail();
+            pZeros = operator new(dwBytes);
+            memset(pZeros, 0, dwBytes);
+            pszValue = (char*)pZeros;
+        }
+        WriteRaw((WORD)dwBytes, pszValue);
+        if (pZeros)
+            operator delete(pZeros);
+    }
+    else
+    {
+        WriteRaw((WORD)pColumn->nSize, pValue);
+    }
+}
+
+// SR_ShardManager 0x61a510
+void CDBRecStream::WriteRaw(WORD nSize, const void* pData)
+{
+    if (!m_pBuffer)
+        BSAssertFail();
+    if (m_pBuffer)
+    {
+        if (m_nWritePos + nSize > m_nCapacity)
+        {
+            BSAssertFail();
+            // BUG(SM-001): rethrows without an active exception, which ends the process.
+            throw;
+        }
+        memcpy(m_pBuffer + m_nWritePos, pData, nSize);
+        m_nWritePos += nSize;
+    }
 }
 #endif
 

@@ -70,6 +70,8 @@ enum
     DBTABLE_UPDATE      = 0x01,     // per-group "UPDATE ... SET" and m_strUpdateAll
     DBTABLE_INSERT      = 0x02,     // m_strInsert
     DBTABLE_DELETE      = 0x10,     // m_strDelete (and CDBTable::DeleteByKey)
+    // Set by the SR_ShardManager reference tables (e.g. 0x61cd80); no statement depends on it.
+    DBTABLE_04          = 0x04,
 };
 
 // Field groups of a table (keys of CDBTableInfo::m_mapGroups).
@@ -175,10 +177,20 @@ public:
     CDBRecord();
     virtual ~CDBRecord();                                                   // 1
 
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager (e.g. CRefLevel 0x51f340): the table name of the description.
+    virtual const char* GetTableName() = 0;                                 // 2
+#else
     virtual void Reserved02() = 0;                                          // 2
+#endif
     virtual CDBTableInfo* GetTableInfo() = 0;                               // 3
     // Called once after creation with CDBTableInfo::m_nRowSize.
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x402c90: asserts that the description has field groups, then InitData.
+    virtual void AllocData(int nRowSize);                                   // 4
+#else
     virtual void AllocData(int nRowSize) = 0;                               // 4
+#endif
 #ifdef JMX_FRAMEWORK_2011_08
     // SR_ShardManager 0x404080: the default clears the dirty bits.
     virtual void InitData();                                                // 5
@@ -194,7 +206,16 @@ public:
     virtual BYTE* GetData() = 0;                                            // 6
 #endif
     // Stores one fetched column value (pValue points into the fetch buffer).
+#ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x402bd0: a string column is cut at its trailing blanks (in the fetch
+    // buffer) and assigned to the std::string at GetData() + nOffset; any other column is
+    // copied with its nSize bytes.
+    virtual void SetField(const DBColumnInfo* pColumn, const void* pValue);  // 7
+    // SR_ShardManager 0x41a890: empty (ret 4); no caller in the library.
+    virtual void Reserved08(DWORD dwParam);                                 // 8
+#else
     virtual void SetField(const DBColumnInfo* pColumn, const void* pValue) = 0;   // 7
+#endif
 
     // Dirty bits of the update groups (inlined helpers of BuildUpdate).
     BOOL IsDirty(int nGroup) const;                     // 0x476880
@@ -236,26 +257,45 @@ C_ASSERT(FIELD_OFFSET(CDBRecord, m_qwDirty) == 8);
 C_ASSERT(FIELD_OFFSET(CDBRecord, m_pOwner) == 0x10);
 C_ASSERT(sizeof(CDBRecord) == 24);
 
-// Stream record (48 bytes): only its runtime class survives in the Gateway.
+// Stream record (48 bytes): only its runtime class survives in the Gateway. In SR_ShardManager
+// the fetched columns are appended to a byte buffer one after the other (strings as
+// {WORD length, WORD column size, column size - 4 bytes}); the reference data readers walk it
+// with m_nReadPos and m_nFieldCount.
 class CDBRecStream : public CDBRecord
 {
     BS_DECLARE_RUNTIME_CLASS(CDBRecStream)
 
 public:
-    DWORD m_dw18;       // +18
-    DWORD m_dw1C;       // +1C
-    DWORD m_dw20;       // +20
-    DWORD m_dw24;       // +24
-    DWORD m_dw28;       // +28
-    DWORD m_dw2C;       // +2C
+#ifdef JMX_FRAMEWORK_2011_08
+    CDBRecStream();                                                         // 0x61a850
+    virtual ~CDBRecStream();                                                // 1 (0x61a7b0)
+#endif
+
+    BYTE*   m_pBuffer;      // +18  row bytes (operator new)
+    DWORD   m_nReadPos;     // +1C  read position of the readers
+    DWORD   m_nWritePos;    // +20  bytes written (end of the row for the readers)
+    DWORD   m_nCapacity;    // +24  size of m_pBuffer
+    DWORD   m_nFieldCount;  // +28  fields read
+    DWORD   m_dw2C;         // +2C  not initialised
 
 #ifdef JMX_FRAMEWORK_2011_08
+    // SR_ShardManager 0x61a590: a buffer of nRowSize bytes (kept when it is large enough),
+    // then InitData.
+    virtual void AllocData(int nRowSize);                                   // 4
     // SR_ShardManager 0x61a580: clears +1C, +20 and +28 (not the dirty bits).
     virtual void InitData();                                                // 5
     // SR_ShardManager 0x61a560: the buffer at +18 (asserts when there is none).
     virtual BYTE* GetData();                                                // 6
+    // SR_ShardManager 0x61a430: appends the column value to the buffer.
+    virtual void SetField(const DBColumnInfo* pColumn, const void* pValue);  // 7
+
+    // CDBRecStream::WriteRaw (0x61a510): appends nSize bytes. See SM-001.
+    void WriteRaw(WORD nSize, const void* pData);
 #endif
 };
+
+C_ASSERT(FIELD_OFFSET(CDBRecStream, m_pBuffer) == 0x18);
+C_ASSERT(FIELD_OFFSET(CDBRecStream, m_nFieldCount) == 0x28);
 
 C_ASSERT(sizeof(CDBRecStream) == 48);
 

@@ -81,7 +81,7 @@ static CDBTableInfo* s_pShardInfo = NULL;
 class CShardRecord : public CDBRecord
 {
 public:
-    virtual void Reserved02() {}
+    virtual const char* GetTableName() { return "T"; }
     virtual CDBTableInfo* GetTableInfo() { return s_pShardInfo; }
     virtual void AllocData(int) {}
     virtual void SetField(const DBColumnInfo*, const void*) {}
@@ -94,7 +94,7 @@ C_ASSERT(FIELD_OFFSET(CShardRecord, m_row) == 24);
 class CShardStream : public CDBRecStream
 {
 public:
-    virtual void Reserved02() {}
+    virtual const char* GetTableName() { return "T"; }
     virtual CDBTableInfo* GetTableInfo() { return s_pShardInfo; }
     virtual void AllocData(int) {}
     virtual void SetField(const DBColumnInfo*, const void*) {}
@@ -170,17 +170,17 @@ static void TestRecords()
     // the stream record's defaults: the buffer at +18, InitData clears +1C, +20 and +28
     CShardStream stream;
     BYTE abBuffer[4];
-    stream.m_dw18 = (DWORD)abBuffer;
-    stream.m_dw1C = 1;
-    stream.m_dw20 = 2;
-    stream.m_dw24 = 3;
-    stream.m_dw28 = 4;
+    stream.m_pBuffer = abBuffer;
+    stream.m_nReadPos = 1;
+    stream.m_nWritePos = 2;
+    stream.m_nCapacity = 3;
+    stream.m_nFieldCount = 4;
     stream.m_qwDirty = 6;
     stream.InitData();
-    CHECK(stream.m_dw1C == 0 && stream.m_dw20 == 0 && stream.m_dw28 == 0);
-    CHECK(stream.m_dw24 == 3 && stream.m_qwDirty == 6);
+    CHECK(stream.m_nReadPos == 0 && stream.m_nWritePos == 0 && stream.m_nFieldCount == 0);
+    CHECK(stream.m_nCapacity == 3 && stream.m_qwDirty == 6);
     CHECK(stream.GetData() == abBuffer);
-    stream.m_dw18 = 0;
+    stream.m_pBuffer = NULL;
     CHECK(stream.GetData() == NULL);
 
     // ExecDirectWithReturnValue without text / statement
