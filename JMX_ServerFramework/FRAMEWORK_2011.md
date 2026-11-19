@@ -194,8 +194,10 @@ The differences are in the DB layer and in code no earlier module linked. They a
 
 Layout: `CDBTableInfo` gets `int m_nDataOffset` at +0x104 (the offset of the row data in a
 record, used by the default `CDBRecord::GetData`); `CDBRecord` and `CDBRecStream` implement
-vtable slots 5 and 6 instead of leaving them pure. No other class layout differs from the July
-2011 framework.
+vtable slots 4 to 7 instead of leaving them pure, `CDBRecord` slot 2 is `GetTableName` and an
+empty slot 8 follows. No other class layout differs from the July 2011 framework. The record
+classes themselves (the 124 reference tables) are in
+`SilkroadOnline\Server\ServerCommon\RefRecords.h`.
 
 | Original (SR_ShardManager) | Function (rewrite file) | August 2011 behaviour | January 2011 behaviour |
 |---|---|---|---|
@@ -205,6 +207,8 @@ vtable slots 5 and 6 instead of leaving them pure. No other class layout differs
 | 0x43f920, 0x6b52aa | `CDBRecord::ClearDirty`, `CDBRecord::BuildUpdate` | A group from 64 on asserts, a negative one clears the bit of its low byte; `BuildUpdate` asserts instead of clearing a negative group | Out of range: ignored |
 | 0x404080, 0x402c70 | `CDBRecord::InitData` / `GetData` (slots 5 / 6) | Defaults: clear the dirty bits / the record plus `CDBTableInfo::m_nDataOffset` | Pure |
 | 0x61a580, 0x61a560 | `CDBRecStream::InitData` / `GetData` | Clear +1C, +20, +28 / the buffer at +18 (asserts when NULL) | Pure |
+| 0x402c90, 0x402bd0, 0x41a890 | `CDBRecord::AllocData` / `SetField` / `Reserved08` (slots 4, 7, 8); slot 2 is `GetTableName` | Defaults: assert that the description has groups, then `InitData` / a string column cut at its trailing blanks (SM-002) into the `std::string` member, any other copied with `nSize` bytes / empty | Pure, no slot 8 |
+| 0x61a850, 0x61a7b0, 0x61a590, 0x61a430, 0x61a510 | `CDBRecStream` constructor, destructor, `AllocData`, `SetField`, `WriteRaw` | The row is appended to a buffer of `m_nRowSize` bytes: values with `nSize` bytes, strings as {length, column size, column size - 4 bytes}; an overflow asserts and rethrows nothing (SM-001) | Pure |
 | 0x5494a0.., 0x549520.., 0x55ca00 | `CCustomAllocator<T, TPool>` (BSLib\DB\CustomAllocator.h) | New, no define: the record allocator of a table on a `CChunkAllocatorMT<T>` / `CChunkAllocatorST<T>` of 1000 records per block named after the table ("Unknown DB Table"); slots 1 `AllocRecord`, 2 `FreeRecord`, 3 the pool counts | - |
 | 0x41b5a0 | `CMsg::CopyPayloadFrom` (BSNet\Msg.cpp) | New, no define: appends the unread part (mode 1) or the whole payload of another message and marks that one as read | - |
 | 0x688100 | `SelfDivision_IsInGroup3` (ServerFramework.cpp) | New, no define: division 3, 5, 9, 10, 26, 27 or 34 (unreferenced in AgentServer at 0x40e130) | - |
