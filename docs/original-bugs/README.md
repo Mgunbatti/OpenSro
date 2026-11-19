@@ -158,3 +158,6 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-011](SM-011.md) | SR_ShardManager reference data | major | A _RefRentItem row out of service stops the build |
 | [SM-012](SM-012.md) | SR_ShardManager reference data | minor | A _RefMagicOptAssign Race of 4 or more writes past the assign tables |
 | [SM-013](SM-013.md) | SR_ShardManager reference data | minor | The "can't find MagicOptGroup" message passes a std::string to %s |
+| [SM-020](SM-020.md) | SR_ShardManager reference data | minor | The silk price check of the package items never fails |
+| [SM-021](SM-021.md) | SR_ShardManager reference data | minor | Every _RefPricePolicyOfItem row leaks |
+| [SM-022](SM-022.md) | SR_ShardManager reference data | minor | The shop goods are never freed |

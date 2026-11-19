@@ -1001,6 +1001,8 @@ static int RefData_BuildItemOptLevel(CReferenceData* pData, RefTableEntry*, unsi
 }
 
 #define P RefData_BuildPending
+// Read by the builder of slot 0x27 (RefDataShop.cpp).
+#define S RefData_BuildWithShopTables
 
 // The switch of CRefInstanceGenerator::BuildFromTable (0x4ac550), one entry per slot.
 static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
@@ -1021,9 +1023,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, RefData_BuildItemOptLevel,                                           // 0x10
     RefData_BuildTeleport,                                                  // 0x12
     RefData_BuildTeleLink,
-    P, P, P, P,
-    P, P, P, P, P, P, P, P,                                                 // 0x18
-    P, P, P, P, P, P, P, P,                                                 // 0x20
+    P, S, S, S,
+    S, S, S, S, S, S, S, S,                                                 // 0x18
+    S, S, S, S, S, S, S, RefData_BuildShopTables,                           // 0x20
     RefData_BuildDropGold,                                                  // 0x28
     RefData_BuildDropOptLevelSel,
     RefData_BuildDropClassSel, RefData_BuildDropClassSel, RefData_BuildDropClassSel,
@@ -1078,7 +1080,7 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
                 &CReferenceData::m_mapOptionalTeleport>)),                  // 0x59
     REF_KEYED(RefShardContentConfig, RefShardContentConfigMap, m_mapShardContentConfig,
               std::string, CodeName128),                                    // 0x5A
-    P,                                                                      // 0x5B
+    S,                                                                      // 0x5B
     REF_LOADED(RefData_LoadGameWorldNPC),
     REF_KEYED(RefObjCharExtraSkill, RefObjCharExtraSkillMap, m_mapObjCharExtraSkill, int,
               RefObjID),
@@ -1119,6 +1121,7 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
 };
 
 #undef P
+#undef S
 
 // ---------------------------------------------------------------------------------------------
 // CReferenceData

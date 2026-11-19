@@ -8,6 +8,7 @@
 #include <hash_set>
 
 #include "BSLib/DB/Database.h"
+#include "ServerCommon/RefDataShop.h"
 #include "ServerCommon/RefRecords.h"
 #include "ServerCommon/RefDataDrop.h"
 
@@ -517,12 +518,12 @@ public:
 C_ASSERT(sizeof(RefMagicOptByItemOptLevel) == 0x18);
 
 typedef RefAbilityByItemOptLevel RefItemOptLevelRow;
-// _RefShopTab, _RefShop, _RefPackageItem, _RefShopGroup, _RefShopTabGroup.
-struct RefShopTabRow { BYTE ab[0x58]; };                   // TODO(type)
-struct RefShopRow { BYTE ab[0xD4]; };                      // TODO(type)
-struct RefPackageItemRow { BYTE ab[0x188]; };              // TODO(type)
-struct RefShopGroupRow { BYTE ab[0xBC]; };                 // TODO(type)
-struct RefShopTabGroupRow { BYTE ab[0x54]; };              // TODO(type)
+// _RefShopTab, _RefShop, _RefPackageItem, _RefShopGroup, _RefShopTabGroup (RefDataShop.h).
+typedef RefShopTab RefShopTabRow;
+typedef RefShop RefShopRow;
+typedef RefPackageItem RefPackageItemRow;
+typedef RefShopGroup RefShopGroupRow;
+typedef RefShopTabGroup RefShopTabGroupRow;
 // The rows of the shop table of slot 36, which is never registered (RefData_AddRowRefShopSlot36
 // 0x4d1c80, reader 0x494730).
 struct RefShopSlot36Row
@@ -533,14 +534,11 @@ struct RefShopSlot36Row
 
 C_ASSERT(sizeof(RefShopSlot36Row) == 0x20);
 
-// _RefShopItemStockPeriod (2 strings).
-struct RefShopItemStockPeriodRow { BYTE ab[0x68]; };       // TODO(type)
-// _RefConditionTo{Buy,Sell}ScrapItem / _RefRewardPolicyTo{Buy,Sell}ScrapItem: 4 params at +8,
-// condition block at +0x88 (RefScrapItemCondition::DestroyMembers 0x5150f0).
-struct RefScrapItemRuleRow { BYTE ab[0xD0]; };             // TODO(type)
-// _RefMappingShopGroup / _RefMappingShopWithTab (2 code name strings at +20 / +48).
-struct RefMappingShopGroupRow { BYTE ab[0x4C]; };          // TODO(type)
-struct RefMappingShopWithTabRow { BYTE ab[0x4C]; };        // TODO(type)
+// _RefShopItemStockPeriod, the scrap item rules and the shop mappings (RefDataShop.h).
+typedef RefShopItemStockPeriod RefShopItemStockPeriodRow;
+typedef RefScrapItemRule RefScrapItemRuleRow;
+typedef RefMappingShopGroup RefMappingShopGroupRow;
+typedef RefMappingShopWithTab RefMappingShopWithTabRow;
 // TAB_REFTACTICS row (188 bytes, RecCtor 0x4d30f0 / RecDtor 0x4dd0b0: only the string and the
 // map are initialised). Column names are not known; there is no Service column.
 struct RefTacticsRow
@@ -1251,7 +1249,7 @@ public:
     typedef CRefOwnerMap<std::map<DWORD, RefShopTabGroupRow*> >  RefShopTabGroupMap;
     typedef CRefOwnerMap<std::map<DWORD, RefShopSlot36Row*> >    RefShopSlot36Map;
     typedef CRefOwnerMap<std::map<DWORD, RefShopItemStockPeriodRow*> > RefShopItemStockPeriodMap;
-    typedef std::map<DWORD, RefScrapItemRuleRow*>               RefScrapItemRuleMap;
+    typedef std::multimap<unsigned __int64, RefScrapItemRuleRow*> RefScrapItemRuleMap;
     typedef std::vector<RefMappingShopGroupRow*>                RefMappingShopGroupVector;
     typedef std::vector<RefMappingShopWithTabRow*>              RefMappingShopWithTabVector;
     // Two-level indexes by an int key, then by code name (FindShopGroup 0x49e870 ...).
