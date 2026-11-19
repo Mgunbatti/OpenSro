@@ -10,7 +10,7 @@
 // its field mask, the party info (party, leader, setting and the member) and the party match
 // settings. The field mask selects the parts that are read and written:
 //   0x10 ID, 0x01 name and RefObjID, 0x02 level, 0x04 HP/MP, 0x20 position and angle,
-//   0x40 guild name, 0x80 the byte at +41, 0x08 the two masteries.
+//   0x40 guild name, 0x80 the party type at +41, 0x08 the two masteries.
 
 enum
 {
@@ -36,8 +36,8 @@ struct sPartyMemberInfo
 
     // sPartyMemberInfo_dtor (0x428870) is the destructor of the two strings.
 
-    // Inlined in sPartyInfo_ctor / sPartyInfo_Reset: clears the name and every value; the guild
-    // name stays.
+    // Inlined in sPartyInfo_ctor / sPartyInfo_Reset, Party::Clear and
+    // Party::RemoveMemberAndNotify: clears the name and every value; the guild name stays.
     void Clear()
     {
         m_strName.clear();
@@ -49,8 +49,8 @@ struct sPartyMemberInfo
         m_dwX = 0;
         m_dwY = 0;
         m_dwZ = 0;
-        m_dw60 = 0;
-        m_b41 = 0;
+        m_dwPartyID = 0;
+        m_bPartyType = 0;
         m_dwAngle = 0;
         m_dwMastery1 = 0;
         m_dwMastery2 = 0;
@@ -58,8 +58,8 @@ struct sPartyMemberInfo
 
     // sPartyMemberInfo_Read (0x427b50): the mask byte, then the masked parts. With a region
     // of 0 or more (a world region) the coordinates are WORDs (stored in the low halves of the
-    // cleared values), otherwise DWORDs.
-    void Read(CMsg* pMsg);
+    // cleared values), otherwise DWORDs. Returns the mask.
+    BYTE Read(CMsg* pMsg);
     // sPartyMemberInfo_Write (0x427f10): the mirror of Read with the mask bMask.
     void Write(CMsg* pMsg, BYTE bMask) const;
 
@@ -68,7 +68,7 @@ struct sPartyMemberInfo
     std::string m_strGuildName;     // +20  mask 0x40
     DWORD       m_dwRefObjID;       // +3C  mask 0x01
     BYTE        m_bLevel;           // +40  mask 0x02
-    BYTE        m_b41;              // +41  mask 0x80
+    BYTE        m_bPartyType;       // +41  mask 0x80 (Party_IsCompatibleType)
     BYTE        m_bHPMP;            // +42  mask 0x04
     short       m_wRegion;          // +44  mask 0x20
     DWORD       m_dwX;              // +48  mask 0x20
@@ -77,16 +77,16 @@ struct sPartyMemberInfo
     DWORD       m_dwAngle;          // +54  mask 0x20
     DWORD       m_dwMastery1;       // +58  mask 0x08
     DWORD       m_dwMastery2;       // +5C
-    DWORD       m_dw60;             // +60  not serialised
+    DWORD       m_dwPartyID;        // +60  not serialised (the user's party)
 };
 
 C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_strName) == 0x04);
 C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_strGuildName) == 0x20);
 C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_dwRefObjID) == 0x3C);
-C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_b41) == 0x41);
+C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_bPartyType) == 0x41);
 C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_wRegion) == 0x44);
 C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_dwAngle) == 0x54);
-C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_dw60) == 0x60);
+C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_dwPartyID) == 0x60);
 C_ASSERT(sizeof(sPartyMemberInfo) == 0x64);
 
 // A party with its leader (0x74 bytes).
@@ -111,7 +111,7 @@ struct sPartyInfo
     // sPartyInfo_Write (0x427e00): the three DWORDs, the setting byte and the whole member.
     void Write(CMsg* pMsg) const;
 
-    DWORD               m_dwPartyID;    // +00
+    DWORD               m_dwPartyID;    // +00 (the match entry ID of a party matching join)
     DWORD               m_dw04;         // +04
     DWORD               m_dw08;         // +08
     BYTE                m_bSetting;     // +0C

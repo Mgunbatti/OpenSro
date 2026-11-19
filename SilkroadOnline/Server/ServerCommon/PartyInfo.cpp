@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------------------------
 // sPartyMemberInfo
 
-void sPartyMemberInfo::Read(CMsg* pMsg)
+BYTE sPartyMemberInfo::Read(CMsg* pMsg)
 {
     BYTE bMask = 0;
     *pMsg >> bMask;
@@ -42,12 +42,13 @@ void sPartyMemberInfo::Read(CMsg* pMsg)
     if (bMask & PARTY_MEMBER_GUILD)
         *pMsg >> m_strGuildName;
     if (bMask & PARTY_MEMBER_B41)
-        *pMsg >> m_b41;
+        *pMsg >> m_bPartyType;
     if (bMask & PARTY_MEMBER_MASTERY)
     {
         *pMsg >> m_dwMastery1;
         *pMsg >> m_dwMastery2;
     }
+    return bMask;
 }
 
 void sPartyMemberInfo::Write(CMsg* pMsg, BYTE bMask) const
@@ -89,7 +90,7 @@ void sPartyMemberInfo::Write(CMsg* pMsg, BYTE bMask) const
     if (bMask & PARTY_MEMBER_GUILD)
         *pMsg << m_strGuildName.c_str();
     if (bMask & PARTY_MEMBER_B41)
-        pMsg->WriteBytes(&m_b41, 1);
+        pMsg->WriteBytes(&m_bPartyType, 1);
     if (bMask & PARTY_MEMBER_MASTERY)
     {
         pMsg->WriteBytes(&m_dwMastery1, 4);

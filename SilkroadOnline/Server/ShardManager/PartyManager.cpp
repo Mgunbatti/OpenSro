@@ -16,27 +16,6 @@ void SendAndRelease(DWORD dwSessionID, CMsg* pMsg)
     g_pNetEngine->ReleaseMsg(pMsg);
 }
 
-// The party fields of a member (inlined sPartyMemberInfo reset of Party::Clear and
-// Party::RemoveMemberAndNotify; the guild name is kept).
-void PartyMemberInfo_Reset(sPartyMemberInfo* pInfo)
-{
-    pInfo->m_strName.clear();
-    pInfo->m_dwJID = 0;
-    pInfo->m_dwRefObjID = 0;
-    pInfo->m_byLevel = 0;
-    pInfo->m_by42 = 0;
-    pInfo->m_by42Hi = 0;
-    pInfo->m_wRegion = 0;
-    pInfo->m_dwPosX = 0;
-    pInfo->m_dwPosY = 0;
-    pInfo->m_dwPosZ = 0;
-    pInfo->m_dwPartyID = 0;
-    pInfo->m_byPartyType = 0;
-    pInfo->m_dw54 = 0;
-    pInfo->m_dw58 = 0;
-    pInfo->m_dw5C = 0;
-}
-
 // 0x3864 subtype 17 (result of a party matching join) to one user.
 void SendMatchJoinResult(DWORD dwSessionID, DWORD dwJID, BYTE byKind, WORD wCode)
 {
@@ -87,21 +66,20 @@ BOOL PartyMatch_IsJoinAllowed(BYTE byType, BYTE byPurpose)
 
 void PartyMemberInfo_Copy(sPartyMemberInfo* pDest, const sPartyMemberInfo* pSrc)
 {
-    pDest->m_dwJID = pSrc->m_dwJID;
+    pDest->m_dwID = pSrc->m_dwID;
     pDest->m_strName.assign(pSrc->m_strName, 0, std::string::npos);
     pDest->m_strGuildName.assign(pSrc->m_strGuildName, 0, std::string::npos);
     pDest->m_dwRefObjID = pSrc->m_dwRefObjID;
-    pDest->m_byLevel = pSrc->m_byLevel;
-    pDest->m_byPartyType = pSrc->m_byPartyType;
-    pDest->m_by42 = pSrc->m_by42;
-    pDest->m_by42Hi = pSrc->m_by42Hi;
+    pDest->m_bLevel = pSrc->m_bLevel;
+    pDest->m_bPartyType = pSrc->m_bPartyType;
+    pDest->m_bHPMP = pSrc->m_bHPMP;
     pDest->m_wRegion = pSrc->m_wRegion;
-    pDest->m_dwPosX = pSrc->m_dwPosX;
-    pDest->m_dwPosY = pSrc->m_dwPosY;
-    pDest->m_dwPosZ = pSrc->m_dwPosZ;
-    pDest->m_dw54 = pSrc->m_dw54;
-    pDest->m_dw58 = pSrc->m_dw58;
-    pDest->m_dw5C = pSrc->m_dw5C;
+    pDest->m_dwX = pSrc->m_dwX;
+    pDest->m_dwY = pSrc->m_dwY;
+    pDest->m_dwZ = pSrc->m_dwZ;
+    pDest->m_dwAngle = pSrc->m_dwAngle;
+    pDest->m_dwMastery1 = pSrc->m_dwMastery1;
+    pDest->m_dwMastery2 = pSrc->m_dwMastery2;
     pDest->m_dwPartyID = pSrc->m_dwPartyID;
 }
 
@@ -127,7 +105,7 @@ void Party::Clear()
     m_dwMasterJID = 0;
     m_dwID = 0;
     for (DWORD i = 0; i < m_vecMember.size(); ++i)
-        PartyMemberInfo_Reset(&m_vecMember[i]->GetPartyMemberInfo());
+        m_vecMember[i]->GetPartyMemberInfo().Clear();
     m_vecMember.clear();
 }
 
@@ -169,7 +147,7 @@ int Party::RemoveMemberAndNotify(CUser* pUser)
 {
     if (m_vecMember.size() <= 2)
         BSAssertFail();
-    PartyMemberInfo_Reset(&pUser->GetPartyMemberInfo());
+    pUser->GetPartyMemberInfo().Clear();
 
     std::vector<CUser*>::iterator it = std::find(m_vecMember.begin(), m_vecMember.end(), pUser);
     if (it == m_vecMember.end())
@@ -201,7 +179,7 @@ void Party::WriteToMsg(CMsg* pMsg)
     {
         CUser* pMember = m_vecMember.at(i);
         if (pMember)
-            sPartyMemberInfo_Write(pMsg, &pMember->GetPartyMemberInfo(), 0xFF);
+            pMember->GetPartyMemberInfo().Write(pMsg, 0xFF);
     }
 }
 
@@ -319,10 +297,10 @@ void CPartyManager::SendPartyInfo(CMsg* pMsg, Party* pParty)
     if (!pMember)
         return;
     sPartyMemberInfo* pInfo = &pMember->GetPartyMemberInfo();
-    BYTE byMask = sPartyMemberInfo_Read(pInfo, pMsg);
+    BYTE byMask = pInfo->Read(pMsg);
     CMsg* pNotify = MakeNotify3864(6);
     *pNotify << pParty->m_dwID << dwJID;
-    sPartyMemberInfo_Write(pNotify, pInfo, byMask);
+    pInfo->Write(pNotify, byMask);
     SendToShardAndFree(pNotify, 0);
 }
 
@@ -463,10 +441,10 @@ void CPartyManager::OnCreateParty(CMsg* pMsg)
 
     sPartyMemberInfo infoMaster;
     sPartyMemberInfo infoInvitee;
-    sPartyMemberInfo_Read(&infoMaster, pMsg);
-    sPartyMemberInfo_Read(&infoInvitee, pMsg);
-    CUser* pMaster = GetSingleton_CClientManager()->FindUserByJID(infoMaster.m_dwJID);
-    CUser* pInvitee = GetSingleton_CClientManager()->FindUserByJID(infoInvitee.m_dwJID);
+    infoMaster.Read(pMsg);
+    infoInvitee.Read(pMsg);
+    CUser* pMaster = GetSingleton_CClientManager()->FindUserByJID(infoMaster.m_dwID);
+    CUser* pInvitee = GetSingleton_CClientManager()->FindUserByJID(infoInvitee.m_dwID);
     if (!pMaster || !pInvitee)
     {
         dwResult = PARTY_ERR_NO_USER;
@@ -479,7 +457,7 @@ void CPartyManager::OnCreateParty(CMsg* pMsg)
     {
         dwResult = PARTY_ERR_TARGET_IN_PARTY;
     }
-    else if (!Party_IsCompatibleType(infoMaster.m_byPartyType, infoInvitee.m_byPartyType))
+    else if (!Party_IsCompatibleType(infoMaster.m_bPartyType, infoInvitee.m_bPartyType))
     {
         dwResult = PARTY_ERR_TYPE;
     }
@@ -548,19 +526,19 @@ void CPartyManager::OnJoinParty(CMsg* pMsg)
     }
     else
     {
-        sPartyMemberInfo_Read(&info, pMsg);
+        info.Read(pMsg);
         CUser* pMaster = pParty->FindMemberByJID(pParty->m_dwMasterJID);
         CUser* pUser = NULL;
         if (!pMaster)
         {
             dwResult = PARTY_ERR_NO_PARTY;
         }
-        else if (!Party_IsCompatibleType(pMaster->GetPartyMemberInfo().m_byPartyType,
-                                         info.m_byPartyType))
+        else if (!Party_IsCompatibleType(pMaster->GetPartyMemberInfo().m_bPartyType,
+                                         info.m_bPartyType))
         {
             dwResult = PARTY_ERR_TYPE;
         }
-        else if (!(pUser = GetSingleton_CClientManager()->FindUserByJID(info.m_dwJID)))
+        else if (!(pUser = GetSingleton_CClientManager()->FindUserByJID(info.m_dwID)))
         {
             dwResult = PARTY_ERR_NO_USER;
         }
@@ -584,7 +562,7 @@ void CPartyManager::OnJoinParty(CMsg* pMsg)
                 SendAndRelease(dwSessionID, pReply);
                 CMsg* pNotify = MakeNotify3864(2);
                 *pNotify << dwPartyID;
-                sPartyMemberInfo_Write(pNotify, &info, 0xFF);
+                info.Write(pNotify, 0xFF);
                 SendToShardAndFree(pNotify, 0);
                 return;
             }
@@ -677,9 +655,9 @@ WORD CPartyManager::OnPartyMatchJoinRequest(DWORD dwRequesterJID, DWORD dwOpcode
             goto release;
         }
         sPartyInfo* pInfo = &pJob->m_Info;
-        sPartyInfo_Reset(pInfo);
+        pInfo->Reset();
         PartyMatchJoinRequest_ReadFromMsg(pMsg, pInfo);
-        PartyMatchEntry* pEntry = FindMatchEntry(pInfo->m_dwMatchEntryID);
+        PartyMatchEntry* pEntry = FindMatchEntry(pInfo->m_dwPartyID);
         if (!pEntry)
         {
             wResult = PARTY_ERR_NO_MATCH_ENTRY;
@@ -699,19 +677,19 @@ WORD CPartyManager::OnPartyMatchJoinRequest(DWORD dwRequesterJID, DWORD dwOpcode
                 wResult = PARTY_ERR_NO_MATCH_ENTRY;
                 goto release;
             }
-            if (!Party_IsCompatibleType(pMaster->GetPartyMemberInfo().m_byPartyType,
-                                        pInfo->m_byPartyType))
+            if (!Party_IsCompatibleType(pMaster->GetPartyMemberInfo().m_bPartyType,
+                                        pInfo->m_bSetting))
             {
                 wResult = PARTY_ERR_TYPE;
                 goto release;
             }
         }
-        if (!PartyMatch_IsJoinAllowed(pInfo->m_byPartyType, pEntry->m_byPurpose))
+        if (!PartyMatch_IsJoinAllowed(pInfo->m_bSetting, pEntry->m_byPurpose))
         {
             wResult = PARTY_ERR_TYPE;
             goto release;
         }
-        BYTE byLevel = pInfo->m_Member.m_byLevel;
+        BYTE byLevel = pInfo->m_Member.m_bLevel;
         if (pEntry->m_byMinLevel > byLevel || pEntry->m_byMaxLevel < byLevel)
         {
             wResult = PARTY_ERR_LEVEL;
@@ -794,7 +772,7 @@ void CPartyManager::OnPartyMatchJoinAnswer(trs_party_job* pJob, BYTE byAnswer)
         if (pRequester)
         {
             SendMatchJoinResult(pRequester->GetSessionID(), pRequester->GetJID(), 1, byAnswer);
-            PartyMatchEntry* pEntry = FindMatchEntry(pJob->m_Info.m_dwMatchEntryID);
+            PartyMatchEntry* pEntry = FindMatchEntry(pJob->m_Info.m_dwPartyID);
             if (pEntry)
                 pEntry->m_bJoinPending = 0;
         }
@@ -816,7 +794,7 @@ void CPartyManager::OnPartyMatchJoinAnswer(trs_party_job* pJob, BYTE byAnswer)
     }
 
     // BUG(SM-242): the failures below leave the entry's join-pending flag set.
-    PartyMatchEntry* pEntry = FindMatchEntry(pJob->m_Info.m_dwMatchEntryID);
+    PartyMatchEntry* pEntry = FindMatchEntry(pJob->m_Info.m_dwPartyID);
     if (!pEntry)
     {
         SendMatchJoinResult(pUser->GetSessionID(), pUser->GetJID(), 2, PARTY_ERR_NO_MATCH_ENTRY);
@@ -849,7 +827,7 @@ void CPartyManager::OnPartyMatchJoinAnswer(trs_party_job* pJob, BYTE byAnswer)
         SendMatchJoinResult(pMaster->GetSessionID(), pMaster->GetJID(), 1, byAnswer);
         CMsg* pNotify = MakeNotify3864(16);
         *pNotify << pParty->m_dwID;
-        sPartyMemberInfo_Write(pNotify, &pJob->m_Info.m_Member, 0xFF);
+        pJob->m_Info.m_Member.Write(pNotify, 0xFF);
         SendToShardAndFree(pNotify, 0);
         RebuildMatchListCache();
         return;
@@ -908,8 +886,8 @@ void FreeMatchEntry(CChunkAllocatorST<PartyMatchEntry>& pool, PartyMatchEntry* p
 
 BYTE PartyMatchJoinRequest_ReadFromMsg(CMsg* pMsg, sPartyInfo* pInfo)
 {
-    *pMsg >> pInfo->m_dwMatchEntryID >> pInfo->m_dw04 >> pInfo->m_dw08 >> pInfo->m_byPartyType;
-    return sPartyMemberInfo_Read(&pInfo->m_Member, pMsg);
+    *pMsg >> pInfo->m_dwPartyID >> pInfo->m_dw04 >> pInfo->m_dw08 >> pInfo->m_bSetting;
+    return pInfo->m_Member.Read(pMsg);
 }
 
 void PartyMatchEntry::ReadFromMsg(CMsg* pMsg)

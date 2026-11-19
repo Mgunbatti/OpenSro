@@ -8,82 +8,12 @@
 #include "BSLib/BSDebug.h"
 #include "BSLib/DB/Database.h"
 #include "BSNet/Msg.h"
+#include "ServerCommon/PartyInfo.h"
 
 // What the messenger and the party manager of SR_ShardManager use from other subsystems. Only the
 // members they call are declared; the owning groups define them (the tests link stand-ins).
 
 class CUser;
-
-// ---------------------------------------------------------------------------------------------
-// Provided by SM_social1 (sPartyMemberInfo / sPartyInfo, 0x427b50..0x428870)
-
-// Party member data (100 bytes): CUser keeps one at +8, the party packets carry it.
-struct sPartyMemberInfo
-{
-    // sPartyMemberInfo_ctor (0x428470)
-    sPartyMemberInfo()
-    {
-        m_strName.clear();
-        m_dwJID = 0;
-        m_dwRefObjID = 0;
-        m_byLevel = 0;
-        m_by42 = 0;
-        m_by42Hi = 0;
-        m_wRegion = 0;
-        m_dwPosX = 0;
-        m_dwPosY = 0;
-        m_dwPosZ = 0;
-        m_dwPartyID = 0;
-        m_byPartyType = 0;
-        m_dw54 = 0;
-        m_dw58 = 0;
-        m_dw5C = 0;
-    }
-
-    DWORD       m_dwJID;            // +0x00
-    std::string m_strName;          // +0x04
-    std::string m_strGuildName;     // +0x20
-    DWORD       m_dwRefObjID;       // +0x3C
-    BYTE        m_byLevel;          // +0x40
-    BYTE        m_byPartyType;      // +0x41 (written with mask bit 0x80; Party_IsCompatibleType)
-    BYTE        m_by42 : 4;         // +0x42 low nibble
-    BYTE        m_by42Hi : 4;       // +0x42 high nibble
-    WORD        m_wRegion;          // +0x44
-    DWORD       m_dwPosX;           // +0x48
-    DWORD       m_dwPosY;           // +0x4C
-    DWORD       m_dwPosZ;           // +0x50
-    DWORD       m_dw54;             // +0x54
-    DWORD       m_dw58;             // +0x58
-    DWORD       m_dw5C;             // +0x5C
-    DWORD       m_dwPartyID;        // +0x60
-};
-
-C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_strName) == 0x04);
-C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_dwRefObjID) == 0x3C);
-C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_wRegion) == 0x44);
-C_ASSERT(FIELD_OFFSET(sPartyMemberInfo, m_dwPartyID) == 0x60);
-C_ASSERT(sizeof(sPartyMemberInfo) == 100);
-
-// sPartyMemberInfo_Read (0x427b50): reads the mask byte and the fields it selects; returns the
-// mask. sPartyMemberInfo_Write (0x427f10): writes bMask and the fields it selects.
-BYTE sPartyMemberInfo_Read(sPartyMemberInfo* pInfo, CMsg* pMsg);
-void sPartyMemberInfo_Write(CMsg* pMsg, const sPartyMemberInfo* pInfo, BYTE bMask);
-
-// Party join request of the party matching (116 bytes, trs_party_job +0x3C).
-struct sPartyInfo
-{
-    DWORD               m_dwMatchEntryID;   // +0x00
-    DWORD               m_dw04;             // +0x04
-    DWORD               m_dw08;             // +0x08
-    BYTE                m_byPartyType;      // +0x0C (4 after sPartyInfo_Reset)
-    sPartyMemberInfo    m_Member;           // +0x10
-};
-
-C_ASSERT(FIELD_OFFSET(sPartyInfo, m_Member) == 0x10);
-C_ASSERT(sizeof(sPartyInfo) == 116);
-
-// sPartyInfo_Reset (0x428820)
-void sPartyInfo_Reset(sPartyInfo* pInfo);
 
 // ---------------------------------------------------------------------------------------------
 // Provided by SM_social1 (transaction, trs_messenger_job, trs_party_job, 0x41fcc0..0x425bf0)
