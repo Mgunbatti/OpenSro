@@ -176,16 +176,16 @@ public:
         }
         return FALSE;
     }
-    // CAlliance_CountGuilds (0x434300): the used slots before the first empty one.
-    BYTE CountLeadingGuilds() const
+    // CAlliance_CountGuilds (0x434300, misnamed): the first empty slot, 0 when all eight are
+    // used.
+    BYTE FindEmptySlot() const
     {
-        BYTE n = 0;
-        while (m_pRecord->Ally[n])
+        for (BYTE i = 0; i < 8; ++i)
         {
-            if (++n >= 8)
-                break;
+            if (!m_pRecord->Ally[i])
+                return i;
         }
-        return n;
+        return 0;
     }
     // CAlliance::CountGuilds (0x434320): all used slots.
     BYTE CountGuilds() const
