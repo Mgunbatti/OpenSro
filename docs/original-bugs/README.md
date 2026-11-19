@@ -150,3 +150,5 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-003](SM-003.md) | SR_ShardManager DB records | minor | COS owner changes are never marked for the database update |
 | [SM-004](SM-004.md) | SR_ShardManager DB records | minor | Resetting a server event reward does not mark RewardID for the update |
 | [SM-005](SM-005.md) | SR_ShardManager DB records | crash | An item with more than 12 magic parameters overruns the parameter array |
+| [SM-006](SM-006.md) | SR_ShardManager reference data | crash | Reading past the end of a reference data row |
+| [SM-007](SM-007.md) | SR_ShardManager reference data | minor | A reference row with a duplicate key leaks |
