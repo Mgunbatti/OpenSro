@@ -325,6 +325,123 @@ static void TestGameWorldTables(CReferenceData& data)
           data.m_mapGameWorldConfig["CONFIG_A"]->Value == "64");
 }
 
+static void PutTimestamp(CDBRecStream* pRow, SQLSMALLINT nYear)
+{
+    TIMESTAMP_STRUCT ts = { nYear, 6, 1, 12, 0, 0, 0 };
+    pRow->WriteRaw(sizeof(ts), &ts);
+}
+
+static void TestEventAndRewardTables(CReferenceData& data)
+{
+    // server events: one that has ended is dropped
+    FakeTable<CRefServerEvent> event;
+    for (int i = 0; i < 2; ++i)
+    {
+        CDBRecStream* pRow = event.AddRow();
+        PutByte(pRow, 1);
+        PutDword(pRow, 40 + i);
+        PutByte(pRow, 0);
+        PutDword(pRow, 0);
+        PutString(pRow, "EVENT", 12);
+        PutTimestamp(pRow, 2000);
+        PutTimestamp(pRow, i ? 2001 : 2099);
+        PutByte(pRow, 0);
+        PutByte(pRow, 0);
+        PutWord(pRow, 0);
+        PutDword(pRow, 0);
+        PutByte(pRow, 7);
+        PutDword(pRow, 0);
+        PutByte(pRow, 0);
+    }
+    CHECK(data.BuildFromTable(&event.entry, 0x60) == 1);
+    CHECK(data.m_mapServerEvent.size() == 1 && data.FindServerEvent(40) != NULL &&
+          data.FindServerEvent(40)->b50 == 7);
+
+    // a reward of type 1 and its detail row: the percentages are clamped to [0, 1]
+    FakeTable<CRefServerEventReward> reward;
+    CDBRecStream* pRow = reward.AddRow();
+    PutByte(pRow, 1);
+    PutDword(pRow, 900);
+    PutDword(pRow, 40);
+    PutDword(pRow, 0);
+    PutByte(pRow, 0);
+    PutByte(pRow, RefServerEventReward::TYPE_EXP_UP_FOR_PLAYERS);
+    PutByte(pRow, 0);
+    CHECK(data.BuildFromTable(&reward.entry, 0x61) == 1);
+    FakeTable<CRefServerEventReward_ExpUPForPlayers> exp;
+    pRow = exp.AddRow();
+    PutDword(pRow, 900);
+    PutDword(pRow, 5);
+    PutByte(pRow, 50);
+    PutByte(pRow, 150);
+    pRow = exp.AddRow();                        // unknown reward: skipped
+    PutDword(pRow, 901);
+    CHECK(data.BuildFromTable(&exp.entry, 0x62) == 1);
+    RefServerEventReward_ExpUPForPlayers* pExp =
+        static_cast<RefServerEventReward_ExpUPForPlayers*>(data.FindServerEventReward(900));
+    CHECK(pExp != NULL && data.FindServerEventReward(901) == NULL);
+    if (pExp)
+        CHECK(pExp->dw18 == 5 && pExp->fRate1 == 0.5f && pExp->fRate2 == 1.0f);
+    CHECK(data.m_mmapServerEventRewardID.count(40) == 1);
+
+    // rent item: two of the five values; a row out of service fails the build (SM-011)
+    FakeTable<CRefRentItem> rent;
+    pRow = rent.AddRow();
+    PutDword(pRow, 1);
+    PutString(pRow, "ITEM_RENT", 16);
+    PutDword(pRow, 3);
+    PutByte(pRow, 0);
+    PutByte(pRow, 0);
+    PutDword(pRow, 2);
+    PutTimestamp(pRow, 2010);
+    PutTimestamp(pRow, 2011);
+    PutByte(pRow, 2);
+    PutDword(pRow, 11);
+    PutDword(pRow, 12);
+    CHECK(data.BuildFromTable(&rent.entry, 0x55) == 1);
+    CHECK(data.m_hashRentItem.size() == 1);
+    if (data.m_hashRentItem.size() == 1)
+    {
+        RefRentItem* pRent = data.m_hashRentItem["ITEM_RENT"];
+        CHECK(pRent->dw00 == 3 && pRent->vecValue.size() == 2 && pRent->vecValue[1] == 12);
+    }
+    pRow = rent.AddRow();
+    PutDword(pRow, 0);
+    static_cast<CDBRecStream*>(rent.entry.m_listRows.front())->m_nReadPos = 0;
+    CHECK(data.BuildFromTable(&rent.entry, 0x55) == 0);
+
+    // quest rewards: the quest must be known; n18 > 0 for the temple quests only
+    FakeTable<CRefQuest> quest;
+    CRefQuest* pQuest = quest.AddRecord();
+    pQuest->m_Data.Service = 1;
+    pQuest->m_Data.ID = 7;
+    pQuest->m_Data.CodeName = "QNO_TEST";
+    CHECK(data.BuildFromTable(&quest.entry, 0x3C) == 1 && data.m_mapQuest.size() == 1);
+    CHECK(data.BuildFromTable(&quest.entry, 0x3C) == 0);
+    FakeTable<CRefQuestReward> questReward;
+    const char* apszName[3] = { "TEMPLE_HAROERIS", "QNO_OTHER", "QNO_UNKNOWN" };
+    for (int i = 0; i < 3; ++i)
+    {
+        pRow = questReward.AddRow();
+        PutByte(pRow, 1);
+        PutDword(pRow, i < 2 ? 7 : 8);
+        for (int d = 0; d < 5; ++d)
+            PutDword(pRow, 1);
+        PutString(pRow, apszName[i], 20);
+        for (int b = 0; b < 4; ++b)
+            PutByte(pRow, 0);
+        PutDword(pRow, 0);
+        PutString(pRow, "", 4);
+        PutDword(pRow, 0);
+        PutString(pRow, "", 4);
+        PutDword(pRow, 0);
+        PutString(pRow, "", 4);
+    }
+    CHECK(data.BuildFromTable(&questReward.entry, 0x64) == 1);
+    CHECK(data.m_mapQuestReward.size() == 1 &&
+          data.m_mapQuestReward[7]->QuestCodeName == "TEMPLE_HAROERIS");
+}
+
 static void TestFindRefObj(CReferenceData& data)
 {
     static BYTE abObj[0x260];
@@ -369,6 +486,7 @@ int main()
     TestTriggerTables(*pData, tables);
     TestSiegeTables(*pData);
     TestGameWorldTables(*pData);
+    TestEventAndRewardTables(*pData);
     TestFindRefObj(*pData);
     TestTypeHelpers();
 
