@@ -11,6 +11,17 @@ void IShard_ScheduleJob::LogSchedule(const char* pszText)
 {
     if (pszText)
         LogPrintf(g_nScheduleLogMode != 1 ? 0 : 0x2000001, pszText);
+    LogScheduleRow();
+}
+
+void IShard_ScheduleJob::LogSchedule(const char* pszFormat, int nArg)
+{
+    LogPrintf(g_nScheduleLogMode != 1 ? 0 : 0x2000001, pszFormat, nArg);
+    LogScheduleRow();
+}
+
+void IShard_ScheduleJob::LogScheduleRow()
+{
     const char* pszState = "Start";
     if (m_Info.bBegin != 1)
         pszState = "End";

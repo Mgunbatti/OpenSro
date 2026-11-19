@@ -118,6 +118,6 @@ NewSchedule::CScheduleManager* ShardScheduleManager_Get();
 void* PartyManager_FindParty(DWORD dwPartyID);
 DWORD Party_GetMemberCount(void* pParty);
 
-// Provided by SM_main: CMainProcess + 0x423B0: one BYTE per battle arena size (8, 16, 32), 0 while
-// the size is switched off.
-BYTE MainProcess_IsArenaSizeOpen(BYTE bySize);
+// Provided by SM_main: CMainProcess + 0x423B0: one BYTE per battle arena match type (occupy, score,
+// flag), 0 while the match type is switched off.
+BYTE MainProcess_IsArenaMatchOpen(BYTE byMatch);

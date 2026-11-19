@@ -74,6 +74,10 @@ public:
     // The two log lines of every begin and end: LogPrintf of pszText (NULL: none), then the
     // _LogSchedule row "Start" / "End".
     void LogSchedule(const char* pszText);
+    // The same with one %d argument in the text.
+    void LogSchedule(const char* pszFormat, int nArg);
+    // The _LogSchedule row of LogSchedule alone.
+    void LogScheduleRow();
 
     CMsg*           m_pNotifyMsg;       // +70
     BYTE            m_b74;              // +74
@@ -161,3 +165,59 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CSahrd_FlagWorld, m_byStage) == 0x78);
 C_ASSERT(sizeof(CSahrd_FlagWorld) == 0x88);
+
+// The participation phase of a battle arena kind (the Random / Party / Guild / Job
+// Participation leaves set the kind; slots 5 to 7 in BattleArena.cpp). A "let's participate"
+// notice goes out every 10 minutes.
+class CShard_BattleArenaScheduleParticipation : public IShard_ScheduleJob
+{
+public:
+    SHARD_SCHEDULE_JOB_SLOTS()
+
+    DWORD           m_dwRunning;        // +78
+    DWORD           m_dw7C;             // +7C
+    DWORD           m_dwNoticeTick;     // +80
+    DWORD           m_dw84;             // +84
+    BYTE            m_byKind;           // +88  0 random, 1 party, 2 guild, 3 job
+    DWORD           m_dw8C;             // +8C
+};
+
+C_ASSERT(FIELD_OFFSET(CShard_BattleArenaScheduleParticipation, m_byKind) == 0x88);
+C_ASSERT(sizeof(CShard_BattleArenaScheduleParticipation) == 0x90);
+
+// The game of a battle arena kind (the Random / Party / Guild / Job leaves set the kind; slots 5
+// to 7 in BattleArena.cpp). Begins 5 minutes before the game; at the game start the registered
+// players are checked, near the end the game servers stop the resurrection and the play.
+class CShard_BattleArenaSchedule : public IShard_ScheduleJob
+{
+public:
+    SHARD_SCHEDULE_JOB_SLOTS()
+    // CShard_BattleArenaSchedule::GetRemainSeconds (0x678890): end of the period - now.
+    DWORD GetRemainSeconds(CDateTime now);
+
+    DWORD           m_dwRunning;        // +78  1 from the game start
+    DWORD           m_bEndPlaySent;     // +7C
+    DWORD           m_dwCheckTick;      // +80
+    DWORD           m_dwCheckInterval;  // +84  ms; 60000, 1000 in the last minute
+    BYTE            m_byKind;           // +88  0 random, 1 party, 2 guild, 3 job
+    DWORD           m_bStopResurrectSent;   // +8C
+    BYTE            m_byStage;          // +90  0 begun, 1 one minute notice sent, 2 game started
+    DWORD           m_dwBegin;          // +94
+    DWORD           m_dwOneMinuteLeft;  // +98  begin + 240 s
+    DWORD           m_dwGameStart;      // +9C  begin + 300 s
+};
+
+C_ASSERT(FIELD_OFFSET(CShard_BattleArenaSchedule, m_byStage) == 0x90);
+C_ASSERT(sizeof(CShard_BattleArenaSchedule) == 0xA0);
+
+// A battle arena match type is open while its period runs (the MatchPoint / MatchFlag leaves set
+// the type; slots 5 and 7 in BattleArena.cpp).
+class CShard_BattleArenaMatchSchedule : public IShard_ScheduleJob
+{
+public:
+    SHARD_SCHEDULE_JOB_SLOTS()
+
+    BYTE            m_byMatchType;      // +78  1 score / point, 2 flag
+};
+
+C_ASSERT(sizeof(CShard_BattleArenaMatchSchedule) == 0x7C);

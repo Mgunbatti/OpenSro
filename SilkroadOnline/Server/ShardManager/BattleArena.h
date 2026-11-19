@@ -11,16 +11,16 @@
 
 class CMsg;
 
-// The battle arena of SR_ShardManager. Four arena kinds (random, party, guild, job), each played
-// in three sizes (index 0..2: 8, 16 and 32 players) and one of three match types (0 occupy,
-// 1 score, 2 flag). The game servers register the players (0x74D0); the schedule jobs open and
+// The battle arena of SR_ShardManager. Four arena kinds (random, party, guild, job), each with
+// registrations per match type (0 occupy, 1 score / point, 2 flag; the match schedule jobs switch
+// a match type on and off); the layers come in three sizes (1..3: 8, 16 and 32 players). The game servers register the players (0x74D0); the schedule jobs open and
 // close the participation, check the registered players (0x74D1 / 0xB4D1), build the teams, open
 // the arena layers and tell the game servers (0x34D2).
 
 enum
 {
     BATTLEARENA_KIND_COUNT  = 4,    // 0 random, 1 party, 2 guild, 3 job
-    BATTLEARENA_SIZE_COUNT  = 3     // 8, 16, 32 players
+    BATTLEARENA_MATCH_COUNT = 3      // 0 occupy, 1 score, 2 flag
 };
 
 // A player of the team building: the JID (or party / guild ID) and the level. The list nodes
@@ -81,14 +81,14 @@ public:
     // CBattleArenaMgr::OnRegisterReq (0x66e990): byAction 1 register, 2 unregister.
     void OnRegisterReq(CMsg* pMsg, BYTE byAction);
     // CBattleArenaMgr::IsUserRegistered (0x66ee50): TRUE (and the error 2 sent) when the JID is
-    // registered for the kind and size already.
-    BOOL IsUserRegistered(BYTE bySize, BYTE byKind, DWORD dwJID);
-    BOOL OnUnregisterReq(BYTE byKind, DWORD dwJID, BYTE bySize);       // 0x66ef90
+    // registered for the kind and match type already.
+    BOOL IsUserRegistered(BYTE byMatch, BYTE byKind, DWORD dwJID);
+    BOOL OnUnregisterReq(BYTE byKind, DWORD dwJID, BYTE byMatch);       // 0x66ef90
     // CBattleArenaMgr::OnScheduleEvent (0x66f270): the GM commands of 0x74D0 type 3.
     void OnScheduleEvent(BYTE byKind, BYTE byEvent);
 
     // 0xB4D0 / 0x34D2 to the game servers.
-    static void SendRegisterAck_OK(BYTE byAction, DWORD dwJID, BYTE byKind, BYTE bySize); // 0x66e800
+    static void SendRegisterAck_OK(BYTE byAction, DWORD dwJID, BYTE byKind, BYTE byMatch); // 0x66e800
     static void SendRegisterAck_Error(BYTE byAction, DWORD dwJID, BYTE byError);         // 0x66e8a0
     static void SendKickUser(DWORD dwJID, BYTE byReason);                                 // 0x66e910
     void SendParticipationStarted(BYTE byKind);                         // 0x66f2d0
@@ -110,15 +110,16 @@ public:
     // CShard_BattleArenaSchedule::SetField_0x2BC (0x66f4d0).
     void SetParticipationTime(DWORD dwTime) { m_dwParticipationTime = dwTime; }
     // BattleArenaSchedule_SetArenaSlot (0x66e5a0): the match schedule jobs.
-    void SetMatchActive(BYTE bySize, DWORD dwActive) { m_adwMatchActive[bySize] = dwActive; }
-    // CBattleArenaMgr::GetActiveMatchFlags (0x66e5b0): 0x10 << size for each active size.
+    void SetMatchActive(BYTE byMatch, DWORD dwActive) { m_adwMatchActive[byMatch] = dwActive; }
+    // CBattleArenaMgr::GetActiveMatchFlags (0x66e5b0): 0x10 << match type for each active
+    // match type.
     WORD GetActiveMatchFlags() const;
 
     // CBattleArenaMgr::GetRefGameWorld (0x66e0e0): INS_ARENA_OCCUPY / SCORE / FLAG _8 / _16 / _32
     // of the match type (0..2) and size (1..3); NULL for other values.
-    static RefGameWorld* GetRefGameWorld(BYTE byMatchType, BYTE bySize);
+    static RefGameWorld* GetRefGameWorld(BYTE byMatchType, BYTE byMatch);
     // CBattleArenaMgr::OpenArenaLayer (0x66e2f0): FALSE when no layer could be opened.
-    static BOOL OpenArenaLayer(sBattleArenaTeam* pTeam, BYTE byMatchType, BYTE bySize);
+    static BOOL OpenArenaLayer(sBattleArenaTeam* pTeam, BYTE byMatchType, BYTE byMatch);
     // CBattleArenaMgr::CloseArenaLayers (0x66e490): 0x3C15 "closed" for the open team layers of
     // the kind, then its teams are dropped.
     void CloseArenaLayers(BYTE byKind);
@@ -134,25 +135,25 @@ public:
     void CheckAndGoJob();                                               // 0x670bd0
     void OnGameEnded(BYTE byKind);                                      // 0x674c70
 
-    TeamVector      m_avecTeam[BATTLEARENA_KIND_COUNT][BATTLEARENA_SIZE_COUNT];    // +4
-    ByteMap         m_amapRandom[BATTLEARENA_SIZE_COUNT];           // +C4  JID -> value
-    DwordMap        m_amapParty[BATTLEARENA_SIZE_COUNT];            // +E8  JID -> party ID
-    DwordMap        m_amapGuild[BATTLEARENA_SIZE_COUNT];            // +10C JID -> guild ID
-    ByteMap         m_amapJobA[BATTLEARENA_SIZE_COUNT];             // +130 JID -> value (job 0, 2)
-    ByteMap         m_amapJobB[BATTLEARENA_SIZE_COUNT];             // +154 JID -> value (job 1, 3)
-    GroupMap        m_amapPartyMember[BATTLEARENA_SIZE_COUNT];      // +178 party -> JID -> level
-    DwordMap        m_amapParty19C[BATTLEARENA_SIZE_COUNT];         // +19C
-    ByteMap         m_amapPartyLevel[BATTLEARENA_SIZE_COUNT];       // +1C0 party -> highest level
-    LevelList       m_alistParty[BATTLEARENA_SIZE_COUNT];           // +1E4 parties by level
-    MemberListMap   m_amapGuildMemberList[BATTLEARENA_SIZE_COUNT];  // +208 guild -> listed JIDs
-    GroupMap        m_amapGuildMember[BATTLEARENA_SIZE_COUNT];      // +22C guild -> JID -> level
-    DwordMap        m_amapGuild250[BATTLEARENA_SIZE_COUNT];         // +250
-    ByteMap         m_amapGuildLevel[BATTLEARENA_SIZE_COUNT];       // +274 guild -> highest level
-    LevelList       m_alistGuild[BATTLEARENA_SIZE_COUNT];           // +298 guilds by level
-    DWORD           m_dwParticipationTime;      // +2BC ms (0x74D0 type 8)
-    DWORD           m_adwCheckCount[BATTLEARENA_KIND_COUNT][BATTLEARENA_SIZE_COUNT]; // +2C0
+    TeamVector      m_avecTeam[BATTLEARENA_KIND_COUNT][BATTLEARENA_MATCH_COUNT];    // +4
+    ByteMap         m_amapRandom[BATTLEARENA_MATCH_COUNT];           // +C4  JID -> value
+    DwordMap        m_amapParty[BATTLEARENA_MATCH_COUNT];            // +E8  JID -> party ID
+    DwordMap        m_amapGuild[BATTLEARENA_MATCH_COUNT];            // +10C JID -> guild ID
+    ByteMap         m_amapJobA[BATTLEARENA_MATCH_COUNT];             // +130 JID -> value (job 0, 2)
+    ByteMap         m_amapJobB[BATTLEARENA_MATCH_COUNT];             // +154 JID -> value (job 1, 3)
+    GroupMap        m_amapPartyMember[BATTLEARENA_MATCH_COUNT];      // +178 party -> JID -> level
+    DwordMap        m_amapParty19C[BATTLEARENA_MATCH_COUNT];         // +19C
+    ByteMap         m_amapPartyLevel[BATTLEARENA_MATCH_COUNT];       // +1C0 party -> highest level
+    LevelList       m_alistParty[BATTLEARENA_MATCH_COUNT];           // +1E4 parties by level
+    MemberListMap   m_amapGuildMemberList[BATTLEARENA_MATCH_COUNT];  // +208 guild -> listed JIDs
+    GroupMap        m_amapGuildMember[BATTLEARENA_MATCH_COUNT];      // +22C guild -> JID -> level
+    DwordMap        m_amapGuild250[BATTLEARENA_MATCH_COUNT];         // +250
+    ByteMap         m_amapGuildLevel[BATTLEARENA_MATCH_COUNT];       // +274 guild -> highest level
+    LevelList       m_alistGuild[BATTLEARENA_MATCH_COUNT];           // +298 guilds by level
+    DWORD           m_dwParticipationTime;      // +2BC play time in ms (0x74D0 type 8)
+    DWORD           m_adwCheckCount[BATTLEARENA_KIND_COUNT][BATTLEARENA_MATCH_COUNT]; // +2C0
     DWORD           m_adwParticipation[BATTLEARENA_KIND_COUNT];     // +2F0 1 while it runs
-    DWORD           m_adwMatchActive[BATTLEARENA_SIZE_COUNT];       // +300 set by the match jobs
+    DWORD           m_adwMatchActive[BATTLEARENA_MATCH_COUNT];       // +300 set by the match jobs
     CDateTime       m_dtParticipationBegin;     // +30C
     BYTE            m_abClosed[BATTLEARENA_KIND_COUNT];             // +334 layers closed
 };

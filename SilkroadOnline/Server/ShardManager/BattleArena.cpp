@@ -9,6 +9,7 @@
 #include "ServerFramework/ServerDataExtern.h"
 #include "ServerCommon/ReferenceData.h"
 #include "ShardManager/GameWorld.h"
+#include "ShardManager/ShardScheduleJob.h"
 #include "ShardManager/ShardWorldExtern.h"
 
 enum
@@ -224,21 +225,21 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
 {
     DWORD dwJID;
     BYTE byKind;
-    BYTE bySize;
+    BYTE byMatch;
     *pMsg >> dwJID;
     *pMsg >> byKind;
-    *pMsg >> bySize;
+    *pMsg >> byMatch;
 
     BYTE byError = 0;
-    if (byKind >= BATTLEARENA_KIND_COUNT || bySize >= BATTLEARENA_SIZE_COUNT)
+    if (byKind >= BATTLEARENA_KIND_COUNT || byMatch >= BATTLEARENA_MATCH_COUNT)
         byError = BATTLEARENA_ERR_INVALID;
-    else if (!m_adwParticipation[byKind] || !m_adwMatchActive[bySize])
+    else if (!m_adwParticipation[byKind] || !m_adwMatchActive[byMatch])
         byError = BATTLEARENA_ERR_NOT_OPEN;
     else
     {
         if (!g_pMainProcess)
             BSAssertFail();
-        if (bySize <= 2 && !MainProcess_IsArenaSizeOpen(bySize))
+        if (byMatch <= 2 && !MainProcess_IsArenaMatchOpen(byMatch))
             byError = BATTLEARENA_ERR_INVALID;
     }
     if (byError)
@@ -250,7 +251,7 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
 
     if (byAction == 2)
     {
-        OnUnregisterReq(byKind, dwJID, bySize);
+        OnUnregisterReq(byKind, dwJID, byMatch);
         return;
     }
     if (byAction != 1)
@@ -262,17 +263,17 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
         {
             BYTE byValue = 0;
             byValue = pMsg->ReadForwardOnly<BYTE>();
-            if (IsUserRegistered(bySize, byKind, dwJID))
+            if (IsUserRegistered(byMatch, byKind, dwJID))
                 break;
-            m_amapRandom[bySize].insert(ByteMap::value_type(dwJID, byValue));
-            SendRegisterAck_OK(1, dwJID, byKind, bySize);
+            m_amapRandom[byMatch].insert(ByteMap::value_type(dwJID, byValue));
+            SendRegisterAck_OK(1, dwJID, byKind, byMatch);
         }
         break;
 
     case 1:     // party: party ID
         {
             DWORD dwPartyID = pMsg->ReadForwardOnly<DWORD>();
-            if (IsUserRegistered(bySize, byKind, dwJID))
+            if (IsUserRegistered(byMatch, byKind, dwJID))
                 break;
             void* pParty = PartyManager_FindParty(dwPartyID);
             if (!pParty)
@@ -285,15 +286,15 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
                 SendRegisterAck_Error(1, dwJID, BATTLEARENA_ERR_PARTY_SIZE);
                 break;
             }
-            m_amapParty[bySize].insert(DwordMap::value_type(dwJID, dwPartyID));
-            SendRegisterAck_OK(1, dwJID, byKind, bySize);
+            m_amapParty[byMatch].insert(DwordMap::value_type(dwJID, dwPartyID));
+            SendRegisterAck_OK(1, dwJID, byKind, byMatch);
         }
         break;
 
     case 2:     // guild: guild ID and the JIDs of the members (up to 16)
         {
             DWORD dwGuildID = pMsg->ReadForwardOnly<DWORD>();
-            if (IsUserRegistered(bySize, byKind, dwJID))
+            if (IsUserRegistered(byMatch, byKind, dwJID))
                 break;
             if (pMsg->GetUnreadSize() < 40)
             {
@@ -301,8 +302,8 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
                 SendRegisterAck_Error(1, dwJID, BATTLEARENA_ERR_GUILD_LIST);
                 break;
             }
-            m_amapGuild[bySize].insert(DwordMap::value_type(dwJID, dwGuildID));
-            SendRegisterAck_OK(1, dwJID, byKind, bySize);
+            m_amapGuild[byMatch].insert(DwordMap::value_type(dwJID, dwGuildID));
+            SendRegisterAck_OK(1, dwJID, byKind, byMatch);
 
             std::list<DWORD> listMember;
             BYTE byCount = 0;
@@ -322,7 +323,7 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
                         break;
                 }
             }
-            m_amapGuildMemberList[bySize].insert(
+            m_amapGuildMemberList[byMatch].insert(
                 MemberListMap::value_type(dwGuildID, listMember));
         }
         break;
@@ -331,35 +332,35 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
         {
             BYTE byValue = pMsg->ReadForwardOnly<BYTE>();
             BYTE byJob = pMsg->ReadForwardOnly<BYTE>();
-            if (IsUserRegistered(bySize, byKind, dwJID))
+            if (IsUserRegistered(byMatch, byKind, dwJID))
                 break;
             if (byJob == 1 || byJob == 3)
-                m_amapJobB[bySize].insert(ByteMap::value_type(dwJID, byValue));
+                m_amapJobB[byMatch].insert(ByteMap::value_type(dwJID, byValue));
             else
-                m_amapJobA[bySize].insert(ByteMap::value_type(dwJID, byValue));
-            SendRegisterAck_OK(1, dwJID, byKind, bySize);
+                m_amapJobA[byMatch].insert(ByteMap::value_type(dwJID, byValue));
+            SendRegisterAck_OK(1, dwJID, byKind, byMatch);
         }
         break;
     }
 }
 
-BOOL CBattleArenaMgr::IsUserRegistered(BYTE bySize, BYTE byKind, DWORD dwJID)
+BOOL CBattleArenaMgr::IsUserRegistered(BYTE byMatch, BYTE byKind, DWORD dwJID)
 {
     bool bFound;
     switch (byKind)
     {
     case 0:
-        bFound = m_amapRandom[bySize].find(dwJID) != m_amapRandom[bySize].end();
+        bFound = m_amapRandom[byMatch].find(dwJID) != m_amapRandom[byMatch].end();
         break;
     case 1:
-        bFound = m_amapParty[bySize].find(dwJID) != m_amapParty[bySize].end();
+        bFound = m_amapParty[byMatch].find(dwJID) != m_amapParty[byMatch].end();
         break;
     case 2:
-        bFound = m_amapGuild[bySize].find(dwJID) != m_amapGuild[bySize].end();
+        bFound = m_amapGuild[byMatch].find(dwJID) != m_amapGuild[byMatch].end();
         break;
     case 3:
-        bFound = m_amapJobB[bySize].find(dwJID) != m_amapJobB[bySize].end()
-                 || m_amapJobA[bySize].find(dwJID) != m_amapJobA[bySize].end();
+        bFound = m_amapJobB[byMatch].find(dwJID) != m_amapJobB[byMatch].end()
+                 || m_amapJobA[byMatch].find(dwJID) != m_amapJobA[byMatch].end();
         break;
     default:
         return FALSE;
@@ -370,43 +371,43 @@ BOOL CBattleArenaMgr::IsUserRegistered(BYTE bySize, BYTE byKind, DWORD dwJID)
     return TRUE;
 }
 
-BOOL CBattleArenaMgr::OnUnregisterReq(BYTE byKind, DWORD dwJID, BYTE bySize)
+BOOL CBattleArenaMgr::OnUnregisterReq(BYTE byKind, DWORD dwJID, BYTE byMatch)
 {
     switch (byKind)
     {
     case 0:
         {
-            ByteMap::iterator it = m_amapRandom[bySize].find(dwJID);
-            if (it == m_amapRandom[bySize].end())
+            ByteMap::iterator it = m_amapRandom[byMatch].find(dwJID);
+            if (it == m_amapRandom[byMatch].end())
                 break;
-            m_amapRandom[bySize].erase(it);
-            SendRegisterAck_OK(2, dwJID, 0, bySize);
+            m_amapRandom[byMatch].erase(it);
+            SendRegisterAck_OK(2, dwJID, 0, byMatch);
             return TRUE;
         }
 
     case 1:
         {
-            DwordMap::iterator it = m_amapParty[bySize].find(dwJID);
-            if (it == m_amapParty[bySize].end())
+            DwordMap::iterator it = m_amapParty[byMatch].find(dwJID);
+            if (it == m_amapParty[byMatch].end())
                 break;
-            m_amapParty[bySize].erase(it);
-            SendRegisterAck_OK(2, dwJID, 1, bySize);
+            m_amapParty[byMatch].erase(it);
+            SendRegisterAck_OK(2, dwJID, 1, byMatch);
             return TRUE;
         }
 
     case 2:
         {
-            DwordMap::iterator it = m_amapGuild[bySize].find(dwJID);
-            if (it == m_amapGuild[bySize].end())
+            DwordMap::iterator it = m_amapGuild[byMatch].find(dwJID);
+            if (it == m_amapGuild[byMatch].end())
                 break;
             DWORD dwGuildID = it->second;
-            m_amapGuild[bySize].erase(it);
-            SendRegisterAck_OK(2, dwJID, 2, bySize);
-            MemberListMap::iterator itList = m_amapGuildMemberList[bySize].find(dwGuildID);
-            if (itList != m_amapGuildMemberList[bySize].end())
+            m_amapGuild[byMatch].erase(it);
+            SendRegisterAck_OK(2, dwJID, 2, byMatch);
+            MemberListMap::iterator itList = m_amapGuildMemberList[byMatch].find(dwGuildID);
+            if (itList != m_amapGuildMemberList[byMatch].end())
             {
                 itList->second.clear();
-                m_amapGuildMemberList[bySize].erase(itList);
+                m_amapGuildMemberList[byMatch].erase(itList);
             }
             else
             {
@@ -417,19 +418,19 @@ BOOL CBattleArenaMgr::OnUnregisterReq(BYTE byKind, DWORD dwJID, BYTE bySize)
 
     case 3:
         {
-            ByteMap::iterator it = m_amapJobB[bySize].find(dwJID);
-            if (it != m_amapJobB[bySize].end())
+            ByteMap::iterator it = m_amapJobB[byMatch].find(dwJID);
+            if (it != m_amapJobB[byMatch].end())
             {
-                m_amapJobB[bySize].erase(it);
+                m_amapJobB[byMatch].erase(it);
             }
             else
             {
-                it = m_amapJobA[bySize].find(dwJID);
-                if (it == m_amapJobA[bySize].end())
+                it = m_amapJobA[byMatch].find(dwJID);
+                if (it == m_amapJobA[byMatch].end())
                     break;
-                m_amapJobA[bySize].erase(it);
+                m_amapJobA[byMatch].erase(it);
             }
-            SendRegisterAck_OK(2, dwJID, 3, bySize);
+            SendRegisterAck_OK(2, dwJID, 3, byMatch);
             return TRUE;
         }
     }
@@ -460,7 +461,7 @@ void CBattleArenaMgr::OnScheduleEvent(BYTE byKind, BYTE byEvent)
     }
 }
 
-void CBattleArenaMgr::SendRegisterAck_OK(BYTE byAction, DWORD dwJID, BYTE byKind, BYTE bySize)
+void CBattleArenaMgr::SendRegisterAck_OK(BYTE byAction, DWORD dwJID, BYTE byKind, BYTE byMatch)
 {
     CMsg* pMsg = g_pBSNet->AllocMsg(FALSE);
     pMsg->SetOpcode(OP_BATTLEARENA_REGISTER_ACK);
@@ -469,7 +470,7 @@ void CBattleArenaMgr::SendRegisterAck_OK(BYTE byAction, DWORD dwJID, BYTE byKind
     pMsg->WriteBytes(&dwJID, 4);
     pMsg->WriteBytes(&byResult, 1);
     pMsg->WriteBytes(&byKind, 1);
-    pMsg->WriteBytes(&bySize, 1);
+    pMsg->WriteBytes(&byMatch, 1);
     BroadcastToGameServers(pMsg);
 }
 
@@ -588,11 +589,11 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
     switch (byKind)
     {
     case 0:
-        for (i = 0; i < BATTLEARENA_SIZE_COUNT; ++i)
+        for (i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
             m_amapRandom[i].clear();
         break;
     case 1:
-        for (i = 0; i < BATTLEARENA_SIZE_COUNT; ++i)
+        for (i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
         {
             m_amapParty[i].clear();
             m_amapParty19C[i].clear();
@@ -605,7 +606,7 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
         }
         break;
     case 2:
-        for (i = 0; i < BATTLEARENA_SIZE_COUNT; ++i)
+        for (i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
         {
             m_amapGuild[i].clear();
             m_amapGuild250[i].clear();
@@ -619,7 +620,7 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
         }
         break;
     case 3:
-        for (i = 0; i < BATTLEARENA_SIZE_COUNT; ++i)
+        for (i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
         {
             m_amapJobB[i].clear();
             m_amapJobA[i].clear();
@@ -630,7 +631,7 @@ void CBattleArenaMgr::OnScheduledGameEnd(CMsg* pMsg, BYTE byKind)
     LogPrintf(0, "BattleArena: Game Ended : %d", byKind);
 }
 
-RefGameWorld* CBattleArenaMgr::GetRefGameWorld(BYTE byMatchType, BYTE bySize)
+RefGameWorld* CBattleArenaMgr::GetRefGameWorld(BYTE byMatchType, BYTE byMatch)
 {
     static const char* const s_apszWorld[3][3] =
     {
@@ -638,18 +639,18 @@ RefGameWorld* CBattleArenaMgr::GetRefGameWorld(BYTE byMatchType, BYTE bySize)
         { "INS_ARENA_SCORE_8", "INS_ARENA_SCORE_16", "INS_ARENA_SCORE_32" },
         { "INS_ARENA_FLAG_8", "INS_ARENA_FLAG_16", "INS_ARENA_FLAG_32" }
     };
-    if (byMatchType > 2 || bySize < 1 || bySize > 3)
+    if (byMatchType > 2 || byMatch < 1 || byMatch > 3)
         return NULL;
     return CReferenceData::GetInstance()->FindGameWorldByCodeName(
-        std::string(s_apszWorld[byMatchType][bySize - 1]));
+        std::string(s_apszWorld[byMatchType][byMatch - 1]));
 }
 
-BOOL CBattleArenaMgr::OpenArenaLayer(sBattleArenaTeam* pTeam, BYTE byMatchType, BYTE bySize)
+BOOL CBattleArenaMgr::OpenArenaLayer(sBattleArenaTeam* pTeam, BYTE byMatchType, BYTE byMatch)
 {
-    RefGameWorld* pRef = GetRefGameWorld(byMatchType, bySize);
+    RefGameWorld* pRef = GetRefGameWorld(byMatchType, byMatch);
     if (!pRef)
     {
-        LogPrintf(0x2000000, "BattleArena: RefGameWorld is NULL %d %d", byMatchType, bySize);
+        LogPrintf(0x2000000, "BattleArena: RefGameWorld is NULL %d %d", byMatchType, byMatch);
         BSAssertFail();
         return FALSE;
     }
@@ -688,7 +689,7 @@ BOOL CBattleArenaMgr::OpenArenaLayer(sBattleArenaTeam* pTeam, BYTE byMatchType, 
 
 void CBattleArenaMgr::CloseArenaLayers(BYTE byKind)
 {
-    for (int i = 0; i < BATTLEARENA_SIZE_COUNT; ++i)
+    for (int i = 0; i < BATTLEARENA_MATCH_COUNT; ++i)
     {
         TeamVector& vecTeam = m_avecTeam[byKind][i];
         for (TeamVector::iterator it = vecTeam.begin(); it != vecTeam.end(); ++it)
@@ -732,4 +733,158 @@ void CBattleArenaMgr::CheckAndGo(BYTE byKind)
         CheckAndGoJob();
         break;
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The battle arena schedule jobs
+
+static CBattleArenaMgr* GetBattleArenaMgr()
+{
+    if (!g_pBattleArenaMgr)
+        BSAssertFail();
+    return g_pBattleArenaMgr;
+}
+
+BOOL CShard_BattleArenaScheduleParticipation::OnBegin() // 0x677e50
+{
+    if (g_pShardScheduleExecutor->FindJobByName(m_Info.strDefine))
+        return FALSE;
+    m_dwRunning = 1;
+    m_dwNoticeTick = GetTickCount();
+    BeginNotify(NULL);
+    GetBattleArenaMgr()->WriteParticipationStarted(m_pNotifyMsg, m_byKind);
+    BroadcastNotify();
+    LogSchedule("Scheduleing : BattleArena(%d) Request is Start ......!", m_byKind);
+    return TRUE;
+}
+
+BOOL CShard_BattleArenaScheduleParticipation::OnTick(CDateTime& /*now*/)  // 0x678000
+{
+    if (!m_dwRunning)
+        return TRUE;
+    // The notices of the tick go out as state 2.
+    NewSchedule::sScheduleInfo info = m_Info;
+    info.bBegin = 2;
+    DWORD dwTick = GetTickCount();
+    if (dwTick - m_dwNoticeTick > 600000)
+    {
+        BeginNotify(&info);
+        GetBattleArenaMgr();
+        CBattleArenaMgr::WriteLetsParticipate(m_pNotifyMsg, m_byKind);
+        BroadcastNotify();
+        m_dwNoticeTick = dwTick;
+    }
+    return TRUE;
+}
+
+void CShard_BattleArenaScheduleParticipation::OnEnd(CDateTime& /*now*/)   // 0x6780e0
+{
+    m_dwRunning = 0;
+    BeginNotify(NULL);
+    GetBattleArenaMgr()->WriteParticipationEnded(m_pNotifyMsg, m_byKind);
+    BroadcastNotify();
+    LogSchedule("Scheduleing : BattleArena(%d) Request is End ......!", m_byKind);
+}
+
+BOOL CShard_BattleArenaSchedule::OnBegin()              // 0x6782c0
+{
+    if (g_pShardScheduleExecutor->FindJobByName(m_Info.strDefine))
+        return FALSE;
+    DWORD dwBegin = m_Info.dwBegin;
+    m_dwBegin = dwBegin;
+    m_dwOneMinuteLeft = dwBegin + 240;
+    m_dwGameStart = dwBegin + 300;
+    m_byStage = 0;
+    BeginNotify(NULL);
+    GetBattleArenaMgr();
+    CBattleArenaMgr::Write5MinRemain(m_pNotifyMsg, m_byKind);
+    BroadcastNotify();
+    LogSchedule("Scheduleing : BattleArena(%d) is Start Before 5 Min......!", m_byKind);
+    return TRUE;
+}
+
+BOOL CShard_BattleArenaSchedule::OnTick(CDateTime& now) // 0x678480
+{
+    // The notices of the tick go out as state 2.
+    NewSchedule::sScheduleInfo info = m_Info;
+    info.bBegin = 2;
+    if ((DWORD)now.GetTime() > m_dwOneMinuteLeft && !m_byStage)
+    {
+        BeginNotify(&info);
+        GetBattleArenaMgr();
+        CBattleArenaMgr::Write1MinRemain(m_pNotifyMsg, m_byKind);
+        BroadcastNotify();
+        m_byStage = 1;
+        LogPrintf(g_nScheduleLogMode != 1 ? 0 : 0x2000001,
+                  "Scheduleing : BattleArena(%d) is Start Before 1 Min......!", m_byKind);
+    }
+    DWORD dwNow = (DWORD)now.GetTime();
+    if (dwNow > m_dwGameStart && m_byStage == 1)
+    {
+        m_dwRunning = 1;
+        m_bEndPlaySent = 0;
+        m_dwCheckInterval = 60000;
+        m_dwCheckTick = GetTickCount();
+        // The play time: ms from the game start to the end of the period.
+        GetBattleArenaMgr()->SetParticipationTime(1000 * (info.dwEnd - m_dwGameStart));
+        GetBattleArenaMgr()->CheckAndGo(m_byKind);
+        m_byStage = 2;
+        LogPrintf(g_nScheduleLogMode != 1 ? 0 : 0x2000001,
+                  "Scheduleing : BattleArena(%d) is Start ......!", m_byKind);
+    }
+    // The check tick is not renewed: once the interval has passed, every tick checks.
+    if (m_dwRunning == 1 && m_byStage == 2 && !m_bEndPlaySent
+        && GetTickCount() - m_dwCheckTick > m_dwCheckInterval)
+    {
+        DWORD dwRemain = GetRemainSeconds(now);
+        if (dwRemain < 60)
+            m_dwCheckInterval = 1000;
+        if (!m_bStopResurrectSent && dwRemain < 25)
+        {
+            BeginNotify(&info);
+            GetBattleArenaMgr();
+            CBattleArenaMgr::WriteStopResurrect(m_pNotifyMsg, m_byKind);
+            BroadcastNotify();
+            m_bStopResurrectSent = 1;
+        }
+        if (dwRemain < 15)
+        {
+            BeginNotify(&info);
+            GetBattleArenaMgr();
+            CBattleArenaMgr::WriteEndPlay(m_pNotifyMsg, m_byKind);
+            BroadcastNotify();
+            m_bEndPlaySent = 1;
+        }
+    }
+    return TRUE;
+}
+
+void CShard_BattleArenaSchedule::OnEnd(CDateTime& /*now*/)     // 0x678720
+{
+    m_dwRunning = 0;
+    BeginNotify(NULL);
+    GetBattleArenaMgr()->OnScheduledGameEnd(m_pNotifyMsg, m_byKind);
+    BroadcastNotify();
+    LogSchedule("Scheduleing : BattleArena(%d) is End ......!", m_byKind);
+}
+
+DWORD CShard_BattleArenaSchedule::GetRemainSeconds(CDateTime now)
+{
+    CDateTime end((__time32_t)m_Info.dwEnd);
+    return (DWORD)end.GetTime() - (DWORD)now.GetTime();
+}
+
+BOOL CShard_BattleArenaMatchSchedule::OnBegin()         // 0x6788c0
+{
+    if (g_pShardScheduleExecutor->FindJobByName(m_Info.strDefine))
+        return FALSE;
+    GetBattleArenaMgr()->SetMatchActive(m_byMatchType, 1);
+    LogSchedule(NULL);
+    return TRUE;
+}
+
+void CShard_BattleArenaMatchSchedule::OnEnd(CDateTime& /*now*/)    // 0x678a20
+{
+    GetBattleArenaMgr()->SetMatchActive(m_byMatchType, 0);
+    LogSchedule(NULL);
 }
