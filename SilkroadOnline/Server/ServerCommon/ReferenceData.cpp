@@ -393,6 +393,18 @@ int RefRow_Read(CRefRow& row, RefOptionalTeleport& r)
     return r.ID;
 }
 
+int RefRec_Read(const CRefGameWorld& rec, RefGameWorld& r)
+{
+    r = rec.m_Data;
+    return r.ID;
+}
+
+int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r)
+{
+    r = rec;
+    return r.NPC_ID;
+}
+
 int RefRec_Read(const CRefQuest& rec, RefQuest& r)
 {
     if (!rec.m_Data.Service)
@@ -840,6 +852,25 @@ int RefData_LoadQuestReward(CReferenceData* pData, CDBRecord* pRecord)
     return 1;
 }
 
+// Slot 0x3D (RefData_BuildRefGameWorld 0x4cf880, RefData_AddRowRefGameWorld 0x4d2bb0): the game
+// worlds by ID, then CRefInstanceGenerator::IndexSkillsByCodeName (0x4aa550), which indexes
+// them by WorldCodeName128.
+static int RefData_BuildGameWorld(CReferenceData* pData, RefTableEntry* pTable, unsigned int nSlot)
+{
+    int nResult = RefData_BuildLoaded<RefData_AddRowUnique<CRefGameWorld, RefGameWorld,
+        CReferenceData::RefGameWorldMap, &CReferenceData::m_mapGameWorld> >(pData, pTable, nSlot);
+    if (nResult == 1)
+    {
+        for (CReferenceData::RefGameWorldMap::iterator it = pData->m_mapGameWorld.begin();
+             it != pData->m_mapGameWorld.end(); ++it)
+        {
+            pData->m_hashGameWorldByCodeName.insert(
+                std::make_pair(it->second->WorldCodeName128, it->second));
+        }
+    }
+    return nResult;
+}
+
 // A table whose builder is not ported yet: nothing is built and the build goes on.
 static int RefData_BuildPending(CReferenceData*, RefTableEntry*, unsigned int)
 {
@@ -872,7 +903,11 @@ static int RefData_BuildAlchemyMeritPending(CReferenceData*, RefTableEntry* pTab
 // The switch of CRefInstanceGenerator::BuildFromTable (0x4ac550), one entry per slot.
 static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
 {
-    P, P, P, P, P, P, P, RefData_BuildMagicOptPending,                      // 0x00
+    P, P, P, P, P, P,                                                       // 0x00
+    REF_LOADED((RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData,
+                CReferenceData::RefGachaNpcMapMap,
+                &CReferenceData::m_mapGachaNpcMap>)),                       // 0x06
+    RefData_BuildMagicOptPending,
     P, P, P, P, P, P, P, P,                                                 // 0x08
     P, P, P, P, P, P, P, P,                                                 // 0x10
     P, P, P, P, P, P, P, P,                                                 // 0x18
@@ -882,7 +917,8 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, P, P, P,                                                             // 0x38
     REF_LOADED((RefData_AddRowUnique<CRefQuest, RefQuest, CReferenceData::RefQuestMap,
                 &CReferenceData::m_mapQuest>)),                             // 0x3C
-    P, P, P,
+    RefData_BuildGameWorld,
+    P, P,
     P, P, P, P, P, P, P, P,                                                 // 0x40
     REF_LOADED((RefData_LoadSiegeVector<CRefSiegeFortress, RefSiegeFortress,
                 &CReferenceData::m_vecSiegeFortress>)),                     // 0x48
@@ -993,6 +1029,9 @@ CReferenceData::~CReferenceData()
     RefData_DeleteValues(m_mmapSiegeQuest);
     RefData_DeleteValues(m_mmapSiegeQuestReward);
     RefData_DeleteValues(m_mapQuest);
+    m_hashGameWorldByCodeName.clear();
+    RefData_DeleteValues(m_mapGameWorld);
+    RefData_DeleteValues(m_mapGachaNpcMap);
     RefData_DeleteValues(m_mapServerEvent);
     RefData_DeleteValues(m_mapServerEventReward);
     m_mmapServerEventRewardID.clear();

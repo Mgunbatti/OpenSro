@@ -336,6 +336,10 @@ int RefRow_Read(CRefRow& row, RefQuestReward& r);                // 0x499410
 int RefRow_Read(CRefRow& row, RefOptionalTeleport& r);
 // RefQuest_LoadRow (0x497550, RefData_CopyRecord_497570 is the copy): the ID, 0 out of service.
 int RefRec_Read(const CRefQuest& rec, RefQuest& r);
+// RefGameWorld_CopyRow (0x4976d0, RefData_CopyRecord_4976E0 is the copy): the ID.
+int RefRec_Read(const CRefGameWorld& rec, RefGameWorld& r);
+// RefGachaNpcMap_CopyRow (0x497e80): NPC_ID; the Service column is copied, not checked.
+int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r);
 
 // Opaque _RefObjCommon row (see InstanceRecords.h).
 struct RefObjCommonRow;
@@ -355,6 +359,7 @@ public:
     typedef stdext::hash_map<std::string, RefObjCommonRow*>     RefObjByCodeNameHashMap;
     typedef std::map<DWORD, RefSkillMasteryRow*>                RefSkillMasteryMap;
     typedef std::map<DWORD, RefSkill*>                          RefSkillMap;
+    typedef std::map<DWORD, RefGachaNpcMapData*>                RefGachaNpcMapMap;
     typedef std::map<DWORD, RefGameWorld*>                      RefGameWorldMap;
     typedef stdext::hash_map<std::string, RefGameWorld*>        RefGameWorldByCodeNameHashMap;
     typedef std::map<std::string, RefShardContentConfig*>       RefShardContentConfigMap;
@@ -432,7 +437,9 @@ public:
     BYTE                        m_ab010[0x58];                      // +010  (not ported yet)
     RefObjHashMap               m_hashRefObj;                       // +068  _RefObjCommon by ID
     RefObjByCodeNameHashMap     m_hashRefObjByCodeName;             // +090
-    BYTE                        m_ab0B8[0x7C4];                     // +0B8  (not ported yet)
+    BYTE                        m_ab0B8[0x58];                      // +0B8  (not ported yet)
+    RefGachaNpcMapMap           m_mapGachaNpcMap;                   // +110  by NPC_ID
+    BYTE                        m_ab11C[0x760];                     // +11C  (not ported yet)
     RefSkillMasteryMap          m_mapSkillMastery;                  // +87C
     RefSkillMap                 m_mapSkill;                         // +888
     BYTE                        m_ab894[0xC];                       // +894  (not ported yet)
@@ -486,6 +493,7 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObj) == 0x68);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObjByCodeName) == 0x90);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGachaNpcMap) == 0x110);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkillMastery) == 0x87C);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkill) == 0x888);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorld) == 0x92C);
