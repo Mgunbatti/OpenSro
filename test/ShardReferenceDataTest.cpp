@@ -526,6 +526,11 @@ static void TestFindRefObj(CReferenceData& data)
     CHECK(data.BuildFromTable(&level.entry, 0x00) == 1);
     CHECK(data.m_vecLevel.size() == 2 && data.m_vecLevel[1]->Exp_M == 9);
 
+    FakeTable<CRefClimate> climate;
+    climate.AddRecord()->ID = 4;
+    climate.AddRecord()->ID = 4;                // duplicate: fails the build
+    CHECK(data.BuildFromTable(&climate.entry, 0x01) == 0 && data.m_mapClimate.size() == 1);
+
     // gacha NPCs by NPC_ID
     FakeTable<CRefGachaNpcMap> gachaNpc;
     CRefGachaNpcMap* pNpc = gachaNpc.AddRecord();
