@@ -154,3 +154,4 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-007](SM-007.md) | SR_ShardManager reference data | minor | A reference row with a duplicate key leaks |
 | [SM-008](SM-008.md) | SR_ShardManager reference data | minor | A reference row out of service leaks |
 | [SM-009](SM-009.md) | SR_ShardManager reference data | minor | Siege rows out of service are loaded |
+| [SM-010](SM-010.md) | SR_ShardManager reference data | minor | Every _RefGameWorldNPC row leaks |
