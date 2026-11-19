@@ -52,6 +52,21 @@ static int RefRecord_InitTableInfo(CDBTableInfo& info, const char* pszTable,
     }
 
 
+RefOptionalTeleport::RefOptionalTeleport()
+{
+    dwRegion = 0;
+    Pos_Z = 0;
+    Pos_Y = 0;
+    Pos_X = 0;
+    w24 = 0;
+}
+
+RefGachaCode::RefGachaCode()
+{
+    CodeName128.clear();
+    GachaSetID = 0;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Object, skill and magic option records
 
@@ -355,5 +370,398 @@ CRefNest::CRefNest()
 }
 
 CRefNest::~CRefNest()
+{
+}
+
+// ---------------------------------------------------------------------------------------------
+// World, teleport, quest and event records
+
+// 0x5298a0 ctor, 0x51f580 / 0x51f5a0 slots 2 / 3, 0x61f2c0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTeleport, CDBRecStream, CDBRecStream, "_REFTELEPORT")
+
+CRefTeleport::CRefTeleport()
+{
+}
+
+CRefTeleport::~CRefTeleport()
+{
+}
+
+// 0x529950 ctor, 0x51f5b0 / 0x51f5d0 slots 2 / 3, 0x61f530 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTeleLink, CDBRecStream, CDBRecStream, "_REFTELELINK")
+
+CRefTeleLink::CRefTeleLink()
+{
+}
+
+CRefTeleLink::~CRefTeleLink()
+{
+}
+
+// 0x52cce0 ctor, 0x52cd40 dtor, 0x520390 / 0x5203b0 slots 2 / 3, 0x62a8c0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefOptionalTeleport, CDBRecStream, CDBRecStream, "_REFOPTIONALTELEPORT")
+
+CRefOptionalTeleport::CRefOptionalTeleport()
+{
+}
+
+CRefOptionalTeleport::~CRefOptionalTeleport()
+{
+}
+
+// 0x529a00 ctor, 0x51f5e0 / 0x51f600 slots 2 / 3, 0x61f7a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefEventZone, CDBRecStream, CDBRecStream, "_REFEVENTZONE")
+
+CRefEventZone::CRefEventZone()
+{
+}
+
+CRefEventZone::~CRefEventZone()
+{
+}
+
+// 0x52c600 ctor, 0x51f610 / - slots 2 / 3, 0x61fa10 table description.
+SR_IMPLEMENT_REF_RECORD(CRefEvent, CDBRecStream, CDBRecStream, "_REFEVENT")
+
+CRefEvent::CRefEvent()
+{
+}
+
+CRefEvent::~CRefEvent()
+{
+}
+
+// 0x52ca20 ctor, 0x51f640 / 0x51f660 slots 2 / 3, 0x61fc80 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDefaultQuest, CDBRecStream, CDBRecStream, "_REFCHARDEFAULT_QUEST")
+
+CRefDefaultQuest::CRefDefaultQuest()
+{
+}
+
+CRefDefaultQuest::~CRefDefaultQuest()
+{
+}
+
+// 0x52b370 ctor, 0x52b3d0 dtor, 0x51fe20 / 0x51fe40 slots 2 / 3, 0x625f70 table description.
+SR_IMPLEMENT_REF_RECORD(CRefQuest, CDBRecord, CDBRecord, "_REFQUEST")
+
+CRefQuest::CRefQuest()
+{
+}
+
+CRefQuest::~CRefQuest()
+{
+}
+
+// 0x52d5f0 ctor, 0x5205d0 / 0x5205f0 slots 2 / 3, 0x62c400 table description.
+SR_IMPLEMENT_REF_RECORD(CRefQuestReward, CDBRecStream, CDBRecStream, "_RefQuestReward")
+
+CRefQuestReward::CRefQuestReward()
+{
+}
+
+CRefQuestReward::~CRefQuestReward()
+{
+}
+
+// 0x52d6a0 ctor, 0x520600 / 0x520620 slots 2 / 3, 0x62c670 table description.
+SR_IMPLEMENT_REF_RECORD(CRefQuestRewardItems, CDBRecStream, CDBRecStream, "_RefQuestRewardItems")
+
+CRefQuestRewardItems::CRefQuestRewardItems()
+{
+}
+
+CRefQuestRewardItems::~CRefQuestRewardItems()
+{
+}
+
+// 0x52d750 ctor, 0x520630 / 0x520650 slots 2 / 3, 0x62c8e0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefEventReward, CDBRecStream, CDBRecStream, "_RefEventReward")
+
+CRefEventReward::CRefEventReward()
+{
+}
+
+CRefEventReward::~CRefEventReward()
+{
+}
+
+// 0x52d800 ctor, 0x520660 / 0x520680 slots 2 / 3, 0x62cb50 table description.
+SR_IMPLEMENT_REF_RECORD(CRefEventRewardItems, CDBRecStream, CDBRecStream, "_RefEventRewardItems")
+
+CRefEventRewardItems::CRefEventRewardItems()
+{
+}
+
+CRefEventRewardItems::~CRefEventRewardItems()
+{
+}
+
+// 0x52b440 ctor, 0x52b4a0 dtor, 0x51fe80 / 0x51fea0 slots 2 / 3, 0x626470 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorld, CDBRecord, CDBRecord, "_REFGAME_WORLD")
+
+CRefGameWorld::CRefGameWorld()
+{
+}
+
+CRefGameWorld::~CRefGameWorld()
+{
+}
+
+// 0x52cfc0 ctor, 0x520420 / 0x520440 slots 2 / 3, 0x62ae10 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorldNPC, CDBRecStream, CDBRecStream, "_REFGAMEWORLDNPC")
+
+CRefGameWorldNPC::CRefGameWorldNPC()
+{
+}
+
+CRefGameWorldNPC::~CRefGameWorldNPC()
+{
+}
+
+// 0x52d120 ctor, 0x52d180 dtor, 0x520480 / 0x5204a0 slots 2 / 3, 0x62b2f0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorldConfig, CDBRecStream, CDBRecStream, "_REFGAME_WORLD_CONFIG")
+
+CRefGameWorldConfig::CRefGameWorldConfig()
+{
+}
+
+CRefGameWorldConfig::~CRefGameWorldConfig()
+{
+}
+
+// 0x52b510 ctor, 0x52b570 dtor, 0x51feb0 / 0x51fed0 slots 2 / 3, 0x626700 table description.
+SR_IMPLEMENT_REF_RECORD(CRefInstanceWorldRegion, CDBRecord, CDBRecord, "_REFINSTANCE_WORLD_REGION")
+
+CRefInstanceWorldRegion::CRefInstanceWorldRegion()
+{
+}
+
+CRefInstanceWorldRegion::~CRefInstanceWorldRegion()
+{
+}
+
+// 0x52b5c0 ctor, 0x52b620 dtor, 0x51fee0 / 0x51ff00 slots 2 / 3, 0x626980 table description.
+SR_IMPLEMENT_REF_RECORD(CRefInstanceWorldStartPos, CDBRecord, CDBRecord,
+                        "_REFINSTANCE_WORLD_START_POS")
+
+CRefInstanceWorldStartPos::CRefInstanceWorldStartPos()
+{
+}
+
+CRefInstanceWorldStartPos::~CRefInstanceWorldStartPos()
+{
+}
+
+// 0x52cda0 ctor, 0x52ce00 dtor, 0x5203c0 / 0x5203e0 slots 2 / 3, 0x62ab90 table description.
+SR_IMPLEMENT_REF_RECORD(CRefShardContentConfig, CDBRecStream, CDBRecStream,
+                        "_REFSHARDCONTENTCONFIG")
+
+CRefShardContentConfig::CRefShardContentConfig()
+{
+}
+
+CRefShardContentConfig::~CRefShardContentConfig()
+{
+}
+
+// 0x52da10 ctor, 0x52da70 dtor, 0x5206f0 / 0x520710 slots 2 / 3, 0x62d2b0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefUIString, CDBRecStream, CDBRecStream, "_RefUIString_Mt")
+
+CRefUIString::CRefUIString()
+{
+}
+
+CRefUIString::~CRefUIString()
+{
+}
+
+// 0x52d280 ctor, 0x5204e0 / 0x520500 slots 2 / 3, 0x62b7d0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefServerEvent, CDBRecStream, CDBRecStream, "_RefServerEvent")
+
+CRefServerEvent::CRefServerEvent()
+{
+}
+
+CRefServerEvent::~CRefServerEvent()
+{
+}
+
+// 0x52d330 ctor, 0x520510 / 0x520530 slots 2 / 3, 0x62ba40 table description.
+SR_IMPLEMENT_REF_RECORD(CRefServerEventReward, CDBRecStream, CDBRecStream, "_RefServerEventReward")
+
+CRefServerEventReward::CRefServerEventReward()
+{
+}
+
+CRefServerEventReward::~CRefServerEventReward()
+{
+}
+
+// 0x52d3e0 ctor, 0x520540 / 0x520560 slots 2 / 3, 0x62bcb0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefServerEventReward_ExpUPForPlayers, CDBRecStream, CDBRecStream,
+                        "_RefServerEventReward_ExpUPForPlayers")
+
+CRefServerEventReward_ExpUPForPlayers::CRefServerEventReward_ExpUPForPlayers()
+{
+}
+
+CRefServerEventReward_ExpUPForPlayers::~CRefServerEventReward_ExpUPForPlayers()
+{
+}
+
+// 0x52d490 ctor, 0x520570 / 0x520590 slots 2 / 3, 0x62bf20 table description.
+SR_IMPLEMENT_REF_RECORD(CRefServerEventReward_SpawnMonster, CDBRecStream, CDBRecStream,
+                        "_RefServerEventReward_SpawnMonster")
+
+CRefServerEventReward_SpawnMonster::CRefServerEventReward_SpawnMonster()
+{
+}
+
+CRefServerEventReward_SpawnMonster::~CRefServerEventReward_SpawnMonster()
+{
+}
+
+// 0x52d540 ctor, 0x5205a0 / 0x5205c0 slots 2 / 3, 0x62c190 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRentItem, CDBRecStream, CDBRecStream, "_RefRentItem")
+
+CRefRentItem::CRefRentItem()
+{
+}
+
+CRefRentItem::~CRefRentItem()
+{
+}
+
+// 0x52d8b0 ctor, 0x520690 / 0x5206b0 slots 2 / 3, 0x62cdc0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefCollectionBook_Theme, CDBRecStream, CDBRecStream,
+                        "_RefCollectionBook_Theme")
+
+CRefCollectionBook_Theme::CRefCollectionBook_Theme()
+{
+}
+
+CRefCollectionBook_Theme::~CRefCollectionBook_Theme()
+{
+}
+
+// 0x52d960 ctor, 0x5206c0 / 0x5206e0 slots 2 / 3, 0x62d030 table description.
+SR_IMPLEMENT_REF_RECORD(CRefCollectionBook_Item, CDBRecStream, CDBRecStream,
+                        "_RefCollectionBook_Item")
+
+CRefCollectionBook_Item::CRefCollectionBook_Item()
+{
+}
+
+CRefCollectionBook_Item::~CRefCollectionBook_Item()
+{
+}
+
+// 0x52b670 ctor, 0x51ff40 / 0x51ff60 slots 2 / 3, 0x626ed0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRankingTraderActivity, CDBRecStream, CDBRecStream,
+                        "TAB_REFRANKING_TRADERACTIVITY")
+
+CRefRankingTraderActivity::CRefRankingTraderActivity()
+{
+}
+
+CRefRankingTraderActivity::~CRefRankingTraderActivity()
+{
+}
+
+// 0x52b720 ctor, 0x51ff70 / 0x51ff90 slots 2 / 3, 0x627140 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRankingRobberActivity, CDBRecStream, CDBRecStream,
+                        "TAB_REFRANKING_ROBBERACTIVITY")
+
+CRefRankingRobberActivity::CRefRankingRobberActivity()
+{
+}
+
+CRefRankingRobberActivity::~CRefRankingRobberActivity()
+{
+}
+
+// 0x52b7d0 ctor, 0x51ffa0 / 0x51ffc0 slots 2 / 3, 0x6273b0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRankingHunterActivity, CDBRecStream, CDBRecStream,
+                        "TAB_REFRANKING_HUNTERACTIVITY")
+
+CRefRankingHunterActivity::CRefRankingHunterActivity()
+{
+}
+
+CRefRankingHunterActivity::~CRefRankingHunterActivity()
+{
+}
+
+// 0x52b880 ctor, 0x51ffd0 / 0x51fff0 slots 2 / 3, 0x627620 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRankingTraderContribution, CDBRecStream, CDBRecStream,
+                        "TAB_REFRANKING_TRADERCONTRIBUTION")
+
+CRefRankingTraderContribution::CRefRankingTraderContribution()
+{
+}
+
+CRefRankingTraderContribution::~CRefRankingTraderContribution()
+{
+}
+
+// 0x52b930 ctor, 0x520000 / 0x520020 slots 2 / 3, 0x627890 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRankingRobberContribution, CDBRecStream, CDBRecStream,
+                        "TAB_REFRANKING_ROBBERCONTRIBUTION")
+
+CRefRankingRobberContribution::CRefRankingRobberContribution()
+{
+}
+
+CRefRankingRobberContribution::~CRefRankingRobberContribution()
+{
+}
+
+// 0x52b9e0 ctor, 0x520030 / 0x520050 slots 2 / 3, 0x627b00 table description.
+SR_IMPLEMENT_REF_RECORD(CRefRankingHunterContribution, CDBRecStream, CDBRecStream,
+                        "TAB_REFRANKING_HUNTERCONTRIBUTION")
+
+CRefRankingHunterContribution::CRefRankingHunterContribution()
+{
+}
+
+CRefRankingHunterContribution::~CRefRankingHunterContribution()
+{
+}
+
+// 0x52ba90 ctor, 0x52bb00 dtor, 0x520060 / 0x520080 slots 2 / 3, 0x627d70 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGachaCode, CDBRecord, CDBRecord, "_REFGACHACODE")
+
+CRefGachaCode::CRefGachaCode()
+{
+}
+
+CRefGachaCode::~CRefGachaCode()
+{
+}
+
+// 0x52bb70 ctor, 0x520090 / 0x5200b0 slots 2 / 3, 0x628040 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGachaItemSet, CDBRecStream, CDBRecStream, "_REFGACHAITEMSET")
+
+CRefGachaItemSet::CRefGachaItemSet()
+{
+}
+
+CRefGachaItemSet::~CRefGachaItemSet()
+{
+}
+
+// 0x52bc20 ctor, 0x52bc90 dtor, 0x5200c0 / 0x5200e0 slots 2 / 3, 0x6282b0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGachaNpcMap, CDBRecord, CDBRecord, "_REFGACHANPCMAP")
+
+CRefGachaNpcMap::CRefGachaNpcMap()
+{
+    Service = 0;
+    NPC_ID = 0;
+    SelectionGachaID = 0;
+    WasteGachaID = 0;
+}
+
+CRefGachaNpcMap::~CRefGachaNpcMap()
 {
 }
