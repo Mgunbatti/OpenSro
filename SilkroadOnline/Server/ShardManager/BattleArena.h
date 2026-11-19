@@ -134,6 +134,20 @@ public:
     void CheckAndGoGuild();                                             // 0x670600
     void CheckAndGoJob();                                               // 0x670bd0
     void OnGameEnded(BYTE byKind);                                      // 0x674c70
+    void ConfirmPlayUserRandom(CMsg* pMsg, BYTE byKind, BYTE byMatch);  // 0x6710b0
+    void ConfirmPlayUserParty(CMsg* pMsg, BYTE byKind, BYTE byMatch);   // 0x671340
+    void ConfirmPlayUserGuild(CMsg* pMsg, BYTE byKind, BYTE byMatch);   // 0x671970
+    void ConfirmPlayUserJob(CMsg* pMsg, BYTE byKind, BYTE byMatch);     // 0x671fa0
+    void StartGameRandom(BYTE byMatch);                                 // 0x6723b0
+    void StartGameParty(BYTE byMatch);                                  // 0x672d40
+    void StartGameGuild(BYTE byMatch);                                  // 0x673730
+    void StartGameJob(BYTE byMatch);                                    // 0x674120
+
+    // CBattleArenaMgr::OnCheckAndGoAck (0xB4D1, 0x670ff0): the answer of a game server to the
+    // check; the game starts when no answer is outstanding.
+    void OnCheckAndGoAck(CMsg* pMsg);
+    // CBattleArenaMgr::StartGame (0x6722c0): the teams of the kind, 0x34D2 {4, kind, match}.
+    void StartGame(BYTE byKind, BYTE byMatch);
 
     TeamVector      m_avecTeam[BATTLEARENA_KIND_COUNT][BATTLEARENA_MATCH_COUNT];    // +4
     ByteMap         m_amapRandom[BATTLEARENA_MATCH_COUNT];           // +C4  JID -> value

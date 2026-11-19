@@ -888,3 +888,60 @@ void CShard_BattleArenaMatchSchedule::OnEnd(CDateTime& /*now*/)    // 0x678a20
     GetBattleArenaMgr()->SetMatchActive(m_byMatchType, 0);
     LogSchedule(NULL);
 }
+
+void CBattleArenaMgr::OnCheckAndGoAck(CMsg* pMsg)
+{
+    BYTE byKind;
+    BYTE byMatch;
+    *pMsg >> byKind;
+    *pMsg >> byMatch;
+    switch (byKind)
+    {
+    case 0:
+        ConfirmPlayUserRandom(pMsg, 0, byMatch);
+        break;
+    case 1:
+        ConfirmPlayUserParty(pMsg, 1, byMatch);
+        break;
+    case 2:
+        ConfirmPlayUserGuild(pMsg, 2, byMatch);
+        break;
+    case 3:
+        ConfirmPlayUserJob(pMsg, 3, byMatch);
+        break;
+    }
+    // BUG(SM-162): kind and match type of the answer are not range checked; the count is read
+    // (and StartGame writes) past the tables.
+    const DWORD* pdwCount = &m_adwCheckCount[0][0];
+    if (!pdwCount[byKind * BATTLEARENA_MATCH_COUNT + byMatch])
+        StartGame(byKind, byMatch);
+}
+
+void CBattleArenaMgr::StartGame(BYTE byKind, BYTE byMatch)
+{
+    LogPrintf(0, "BattleArena: game started %d, %d", byKind, byMatch);
+    switch (byKind)
+    {
+    case 0:
+        StartGameRandom(byMatch);
+        break;
+    case 1:
+        StartGameParty(byMatch);
+        break;
+    case 2:
+        StartGameGuild(byMatch);
+        break;
+    case 3:
+        StartGameJob(byMatch);
+        break;
+    }
+    CMsg* pMsg = AllocNotice();
+    BYTE byType = 4;
+    pMsg->WriteBytes(&byType, 1);
+    pMsg->WriteBytes(&byKind, 1);
+    pMsg->WriteBytes(&byMatch, 1);
+    BroadcastToGameServers(pMsg);
+    // BUG(SM-162): no range check of the kind.
+    BYTE* pbClosed = &m_abClosed[0];
+    pbClosed[byKind] = 0;
+}
