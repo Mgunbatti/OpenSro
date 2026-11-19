@@ -1,4 +1,5 @@
 #include "ShardManager/Guild.h"
+#include "ShardManager/CrestUploader.h"
 
 #include <strsafe.h>
 
@@ -2107,4 +2108,652 @@ BYTE CGuildManager::DBDeleteGPHistory(CGuild* pGuild)
     if ((BYTE)nResult)
         pGuild->PopGPHistory((BYTE)nResult);
     return (BYTE)nResult;
+}
+
+// ---------------------------------------------------------------------------------------------
+// CGuildManager: request handlers (SM_social2)
+
+void CGuildManager::OnCreateGuild(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID = 0;
+    DWORD dwJID = 0;
+    DWORD dwCharID = 0;
+    std::string strName;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwJID;
+    *pMsg >> strName;
+    *pMsg >> dwCharID;
+    if (!g_pClientManager)
+        BSAssertFail();
+    WORD wResult;
+    CUser* pUser = g_pClientManager->FindUserByJID(dwJID);
+    DWORD dwGuildID = 0;
+    CGuild* pGuild = NULL;
+    if (!pUser)
+    {
+        wResult = 0x4C0E;
+    }
+    else if ((wResult = IsValidGuildName(strName.c_str())) == GUILD_OK &&
+             (wResult = DBCreateGuild(dwCharID, &dwGuildID, strName.c_str())) == GUILD_OK)
+    {
+        CInstanceGuild* pRecord = NULL;
+        if (!dwGuildID || !(pRecord = CGuildMgrCommon::LoadGuildById(dwGuildID)) ||
+            !(pGuild = static_cast<CGuild*>(CreateGuild(pRecord))))
+        {
+            BSAssertFail();
+            wResult = GUILD_ERR_FAILED;
+        }
+    }
+    if (wResult != GUILD_OK)
+    {
+        pMsg->SkipRemaining();
+        SendAckResult(dwSessionID, dwRequestID, wResult);
+        return;
+    }
+    if (!pGuild->FindMember(dwCharID))
+        BSAssertFail();
+    pUser->SetGuildID(dwGuildID);
+    SendCreateResult(dwGuildID);
+    CMsg* pAck = AllocAck(dwRequestID);
+    BYTE bResult = 1;
+    pAck->WriteBytes(&bResult, 1);
+    pAck->WriteBytes(&dwGuildID, 4);
+    SendAck(dwSessionID, pAck);
+    pGuild->RefreshMemberStatus(dwCharID, 2, 0, pUser);
+}
+
+void CGuildManager::OnJoinGuild(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID, dwJID;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> dwJID;
+    if (!g_pClientManager)
+        BSAssertFail();
+    WORD wResult;
+    CUser* pUser = g_pClientManager->FindUserByJID(dwJID);
+    CGuild* pGuild = NULL;
+    DWORD dwCharID = 0;
+    CInstanceGuildMember* pRecord = NULL;
+    if (!pUser)
+    {
+        wResult = GUILD_ERR_MEMBER_NOT_FOUND;
+    }
+    else if (!(pGuild = FindGuildT(dwGuildID)))
+    {
+        wResult = GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    else if (pGuild->IsMemberCountFull())
+    {
+        wResult = 0x4C13;
+    }
+    else if (!(dwCharID = pUser->GetCharID()))
+    {
+        BSAssertFail();
+        wResult = GUILD_ERR_FAILED;
+    }
+    else if ((wResult = DBAddMember(dwGuildID, dwCharID)) == GUILD_OK &&
+             !(pRecord = CGuildCommon::LoadMemberRecord(dwCharID, dwGuildID)))
+    {
+        BSAssertFail();
+        wResult = GUILD_ERR_FAILED;
+    }
+    if (wResult != GUILD_OK)
+    {
+        pMsg->SkipRemaining();
+        SendAckResult(dwSessionID, dwRequestID, wResult);
+        return;
+    }
+    pUser->SetGuildID(dwGuildID);
+    pGuild->AddMember(1, pRecord, pUser);
+    SendJoinResult(dwGuildID, pRecord);
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    pGuild->RefreshMemberStatus(dwCharID, 2, 0, pUser);
+}
+
+void CGuildManager::OnUpdatePermissions(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    CGuild* pGuild = GetSingleton_CGuildManager()->FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_GUILD_NOT_FOUND);
+        return;
+    }
+    BYTE bCount;
+    *pMsg >> bCount;
+    GuildPermissionVector vecPermission(bCount, std::pair<DWORD, DWORD>(0, 0));
+    for (BYTE i = 0; i < bCount; ++i)
+    {
+        *pMsg >> vecPermission.at(i).first;
+        *pMsg >> vecPermission.at(i).second;
+    }
+    WORD wResult = pGuild->UpdateMemberPermissions(vecPermission);
+    if (wResult != GUILD_OK)
+    {
+        SendAckResult(dwSessionID, dwRequestID, wResult);
+        return;
+    }
+    SendPermissionsUpdated(vecPermission, dwGuildID);
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+}
+
+void CGuildManager::OnMasterVoteStart(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    WORD wResult;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        wResult = GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    else
+    {
+        if (!g_pVoteManager)
+            BSAssertFail();
+        CVote* pVote = g_pVoteManager->CreateVote(pGuild, dwGuildID);
+        if (!pVote)
+        {
+            wResult = 0x4C34;
+        }
+        else
+        {
+            wResult = pGuild->DBIsMasterCandidates(pVote);
+            if (wResult == GUILD_OK)
+            {
+                SendVoteStarted(pVote);
+                SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+                return;
+            }
+            if (!g_pVoteManager)
+                BSAssertFail();
+            g_pVoteManager->RemoveVote(pVote);
+        }
+    }
+    SendAckResult(dwSessionID, dwRequestID, wResult);
+}
+
+void CGuildManager::OnGuildWarBegin(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID = pMsg->ReadForwardOnly<DWORD>();
+    DWORD dwGuildID1 = pMsg->ReadForwardOnly<DWORD>();
+    DWORD dwGuildID2 = pMsg->ReadForwardOnly<DWORD>();
+    GUILD_WAR_REQUEST request;
+    request.b00 = 0;
+    request.bVictoryPointIndex = 0;
+    request.dwDuration = 0;
+    request.dwLodgedGold = 0;
+    GuildWarRequest_ReadFromMsg(request, pMsg);
+    CInstanceGuildWar* pWar = NULL;
+    WORD wResult = DBBeginGuildWar(dwGuildID1, dwGuildID2, request, &pWar);
+    // BUG(SM-203): "already at war" (0x4C0C) is answered as a success (with an empty 0x38F5
+    // subtype 25 skipped by the assert), every other failure gets no answer at all.
+    if (wResult != GUILD_OK && wResult != 0x4C0C)
+    {
+        LogPrintf(0x2000001, "failed to begin guild war!!! [error_code: %d]", wResult);
+        return;
+    }
+    if (!pWar)
+        BSAssertFail();
+    SendGuildWarBegun(pWar);
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+}
+
+void CGuildManager::OnGuildWarCombatResult(CMsg* pMsg)
+{
+    std::string strKillerName;
+    std::string strVictimName;
+    DWORD dwWarID, dwKillerGuildID, dwKillerCharID, dwVictimGuildID, dwVictimCharID;
+    *pMsg >> dwWarID;
+    *pMsg >> dwKillerGuildID;
+    *pMsg >> dwKillerCharID;
+    *pMsg >> strKillerName;
+    *pMsg >> dwVictimGuildID;
+    *pMsg >> dwVictimCharID;
+    *pMsg >> strVictimName;
+    int nPoint = pMsg->ReadForwardOnly<int>();
+    WORD wResult;
+    CInstanceGuildWar* pWar = FindGuildWar(dwWarID);
+    CGuild* pKillerGuild = NULL;
+    CGuild* pVictimGuild = NULL;
+    CGuildMember* pKiller = NULL;
+    CGuildMember* pVictim = NULL;
+    if (pWar && (pKillerGuild = FindGuildT(dwKillerGuildID),
+                 pVictimGuild = FindGuildT(dwVictimGuildID), pKillerGuild) && pVictimGuild &&
+        (pKiller = pKillerGuild->FindMember(dwKillerCharID),
+         pVictim = pVictimGuild->FindMember(dwVictimCharID), pKiller) && pVictim)
+    {
+        wResult = OnCombatResult(pWar, pKiller, pVictim, nPoint, strKillerName, strVictimName);
+        if (wResult == GUILD_OK)
+            return;
+    }
+    else
+    {
+        wResult = GUILD_ERR_FAILED;
+    }
+    LogPrintf(0x2000001,
+              "PROCESS GUILD_WAR_COMBAT_RESULT FAILED!!!! error_code[%d] KillerChar[%d] Victim[%d]",
+              wResult, dwKillerCharID, dwVictimCharID);
+}
+
+void CGuildManager::OnGuildWarRecordUpdate(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID;
+    int nBooty;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> nBooty;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_GUILD_NOT_FOUND);
+        return;
+    }
+    int nOldBooty = pGuild->m_pRecord->Booty;
+    if (nBooty != nOldBooty)
+        BSAssertFail();
+    WORD wResult = pGuild->DBClearBooty();
+    if (wResult != GUILD_OK)
+    {
+        SendAckResult(dwSessionID, dwRequestID, wResult);
+        return;
+    }
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    SendGuildWarRecordUpdated(dwGuildID, nOldBooty);
+}
+
+void CGuildManager::OnMemberOnlineState(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID, dwCharID;
+    BYTE bType;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> dwCharID;
+    *pMsg >> bType;
+    WORD wResult;
+    CGuild* pGuild = GetSingleton_CGuildManager()->FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        wResult = GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    else
+    {
+        wResult = pGuild->SetMemberOnline(dwCharID, bType);
+        if (wResult == GUILD_OK)
+            SendMemberOnlineState(dwGuildID, dwCharID, bType);
+    }
+    SendAckResult(dwSessionID, dwRequestID, wResult);
+}
+
+void CGuildManager::OnMemberInfoUpdate(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID, dwCharID;
+    std::string strNickname;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> dwCharID;
+    *pMsg >> strNickname;
+    WORD wResult;
+    CGuild* pGuild = GetSingleton_CGuildManager()->FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        wResult = GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    else
+    {
+        wResult = pGuild->DBUpdateMember(dwCharID, strNickname);
+        if (wResult == GUILD_OK)
+            SendMemberInfoUpdated(strNickname, dwGuildID, dwCharID);
+    }
+    SendAckResult(dwSessionID, dwRequestID, wResult);
+}
+
+// The crest goes to the crest uploader with the next revision; the uploader's answer arrives
+// at OnCrestRevUpdate / SendCrestError.
+void CGuildManager::OnGuildCrestRequest38(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID;
+    CREST_DATA crest;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> crest;
+    CGuild* pGuild = GetSingleton_CGuildManager()->FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_GUILD_NOT_FOUND);
+        return;
+    }
+    int nCrestRev = pGuild->m_pRecord->LastCrestRev + 1;
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    if (!g_pMainProcess)
+        BSAssertFail();
+    CCrestUploader_PostUploadRequest(dwRequestID, dwSessionID, 1, dwGuildID, nCrestRev, &crest);
+}
+
+void CGuildManager::OnGuildCrestUpdate(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    CGuild* pGuild = GetSingleton_CGuildManager()->FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_GUILD_NOT_FOUND);
+        return;
+    }
+    if (!pGuild->m_pRecord->CurCrestRev)
+    {
+        SendAckResult(dwSessionID, dwRequestID, 0x4C4F);
+        return;
+    }
+    pGuild->SetCrestRev(0);
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    SendGuildCrestResult(dwGuildID, 0);
+}
+
+void CGuildManager::OnUnionCrestRequest40(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwAllianceID;
+    CREST_DATA crest;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwAllianceID;
+    *pMsg >> crest;
+    CAlliance* pAlliance = GetSingleton_CGuildManager()->FindAlliance(dwAllianceID);
+    if (!pAlliance)
+    {
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_NOT_IN_UNION);
+        return;
+    }
+    int nCrestRev = pAlliance->GetLastCrestRev() + 1;
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    if (!g_pMainProcess)
+        BSAssertFail();
+    CCrestUploader_PostUploadRequest(dwRequestID, dwSessionID, 2, dwAllianceID, nCrestRev,
+                                     &crest);
+}
+
+void CGuildManager::OnUnionCrestUpdate(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwAllianceID;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwAllianceID;
+    CAlliance* pAlliance = GetSingleton_CGuildManager()->FindAlliance(dwAllianceID);
+    if (!pAlliance)
+    {
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_NOT_IN_UNION);
+        return;
+    }
+    if (!pAlliance->GetCurCrestRev())
+    {
+        SendAckResult(dwSessionID, dwRequestID, 0x4C4F);
+        return;
+    }
+    pAlliance->SetCrestRev(0);
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    SendUnionCrestResult(dwAllianceID, 0);
+}
+
+void CGuildManager::OnDonateSP42(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID, dwCharID;
+    int nAmount;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> dwCharID;
+    *pMsg >> nAmount;
+    WORD wResult;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        wResult = GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    else
+    {
+        wResult = pGuild->DonateGP(nAmount, dwCharID);
+        if (wResult == GUILD_OK)
+        {
+            SendDonateSPResult(dwGuildID, dwCharID, nAmount);
+            SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+            return;
+        }
+    }
+    LogPrintf(0x2000001, "SP DONATION FAILED!! GUILDID[%d] CHAR[%d] STUFF[%d] ERROR[%d]",
+              dwGuildID, dwCharID, nAmount, wResult);
+    SendAckResult(dwSessionID, dwRequestID, wResult);
+}
+
+// The answer carries the gold the ability costs.
+void CGuildManager::OnGiveMercenaryAbility(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID, dwCharID;
+    BYTE bAbility;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> dwCharID;
+    *pMsg >> bAbility;
+    WORD wResult;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        wResult = GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    else
+    {
+        DWORD dwGold = 0;
+        DWORD dwGP = 0;
+        wResult = pGuild->SetMercenaryAttr(bAbility, &dwGold, &dwGP);
+        if (wResult == GUILD_OK)
+        {
+            SendMercenaryAbilityResult(dwGuildID, pGuild->m_pRecord->MercenaryAttr,
+                                       pGuild->m_pRecord->GatheredSP);
+            CMsg* pAck = AllocAck(dwRequestID);
+            BYTE bResult = 1;
+            pAck->WriteBytes(&bResult, 1);
+            pAck->WriteBytes(&dwGold, 4);
+            SendAck(dwSessionID, pAck);
+            return;
+        }
+    }
+    LogPrintf(0x2000001, "GIVE MERCENARY ABILITY FAILED!! GUILDID[%d] CHAR[%d] ABILITY[%d] "
+              "ERROR[%d]", dwGuildID, dwCharID, bAbility, wResult);
+    SendAckResult(dwSessionID, dwRequestID, wResult);
+}
+
+void CGuildManager::OnUpdateGuildSP(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwGuildID;
+    int nOffset;
+    *pMsg >> dwRequestID;
+    *pMsg >> dwGuildID;
+    *pMsg >> nOffset;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        LogPrintf(0x2000001, "Update Guild SP Failed!! GUILDID[%d] Offset[%d] CurSP[%d]",
+                  dwGuildID, nOffset, -1);
+        SendAckResult(dwSessionID, dwRequestID, GUILD_ERR_GUILD_NOT_FOUND);
+        return;
+    }
+    pGuild->OffsetGP(nOffset, TRUE);
+    SendGPUpdated(dwGuildID, pGuild->m_pRecord->GatheredSP);
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+}
+
+void CGuildManager::OnOffsetGP(CMsg* pMsg)
+{
+    DWORD dwGuildID;
+    int nOffset;
+    BYTE bSave;
+    *pMsg >> dwGuildID;
+    *pMsg >> nOffset;
+    *pMsg >> bSave;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+        return;
+    if (pGuild->OffsetGP(nOffset, bSave) == GUILD_OK)
+    {
+        int nGatheredSP = pGuild->m_pRecord->GatheredSP;
+        GetSingleton_CGuildManager();
+        SendGPUpdated(dwGuildID, nGatheredSP);
+    }
+}
+
+void CGuildManager::SendCrestError(DWORD dwRequestID, DWORD dwSessionID)
+{
+    SendAckResult(dwSessionID, dwRequestID, 0x4C50);
+}
+
+void CGuildManager::OnCrestRevUpdate(BYTE bGuild, DWORD dwRequestID, DWORD dwSessionID,
+                                     DWORD dwID, int nCrestRev)
+{
+    if (bGuild == 1)
+    {
+        CGuild* pGuild = GetSingleton_CGuildManager()->FindGuildT(dwID);
+        if (pGuild)
+            pGuild->SetCrestRev(nCrestRev);
+    }
+    else
+    {
+        CAlliance* pAlliance = GetSingleton_CGuildManager()->FindAlliance(dwID);
+        if (pAlliance)
+            pAlliance->SetCrestRev(nCrestRev);
+    }
+    SendAckResult(dwSessionID, dwRequestID, GUILD_OK);
+    if (bGuild == 1)
+        SendGuildCrestResult(dwID, nCrestRev);
+    else
+        SendUnionCrestResult(dwID, nCrestRev);
+}
+
+// GP spent by the game server (no answer): the history row gets the negated offset.
+void CGuildManager::OnOffsetGPAndLevel(CMsg* pMsg)
+{
+    DWORD dwGuildID = 0;
+    DWORD dwJID = 0;
+    int nOffset = 0;
+    BYTE bReason = 0;
+    BYTE bSave = 0;
+    *pMsg >> dwGuildID;
+    *pMsg >> dwJID;
+    *pMsg >> nOffset;
+    *pMsg >> bReason;
+    *pMsg >> bSave;
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        BSAssertFail();
+        return;
+    }
+    if (pGuild->OffsetGP(nOffset, bSave) != GUILD_OK)
+    {
+        BSAssertFail();
+        return;
+    }
+    SendGPUpdated(dwGuildID, pGuild->m_pRecord->GatheredSP);
+    if (DBAddGPHistory(dwGuildID, dwJID, -nOffset, bReason) != GUILD_OK)
+    {
+        BSAssertFail();
+        return;
+    }
+    SendGuildInfo53(dwGuildID);
+    if ((BYTE)pGuild->m_listGPHistory.size() > 100)
+    {
+        BYTE bCount = DBDeleteGPHistory(pGuild);
+        if (bCount)
+            SendGPHistory54(dwGuildID, bCount);
+    }
+}
+
+WORD CGuildManager::OnGuildWarHostileRequest(DWORD dwJID, WORD wOpcode, CMsg* pMsg)
+{
+    if (!g_pClientManager)
+        BSAssertFail();
+    CUser* pUser = g_pClientManager->FindUserByJID(dwJID);
+    if (!pUser)
+        return GUILD_ERR_FAILED;
+    trs_guild_job* pJob = trs_guild_job::Alloc();
+    if (wOpcode != 0x7112)
+    {
+        BSAssertFail();
+        pJob->Release();
+        return GUILD_ERR_FAILED;
+    }
+    DWORD dwGuildID = pUser->GetGuildID();
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        pJob->Release();
+        return GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    if (!pGuild->IsMemberMaster(pUser->GetCharID()))
+    {
+        pJob->Release();
+        return GUILD_ERR_NOT_MASTER;
+    }
+    DWORD dwWarID;
+    *pMsg >> dwWarID;
+    CInstanceGuildWar* pWar = FindGuildWar(dwWarID);
+    if (!pWar)
+    {
+        pJob->Release();
+        return GUILD_ERR_FAILED;
+    }
+    if (pMsg->GetUnreadSize())
+        BSAssertFail();
+    pMsg->SkipRemaining();
+    DWORD dwTargetGuildID;
+    if ((DWORD)pWar->Guild[0] == dwGuildID)
+        dwTargetGuildID = pWar->Guild[1];
+    else
+        dwTargetGuildID = pWar->Guild[0];
+    pJob->Setup(dwJID, wOpcode, 0, 60.0f, dwWarID, dwTargetGuildID);
+    SendHostileResult(dwWarID, dwGuildID);
+    if (!GetSingleton_COverlappedJobMgr()->StartJob(pJob, pUser, pMsg))
+    {
+        pJob->Release();
+        return GUILD_ERR_FAILED;
+    }
+    return GUILD_OK;
+}
+
+void CGuildManager::OnUnjoinHostileGuild(DWORD dwWarID, DWORD dwGuildID)
+{
+    if (!FindGuildWar(dwWarID))
+        return;
+    if (DBEndGuildWar(dwGuildID, dwWarID) == GUILD_OK)
+    {
+        SendGuildWarEnded(dwWarID, dwGuildID);
+        return;
+    }
+    BSAssertFail();
+    // BUG(SM-201): three %d with two arguments: ERROR shows the war ID, GUILDWARID the guild
+    // and RequestorGuildID whatever follows on the stack; the error code is never logged.
+    LogPrintf(0x2000001, "UNJOIN_HOSTILE_GUILD ERROR[%d]!!! GUILDWARID[%d] RequestorGuildID[%d] ",
+              dwWarID, dwGuildID);
+}
+
+void CGuildManager::BroadcastToGuild(DWORD dwGuildID, transaction* pTransaction)
+{
+    GuildMap::iterator it = m_mapGuild.find(dwGuildID);
+    if (it != m_mapGuild.end())
+        static_cast<CGuild*>(it->second)->BroadcastToOnlineMembers(pTransaction);
 }
