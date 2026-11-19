@@ -147,3 +147,5 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [AS-006](AS-006.md) | AgentServer | crash | A forwarded client packet is released twice |
 | [SM-001](SM-001.md) | SR_ShardManager DB records | crash | A full stream record buffer ends the process with an empty rethrow |
 | [SM-002](SM-002.md) | SR_ShardManager DB records | minor | A blank CHAR column is stored as one blank instead of an empty string |
+| [SM-003](SM-003.md) | SR_ShardManager DB records | minor | COS owner changes are never marked for the database update |
+| [SM-004](SM-004.md) | SR_ShardManager DB records | minor | Resetting a server event reward does not mark RewardID for the update |
