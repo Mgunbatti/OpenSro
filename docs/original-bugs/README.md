@@ -161,3 +161,18 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-020](SM-020.md) | SR_ShardManager reference data | minor | The silk price check of the package items never fails |
 | [SM-021](SM-021.md) | SR_ShardManager reference data | minor | Every _RefPricePolicyOfItem row leaks |
 | [SM-022](SM-022.md) | SR_ShardManager reference data | minor | The shop goods are never freed |
+| [SM-030](SM-030.md) | SR_ShardManager reference data | minor | A rejected _RefDropItemGroup row is kept in group 0 |
+| [SM-031](SM-031.md) | SR_ShardManager reference data | major | A _RefMonster_AssignedItemRndDrop row out of service fails the reference build |
+| [SM-032](SM-032.md) | SR_ShardManager reference data | minor | A drop item of a country above 3 is added past the drop class tables |
+| [SM-033](SM-033.md) | SR_ShardManager reference data | wrong | A customizing drop of group 16 is written over the monster's Except columns |
+| [SM-040](SM-040.md) | SR_ShardManager reference data | minor | A _RefObjCommon row with a duplicate ID leaks its object |
+| [SM-041](SM-041.md) | SR_ShardManager reference data | major | An object item row that is missing crashes the reader |
+| [SM-042](SM-042.md) | SR_ShardManager reference data | minor | A structure is added to its region twice |
+| [SM-050](SM-050.md) | SR_ShardManager reference data | major | A teleport link with an unknown owner teleport crashes the start-up |
+| [SM-051](SM-051.md) | SR_ShardManager reference data | minor | A teleport link out of service leaks |
+| [SM-052](SM-052.md) | SR_ShardManager reference data | minor | A fortress area without its region is reported as an unknown fortress |
+| [SM-060](SM-060.md) | SR_ShardManager reference data | minor | A nest of an unknown hive crashes the reference data build |
+| [SM-061](SM-061.md) | SR_ShardManager reference data | minor | The ranking table rows are never freed |
+| [SM-070](SM-070.md) | SR_ShardManager reference data | minor | The "already has this index" line of the collection book has three %s and two arguments |
+| [SM-071](SM-071.md) | SR_ShardManager reference data | major | A gacha free parameter with '<' but no '>' never finishes parsing |
+| [SM-072](SM-072.md) | SR_ShardManager reference data | minor | A gacha item set row with an unknown object crashes the reader |
