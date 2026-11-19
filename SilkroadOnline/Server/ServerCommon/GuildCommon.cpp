@@ -336,14 +336,16 @@ BOOL CGuildCommon::AddHostileGuild(CInstanceGuildWar* pWar)
     return TRUE;
 }
 
-void CGuildCommon::RemoveHostileGuild(CInstanceGuildWar* pWar)
+BOOL CGuildCommon::RemoveHostileGuild(CInstanceGuildWar* pWar)
 {
     DWORD dwOther = pWar->Guild[0];
     if (dwOther == (DWORD)m_pRecord->ID)
         dwOther = pWar->Guild[1];
     GuildHostileMap::iterator it = m_mapHostile.find(dwOther);
-    if (it != m_mapHostile.end())
-        m_mapHostile.erase(it);
+    if (it == m_mapHostile.end())
+        return FALSE;
+    m_mapHostile.erase(it);
+    return TRUE;
 }
 
 BOOL CGuildCommon::AddGPHistory(CInstanceGPHistory* pRecord, BYTE bFront)

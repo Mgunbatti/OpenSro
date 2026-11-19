@@ -192,9 +192,10 @@ public:
     // CGuildCommon::RemoveMasterCandidate (0x440cd0): the first candidate vote with that ID.
     void RemoveMasterCandidate(DWORD dwVoteID);
     // CGuildCommon::AddHostileGuild / RemoveHostileGuild (0x440d30 / 0x440e00): the entry of
-    // the other guild of the war. Add asserts and returns FALSE when it exists.
+    // the other guild of the war. Add asserts and returns FALSE when it exists, Remove returns
+    // FALSE when there is none.
     BOOL AddHostileGuild(CInstanceGuildWar* pWar);
-    void RemoveHostileGuild(CInstanceGuildWar* pWar);
+    BOOL RemoveHostileGuild(CInstanceGuildWar* pWar);
     // CGuildCommon::AddGPHistory (0x440f00): to the front (newest) with bFront 1, else to the
     // back; FALSE (assert) for NULL.
     BOOL AddGPHistory(CInstanceGPHistory* pRecord, BYTE bFront);

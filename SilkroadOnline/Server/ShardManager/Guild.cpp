@@ -660,11 +660,7 @@ WORD CGuild::DBUpdateMember(DWORD dwCharID, const std::string& strNickname)
     if (!g_pShardDB->GetTable(SHARD_DB_TABLE_GUILDMEMBER))
         return GUILD_ERR_FAILED;
     CGuildMember* pMember = it->second;
-    // GuildMember_SetNickname (0x43fca0, second guild group)
-    if (pMember->m_pRecord)
-        pMember->m_pRecord->SetColumn(&InstanceGuildMemberData::Nickname, strNickname);
-    else
-        BSAssertFail();
+    pMember->SetNickname(strNickname);
     if (ExecRecordUpdate(pMember->m_pRecord, 9) != 1)
         return GUILD_ERR_FAILED;
     return GUILD_OK;
@@ -1593,4 +1589,522 @@ void CGuildManager::SendVoteStarted(CVote* pVote)
     pMsg->WriteBytes(&bSubType, 1);
     pVote->WriteToMsg(pMsg);
     BroadcastToGameServers(pMsg);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Guild, alliance and guild war DB functions (SM_social2)
+
+const DWORD g_adwGuildWarVictoryPoint[8] =
+{
+    0, 5000, 10000, 50000, 100000, 150000, 250000, 300000
+};
+
+void GuildWarRequest_ReadFromMsg(GUILD_WAR_REQUEST& request, CMsg* pMsg)
+{
+    *pMsg >> request.b00;
+    *pMsg >> request.dwDuration;
+    *pMsg >> request.bVictoryPointIndex;
+    *pMsg >> request.dwLodgedGold;
+}
+
+// Ability 0 resets the abilities; the single abilities cost the same.
+void CGuild::GetMercenaryAbilityCost(DWORD* pdwGP, BYTE bAbility, DWORD* pdwGold)
+{
+    switch (bAbility)
+    {
+    case 0:
+        *pdwGold = 500000;
+        *pdwGP = 10000;
+        break;
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+    case 16:
+        *pdwGold = 500000;
+        *pdwGP = 50000;
+        break;
+    default:
+        *pdwGold = 100000000;
+        *pdwGP = 100000000;
+        break;
+    }
+}
+
+WORD CAlliance::AddGuild(CGuild* pGuild, BYTE bSlot)
+{
+    CInstanceAlliedClan* pRecord = m_pRecord;
+    if (pRecord->Ally[bSlot])
+    {
+        BSAssertFail();
+        LogPrintf(0x2000001, "AddAlliance error!! allianceID[%d] slot[%d] is not null",
+                  m_pRecord->ID, bSlot);
+        return GUILD_ERR_FAILED;
+    }
+    DWORD dwGuildID = pGuild->GetID();
+    if (bSlot >= 8)
+        BSAssertFail();
+    DBRecord_SetColumn(pRecord, CInstanceAlliedClan::s_TableInfo, pRecord->Ally[bSlot],
+                       (int)dwGuildID, 2);
+    if (ExecRecordUpdate(m_pRecord, 2) != 1)
+        return GUILD_ERR_FAILED;
+    return pGuild->SetAllianceID(this, 1);
+}
+
+WORD CGuildManager::RemoveMember(DWORD dwGuildID, DWORD dwCharID, BYTE bReason)
+{
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+        return GUILD_ERR_GUILD_NOT_FOUND;
+    WORD wResult = pGuild->DBDeleteMember(dwGuildID, dwCharID, bReason);
+    if (wResult == GUILD_OK)
+    {
+        SendLeaveResult(dwGuildID, dwCharID, bReason);
+        return GUILD_OK;
+    }
+    return wResult;
+}
+
+WORD CGuildManager::IsValidGuildName(const char* pszName)
+{
+    if ((unsigned int)(lstrlenA(pszName) - 2) > 10)
+        return 0x4C18;
+    std::string strName(pszName);
+    if (!g_pMainProcess)
+        BSAssertFail();
+    if (!CharName_IsValid(strName))
+        return 0x4C19;
+    if (DBIsExistingGuildName(pszName))
+        return 0x4C1A;
+    return GUILD_OK;
+}
+
+BOOL CGuildManager::DBIsExistingGuildName(const char* pszName)
+{
+    if (!pszName || !lstrlenA(pszName))
+        BSAssertFail();
+    char szSql[0xC00];
+    if (StringCchPrintfA(szSql, 0xC00, "{?=CALL _Guild_IsExistingGuildName ('%s')}", pszName))
+    {
+        BSAssertFail();
+        return FALSE;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return FALSE;
+    return nResult != 0;
+}
+
+WORD CGuildManager::DBCreateGuild(DWORD dwCharID, DWORD* pdwGuildID, const char* pszName)
+{
+    *pdwGuildID = 0;
+    char szSql[0xC00];
+    if (StringCchPrintfA(szSql, 0xC00, "{?=CALL _Guild_Create ('%s',%d)}", pszName, dwCharID))
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return 0x4C1B;
+    if (nResult > 0)
+    {
+        *pdwGuildID = nResult;
+        return GUILD_OK;
+    }
+    switch (nResult)
+    {
+    case -5:
+        return 0x4C1B;
+    case -1000:
+        return 0x4C1A;
+    case -3:
+        return 0x4C1C;
+    case -2:
+        return 0x4C12;
+    case -1:
+        return GUILD_ERR_MEMBER_NOT_FOUND;
+    default:
+        LogPrintf(0x2000001, "Create Guild Failed!!! [UNKNOWN REASON:%d]", nResult);
+        return GUILD_ERR_FAILED;
+    }
+}
+
+WORD CGuildManager::DBAddMember(DWORD dwGuildID, DWORD dwCharID)
+{
+    char szSql[0xC00];
+    if (StringCchPrintfA(szSql, 0xC00, "{?=CALL _Guild_AddMember (%d,%d,%d,%d)}", dwGuildID,
+                         dwCharID, 10, 0))
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return 0x4C1C;
+    if (nResult > 0)
+        return GUILD_OK;
+    switch (nResult)
+    {
+    case -1:
+        return GUILD_ERR_MEMBER_NOT_FOUND;
+    case -2:
+        return 0x4C12;
+    case -3:
+        return 0x4C1C;
+    case -1000:
+        return GUILD_ERR_GUILD_NOT_FOUND;
+    default:
+        return GUILD_ERR_FAILED;
+    }
+}
+
+WORD CGuildManager::DBCreateUnion(CGuild* pMaster, CGuild* pMember, DWORD* pdwAllianceID)
+{
+    char szSql[0xC00];
+    if (StringCchPrintfA(szSql, 0xC00, "{?=CALL _AllianceCreate (%d, %d)}", pMaster->GetID(),
+                         pMember->GetID()))
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return GUILD_ERR_FAILED;
+    if (nResult > 0)
+    {
+        *pdwAllianceID = nResult;
+        CInstanceAlliedClan* pRecord = CGuildMgrCommon::LoadAllianceById(nResult);
+        if (!pRecord)
+        {
+            BSAssertFail();
+            return GUILD_ERR_FAILED;
+        }
+        CAlliance* pAlliance = AddAlliance(pRecord);
+        pMaster->SetAllianceID(pAlliance, 0);
+        pMember->SetAllianceID(pAlliance, 0);
+        return GUILD_OK;
+    }
+    if (nResult == -2)
+    {
+        LogPrintf(0x1000000, "DBJOB_UpdateGuildAlliance GUILD[%d,%d]", pMaster->GetID(),
+                  pMember->GetID());
+    }
+    else if (nResult == -1)
+    {
+        LogPrintf(0x1000000, "DBJOB_InsertAlliance: GUILD[%d,%d]", pMaster->GetID(),
+                  pMember->GetID());
+    }
+    return GUILD_ERR_FAILED;
+}
+
+WORD CGuildManager::DisbandUnion(DWORD dwAllianceID)
+{
+    CAlliance* pAlliance = FindAlliance(dwAllianceID);
+    if (!pAlliance)
+        return GUILD_ERR_NOT_IN_UNION;
+    pAlliance->DBRemove();
+    RemoveAlliance(dwAllianceID);
+    return GUILD_OK;
+}
+
+WORD CGuildManager::DBBeginGuildWar(DWORD dwGuildID1, DWORD dwGuildID2,
+                                    const GUILD_WAR_REQUEST& request, CInstanceGuildWar** ppWar)
+{
+    *ppWar = NULL;
+    CGuild* pGuild1 = FindGuildT(dwGuildID1);
+    CGuild* pGuild2 = FindGuildT(dwGuildID2);
+    if (!pGuild1 || !pGuild2)
+        return GUILD_ERR_FAILED;
+    if (pGuild1->FindHostileEntry(pGuild2->GetID()))
+        return 0x4C3A;
+    if (pGuild2->FindHostileEntry(pGuild1->GetID()))
+        return 0x4C3A;
+    CDBTable* pTable = GetSingleton_CShardDB()->GetTable(SHARD_DB_TABLE_GUILDWAR);
+    CInstanceGuildWar* pWar = static_cast<CInstanceGuildWar*>(pTable->CreateRecord());
+    GuildWarRecord_Update(pWar, dwGuildID1, request, dwGuildID2);
+    DWORD dwMaster2 = pGuild2->m_pMasterRecord->CharID;
+    DWORD dwMaster1 = pGuild1->m_pMasterRecord->CharID;
+    char szSql[0xC00];
+    HRESULT hr;
+    if (request.dwDuration == 0x7FFFFFFF)
+    {
+        hr = StringCchPrintfA(szSql, 0xC00,
+                              "{?=CALL _GuildWar_Begin (%d, %d, %d,NULL, %d, %d, %d, %d)}",
+                              pWar->WarType, pWar->VictoryPointIndex, pWar->LodgedGold,
+                              pWar->Guild[0], pWar->Guild[1], dwMaster1, dwMaster2);
+    }
+    else
+    {
+        const TIMESTAMP_STRUCT& end = pWar->WarEndTime;
+        hr = StringCchPrintfA(szSql, 0xC00,
+                              "{?=CALL _GuildWar_Begin (%d, %d, %d,'%d-%d-%d %d:%d:%d', %d, "
+                              "%d, %d, %d)}",
+                              pWar->WarType, pWar->VictoryPointIndex, pWar->LodgedGold,
+                              end.year, end.month, end.day, end.hour, end.minute, end.second,
+                              pWar->Guild[0], pWar->Guild[1], dwMaster1, dwMaster2);
+    }
+    if (hr)
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    __int64 llValue = 0;
+    if (CDatabase::ExecDirectWithReturnValue(GetSingleton_CShardDB()->GetSession(),
+                                             GUILD_DB_CONN, szSql, DBEXEC_RETURN_INT | 1,
+                                             &llValue) & ~1)
+    {
+        GetSingleton_CShardDB()->GetTable(SHARD_DB_TABLE_GUILDWAR)->FreeRecord(pWar);
+        return GUILD_ERR_FAILED;
+    }
+    int nResult = (int)llValue;
+    if (nResult > 0)
+    {
+        // sub_4359B0: the ID without an update group.
+        DBRecord_SetColumn(pWar, CInstanceGuildWar::s_TableInfo, pWar->ID, nResult, 0);
+        *ppWar = pWar;
+        AddGuildWar(pWar);
+        return GUILD_OK;
+    }
+    GetSingleton_CShardDB()->GetTable(SHARD_DB_TABLE_GUILDWAR)->FreeRecord(pWar);
+    if (nResult == -3 || nResult == -2)
+        return 0x4C0C;
+    if (nResult == -1)
+    {
+        LogPrintf(0x2000001, "GuildWar A[%d] B[%d] is already in war", dwGuildID1, dwGuildID2);
+        return 0x4C3A;
+    }
+    LogPrintf(0x2000001, "DBJOB_Begin GuildWar FAILED: GUILD[%d,%d] error_code[%d]", dwGuildID1,
+              dwGuildID2, nResult);
+    return GUILD_ERR_FAILED;
+}
+
+WORD CGuildManager::DBEndGuildWar(DWORD dwWinnerGuildID, DWORD dwWarID)
+{
+    CInstanceGuildWar* pWar = FindGuildWar(dwWarID);
+    if (!pWar)
+        return GUILD_ERR_FAILED;
+    CGuild* pWinner = FindGuildT(dwWinnerGuildID);
+    char szSql[0xC00];
+    if (!pWinner ||
+        StringCchPrintfA(szSql, 0xC00, "{?=CALL _GuildWar_EndOfWar (%d,%d,%d)}", dwWarID,
+                         dwWinnerGuildID, pWar->LodgedGold))
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return GUILD_ERR_FAILED;
+    if (nResult > 0)
+    {
+        pWinner->AddBooty(pWar->LodgedGold);
+        RemoveGuildWar(pWar);
+        return GUILD_OK;
+    }
+    if (nResult == 0)
+    {
+        LogPrintf(0x2000001, " GuildWar is not exists!! WARID[%d]", dwWarID);
+        return GUILD_ERR_FAILED;
+    }
+    if (nResult == -1 || nResult == -12345 || nResult == -2)
+        return GUILD_ERR_FAILED;
+    BSAssertFail();
+    return GUILD_ERR_FAILED;
+}
+
+BOOL CGuildManager::AddHostileGuilds(CInstanceGuildWar* pWar)
+{
+    for (int i = 0; i < 2; ++i)
+    {
+        CGuild* pGuild = FindGuildT(pWar->Guild[i]);
+        if (!pGuild || !pGuild->AddHostileGuild(pWar))
+            return FALSE;
+    }
+    return TRUE;
+}
+
+BOOL CGuildManager::RemoveHostileGuilds(CInstanceGuildWar* pWar)
+{
+    for (int i = 0; i < 2; ++i)
+    {
+        CGuild* pGuild = FindGuildT(pWar->Guild[i]);
+        if (!pGuild || !pGuild->RemoveHostileGuild(pWar))
+            return FALSE;
+    }
+    return TRUE;
+}
+
+WORD CGuildManager::OnCombatResult(CInstanceGuildWar* pWar, CGuildMember* pKiller,
+                                   CGuildMember* pVictim, int nPoint,
+                                   const std::string& strKillerName,
+                                   const std::string& strVictimName)
+{
+    if (!pWar || !pKiller || !pVictim)
+        return GUILD_ERR_FAILED;
+    DWORD dwWarID = pWar->ID;
+    BYTE bSide = (DWORD)pKiller->m_pRecord->GuildID != (DWORD)pWar->Guild[0];
+    DWORD dwVictoryPoint = 0;
+    if (pWar->VictoryPointIndex)
+        dwVictoryPoint = g_adwGuildWarVictoryPoint[pWar->VictoryPointIndex];
+    char szSql[0xC00];
+    if (StringCchPrintfA(szSql, 0xC00,
+                         "{?=CALL _GuildWar_AccountCombatResult (%d,%d,%d,%d,%d,%d,%d)}",
+                         dwWarID, bSide, nPoint, pKiller->m_pRecord->GuildID,
+                         pKiller->GetCharID(), pVictim->m_pRecord->GuildID,
+                         pVictim->GetCharID()))
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return 0x4C1C;
+    if (nResult < 0)
+        return GUILD_ERR_FAILED;
+    GuildWarRecord_SetPointGain(pWar, bSide, pWar->PointGain[bSide] + nPoint);
+    CInstanceGuildMember* pKillerRecord = pKiller->m_pRecord;
+    pKillerRecord->SetColumn(&InstanceGuildMemberData::Contribution,
+                             pKillerRecord->Contribution + nPoint);
+    pKillerRecord->SetColumn(&InstanceGuildMemberData::GuildWarKill,
+                             pKillerRecord->GuildWarKill + 1);
+    CInstanceGuildMember* pVictimRecord = pVictim->m_pRecord;
+    pVictimRecord->SetColumn(&InstanceGuildMemberData::GuildWarKilled,
+                             pVictimRecord->GuildWarKilled + 1);
+    SendGuildWarCombatResult(strVictimName, pKiller, dwWarID, nPoint, pVictim, strKillerName);
+
+    DWORD dwWinner = 0;
+    const TIMESTAMP_STRUCT& end = pWar->WarEndTime;
+    if (end.year && end.month && end.day)
+    {
+        DWORD dwNow = 0;
+        PackedDateTime_GetLocal(&dwNow);
+        DWORD dwEnd = 0;
+        RefObj_PackTypeID(dwEnd, (const WORD*)&end);
+        if (PackedDateTime_Compare(&dwEnd, &dwNow) >= 0)
+        {
+            if ((DWORD)pWar->PointGain[0] <= (DWORD)pWar->PointGain[1])
+                dwWinner = pWar->Guild[1];
+            else
+                dwWinner = pWar->Guild[0];
+        }
+    }
+    if ((int)dwVictoryPoint > 0 && (DWORD)pWar->PointGain[bSide] >= dwVictoryPoint)
+        dwWinner = pWar->Guild[bSide];
+    if (dwWinner)
+    {
+        WORD wResult = DBEndGuildWar(dwWinner, dwWarID);
+        if (wResult != GUILD_OK)
+        {
+            BSAssertFail();
+            return wResult;
+        }
+        SendGuildWarEnded(dwWarID, dwWinner);
+    }
+    return GUILD_OK;
+}
+
+WORD CGuildManager::DBAddGPHistory(DWORD dwGuildID, DWORD dwJID, int nGP, BYTE bReason)
+{
+    if (bReason >= 9)
+    {
+        BSAssertFail();
+        return 0x4C0B;
+    }
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+    {
+        BSAssertFail();
+        return GUILD_ERR_GUILD_NOT_FOUND;
+    }
+    if (!g_pClientManager)
+        BSAssertFail();
+    CUser* pUser = g_pClientManager->FindUserByJID(dwJID);
+    if (!pUser)
+    {
+        BSAssertFail();
+        return GUILD_ERR_MEMBER_NOT_FOUND;
+    }
+    char szSql[0xC00];
+    memset(szSql, 0, sizeof(szSql));
+    if (StringCchPrintfA(szSql, 0xC00, "{CALL _AddGPHistory ( ?, ?, %d, %d, %d, %d )}",
+                         dwGuildID, pUser->GetCharID(), nGP, bReason))
+    {
+        BSAssertFail();
+        return 0x4C08;
+    }
+    // Two output parameters: the result and the ID of the new row.
+    DBParamList params;
+    DB_PARAM param;
+    memset(&param, 0, sizeof(param));
+    param.nType = DBPARAM_SMALLINT;
+    param.nIOType = SQL_PARAM_OUTPUT;
+    params.push_back(param);
+    param.nType = DBPARAM_INTEGER;
+    params.push_back(param);
+    int nExec = CDatabase::ExecDirectWithParams(GetSingleton_CShardDB()->GetSession(),
+                                                GUILD_DB_CONN, szSql, &params);
+    if (nExec & ~1)
+    {
+        LogPrintf(0x2000001, "Failed WriteGPHistory!!! DB Query Error( %d ): %s", nExec, szSql);
+        return 0x4C08;
+    }
+    DBParamList::iterator itParam = params.begin();
+    if (itParam->nValue < 1)
+    {
+        BSAssertFail();
+        return 0x4C08;
+    }
+    ++itParam;
+    int nHistoryID = itParam->nValue;
+    if (!nHistoryID)
+    {
+        BSAssertFail();
+        return 0x4C08;
+    }
+    memset(szSql, 0, sizeof(szSql));
+    CDBTable* pTable = NULL;
+    if (StringCchPrintfA(szSql, 0xC00, "WHERE ID = %d", nHistoryID) ||
+        !(pTable = GetSingleton_CShardDB()->GetTable(SHARD_DB_TABLE_GPHISTORY)))
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    CDBRecordList list;
+    if (!pTable->SelectWhere(szSql, 6, &list, 0) || list.empty())
+    {
+        BSAssertFail();
+        return GUILD_ERR_FAILED;
+    }
+    CInstanceGPHistory* pHistory = dynamic_cast<CInstanceGPHistory*>(list.front());
+    if (!pGuild->AddGPHistory(pHistory, 1))
+        return GUILD_ERR_FAILED;
+    return GUILD_OK;
+}
+
+BYTE CGuildManager::DBDeleteGPHistory(CGuild* pGuild)
+{
+    if (!pGuild)
+    {
+        BSAssertFail();
+        return 0;
+    }
+    char szSql[0xC00];
+    memset(szSql, 0, sizeof(szSql));
+    if (StringCchPrintfA(szSql, 0xC00, "{?=CALL _DeleteGPHistory (%d)}", pGuild->GetID()))
+    {
+        BSAssertFail();
+        return 0;
+    }
+    int nResult = 0;
+    if (!ExecProcedure(szSql, &nResult))
+        return 0;
+    if (nResult >= -1001 && nResult <= -1000)
+    {
+        BSAssertFail();
+        return 0;
+    }
+    if ((BYTE)nResult)
+        pGuild->PopGPHistory((BYTE)nResult);
+    return (BYTE)nResult;
 }
