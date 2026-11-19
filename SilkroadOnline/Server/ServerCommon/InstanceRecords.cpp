@@ -284,11 +284,6 @@ const char* CInstancePC::GetNickName()
     return NickName16.c_str();
 }
 
-void CInstancePC::SetCharName(std::string strName)
-{
-    SR_SET_COLUMN(CharName16, strName, 1);
-}
-
 // ---------------------------------------------------------------------------------------------
 // CInstanceCOS (_CHARCOS): ctor 0x52f8b0, dtor 0x52f920, slots 2 / 3 0x522a70 / 0x522a90, table description 0x633260.
 // BUG(SM-003): the OwnerCharID setter marks no update group (group 3 is never dirty).
@@ -346,8 +341,8 @@ void CInstanceCOS::CopyTo(CDBRecord* pDest)
     SR_COPY_COLUMN(p, HGP, 9);
     SR_COPY_COLUMN(p, Lvl, 8);
     SR_COPY_COLUMN(p, PetOption, 10);
-    p->SetCharName(CharName);
-    p->SetRentEndTime(RentEndTime);
+    p->SetColumn(&InstanceCOSData::CharName, CharName);
+    p->SetColumn(&InstanceCOSData::RentEndTime, RentEndTime);
 }
 
 // 0x521320 (shared with CInstancePC / CInstanceItem)
@@ -423,16 +418,6 @@ void CInstanceCOS::SetHP(int nHP)
 void CInstanceCOS::SetMP(int nMP)
 {
     SR_SET_COLUMN(MP, nMP, 2);
-}
-
-void CInstanceCOS::SetCharName(std::string strName)
-{
-    SR_SET_COLUMN(CharName, strName, 7);
-}
-
-void CInstanceCOS::SetRentEndTime(TIMESTAMP_STRUCT tsTime)
-{
-    SR_SET_COLUMN(RentEndTime, tsTime, 11);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -900,11 +885,6 @@ void CInstanceDeletedChar::InitData()
     ClearAllDirty();
 }
 
-void CInstanceDeletedChar::SetUserJID(int nUserJID)
-{
-    SR_SET_COLUMN(UserJID, nUserJID, 2);
-}
-
 // ---------------------------------------------------------------------------------------------
 // CInstanceCollectionBook (_CharCollectionBook): ctor 0x531a30, dtor 0x531a90, slots 2 / 3 0x526190 / 0x5261b0, table description 0x652210.
 
@@ -1096,9 +1076,9 @@ void CInstanceRentItemInfo::CopyTo(CDBRecord* pDest)
     SR_COPY_COLUMN(p, nRentType, 2);
     SR_COPY_COLUMN(p, nCanDelete, 2);
     SR_COPY_COLUMN(p, nCanRecharge, 2);
-    p->SetPeriodBeginTime(PeriodBeginTime);
-    p->SetPeriodEndTime(PeriodEndTime);
-    p->SetMeterRateTime(MeterRateTime);
+    p->SetColumn(&InstanceRentItemInfoData::PeriodBeginTime, PeriodBeginTime);
+    p->SetColumn(&InstanceRentItemInfoData::PeriodEndTime, PeriodEndTime);
+    p->SetColumn(&InstanceRentItemInfoData::MeterRateTime, MeterRateTime);
     SR_COPY_COLUMN(p, nPackingState, 2);
     SR_COPY_COLUMN(p, nPackingTime, 2);
 }
@@ -1169,21 +1149,6 @@ void CInstanceRentItemInfo::Read(CByteStream* pStream, int nMode)
         pStream->Read(nCanRecharge);
         pStream->Skip(4);
     }
-}
-
-void CInstanceRentItemInfo::SetPeriodBeginTime(TIMESTAMP_STRUCT tsTime)
-{
-    SR_SET_COLUMN(PeriodBeginTime, tsTime, 2);
-}
-
-void CInstanceRentItemInfo::SetPeriodEndTime(TIMESTAMP_STRUCT tsTime)
-{
-    SR_SET_COLUMN(PeriodEndTime, tsTime, 2);
-}
-
-void CInstanceRentItemInfo::SetMeterRateTime(TIMESTAMP_STRUCT tsTime)
-{
-    SR_SET_COLUMN(MeterRateTime, tsTime, 2);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2349,11 +2314,6 @@ void CInstanceServerEventReward::InitData()
     SR_SET_COLUMN(RewardID, 0, 0);  // BUG(SM-004): no update group
     SR_SET_COLUMN(RemainRewardTime, 0, 2);
     ClearAllDirty();
-}
-
-void CInstanceServerEventReward::SetRemainRewardTime(int nTime)
-{
-    SR_SET_COLUMN(RemainRewardTime, nTime, 2);
 }
 
 // ---------------------------------------------------------------------------------------------

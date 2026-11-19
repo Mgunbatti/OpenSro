@@ -110,14 +110,20 @@ static void TestSetters()
     pc.SetHP(100);
     CHECK(pc.HP == 100 && pc.m_qwDirty == (1 << 6) && pc.GetHP() == 100);
     pc.CharName16 = "a";
-    pc.SetCharName("abc");                        // group 1: no dirty bit
+    pc.SetColumn(&InstancePCData::CharName16, "abc");   // group 1: no dirty bit
     CHECK(pc.CharName16 == "abc" && pc.m_qwDirty == (1 << 6));
 
     CInstanceDeletedChar deleted;
     deleted.ClearAllDirty();
     deleted.UserJID = 0;
-    deleted.SetUserJID(7);
+    deleted.SetColumn(&InstanceDeletedCharData::UserJID, 7);
     CHECK(deleted.UserJID == 7 && deleted.m_qwDirty == 4);
+
+    // the generic setter takes the update group from the column list
+    CInstanceCOS cos;
+    cos.ClearAllDirty();
+    cos.SetColumn(&InstanceCOSData::CharName, std::string("pet"));
+    CHECK(cos.CharName == "pet" && cos.m_qwDirty == (1 << 7));
 
     CInstanceChestInfo chest;
     chest.ChestSize = 250;

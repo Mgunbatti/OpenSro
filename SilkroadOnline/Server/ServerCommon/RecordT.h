@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <string>
+
 #include "BSLib/DB/Database.h"
 
 // The record class template of the SR_ShardManager table records (reference and instance
@@ -80,11 +82,105 @@ int DBRecord_InitTableInfo(CDBTableInfo& info, const char* pszTable, DWORD dwFla
     return 0;
 }
 
+template <class T>
+struct DBRecordValue
+{
+    typedef T Type;
+};
+
+// The column setter. nDirtyGroup is the update group whose bit is set (below 2: none); it is the
+// column's field group except where the original passes another one.
+template <class T>
+inline void DBRecord_SetColumn(CDBRecord* pRecord, const CDBTableInfo& info, T& member,
+                               typename DBRecordValue<T>::Type value,
+                               int nDirtyGroup)
+{
+    if (member != value)
+    {
+        if (info.m_dwFlags & DBTABLE_UPDATE)
+        {
+            if (nDirtyGroup >= 2)
+                pRecord->m_qwDirty |= (unsigned __int64)1 << nDirtyGroup;
+            member = value;
+        }
+        else
+        {
+            BSAssertFail();
+        }
+    }
+}
+
+inline void DBRecord_SetColumn(CDBRecord* pRecord, const CDBTableInfo& info,
+                               std::string& member, const std::string& value,
+                               int nDirtyGroup)
+{
+    if (member.compare(value) != 0)
+    {
+        if (info.m_dwFlags & DBTABLE_UPDATE)
+        {
+            member.assign(value, 0, std::string::npos);
+            if (nDirtyGroup >= 2)
+                pRecord->m_qwDirty |= (unsigned __int64)1 << nDirtyGroup;
+        }
+        else
+        {
+            BSAssertFail();
+        }
+    }
+}
+
+// Timestamps compare year .. second (the fraction is ignored) and are copied whole.
+inline void DBRecord_SetColumn(CDBRecord* pRecord, const CDBTableInfo& info,
+                               TIMESTAMP_STRUCT& member, const TIMESTAMP_STRUCT& value,
+                               int nDirtyGroup)
+{
+    if (value.year != member.year || value.month != member.month || value.day != member.day ||
+        value.hour != member.hour || value.minute != member.minute ||
+        value.second != member.second)
+    {
+        if (info.m_dwFlags & DBTABLE_UPDATE)
+        {
+            if (nDirtyGroup >= 2)
+                pRecord->m_qwDirty |= (unsigned __int64)1 << nDirtyGroup;
+            member = value;
+        }
+        else
+        {
+            BSAssertFail();
+        }
+    }
+}
+
+// The field group of the column at nOffset in a column list (-1 when there is none).
+inline int DBRecord_FindColumnGroup(const DBRecordColumnDef* pColumns, int nColumns, int nOffset)
+{
+    for (int i = 0; i < nColumns; ++i)
+    {
+        if (pColumns[i].nOffset == nOffset)
+            return pColumns[i].nGroup;
+    }
+    BSAssertFail();
+    return -1;
+}
+
 template <class T, class TBase, class TData>
 class CDBRecordT : public TBase, public TData
 {
 public:
     typedef TBase BaseType;
+
+    // The plain column setter of the original records (one inlined or out-of-line copy per
+    // column there, e.g. CInstanceCOS::SetName 0x522aa0): stores the value when it differs and
+    // marks the update group the table description gives the column. Columns whose setter
+    // behaves otherwise have a setter of their own.
+    template <class V>
+    void SetColumn(V TData::* pColumn, const typename DBRecordValue<V>::Type& value)
+    {
+        V& member = this->*pColumn;
+        int nOffset = (int)((const BYTE*)&member - (const BYTE*)static_cast<T*>(this));
+        DBRecord_SetColumn(this, T::s_TableInfo, member, value,
+                           DBRecord_FindColumnGroup(T::s_pColumns, T::s_nColumns, nOffset));
+    }
 
     static CBase* __cdecl CreateObject()
     {
@@ -152,6 +248,8 @@ public:
 public:                                                                                     \
     static CRuntimeClass class##class_name;                                                 \
     static CDBTableInfo s_TableInfo;                                                        \
+    static const DBRecordColumnDef* const s_pColumns;                                       \
+    static const int s_nColumns;                                                            \
     static int InitTableInfo();                                                             \
     static CRuntimeClass* ThisClass()                                                       \
     {                                                                                       \
@@ -177,6 +275,8 @@ public:                                                                         
         { #class_name, sizeof(class_name), class_name::CreateObject,                        \
           class_name::DeleteObject, pBaseClass };                                           \
     CDBTableInfo class_name::s_TableInfo;                                                   \
+    const DBRecordColumnDef* const class_name::s_pColumns = columns;                        \
+    const int class_name::s_nColumns = column_count;                                        \
     int class_name::InitTableInfo()                                                         \
     {                                                                                       \
         return DBRecord_InitTableInfo<class_name>(s_TableInfo, table_name, flags, columns,  \

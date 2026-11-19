@@ -53,75 +53,6 @@ inline int RefObj_GetDword250(const RefObjCommonRow* pRefObj)                   
     return *(const int*)((const BYTE*)pRefObj + 0x250);
 }
 
-template <class T>
-struct InstanceRecordValue
-{
-    typedef T Type;
-};
-
-// The column setter. nDirtyGroup is the update group whose bit is set (below 2: none); it is the
-// column's field group except where the original passes another one.
-template <class T>
-inline void InstanceRecord_SetColumn(CDBRecord* pRecord, const CDBTableInfo& info, T& member,
-                                     typename InstanceRecordValue<T>::Type value,
-                                     int nDirtyGroup)
-{
-    if (member != value)
-    {
-        if (info.m_dwFlags & DBTABLE_UPDATE)
-        {
-            if (nDirtyGroup >= 2)
-                pRecord->m_qwDirty |= (unsigned __int64)1 << nDirtyGroup;
-            member = value;
-        }
-        else
-        {
-            BSAssertFail();
-        }
-    }
-}
-
-inline void InstanceRecord_SetColumn(CDBRecord* pRecord, const CDBTableInfo& info,
-                                     std::string& member, const std::string& value,
-                                     int nDirtyGroup)
-{
-    if (member.compare(value) != 0)
-    {
-        if (info.m_dwFlags & DBTABLE_UPDATE)
-        {
-            member.assign(value, 0, std::string::npos);
-            if (nDirtyGroup >= 2)
-                pRecord->m_qwDirty |= (unsigned __int64)1 << nDirtyGroup;
-        }
-        else
-        {
-            BSAssertFail();
-        }
-    }
-}
-
-// Timestamps compare year .. second (the fraction is ignored) and are copied whole.
-inline void InstanceRecord_SetColumn(CDBRecord* pRecord, const CDBTableInfo& info,
-                                     TIMESTAMP_STRUCT& member, const TIMESTAMP_STRUCT& value,
-                                     int nDirtyGroup)
-{
-    if (value.year != member.year || value.month != member.month || value.day != member.day ||
-        value.hour != member.hour || value.minute != member.minute ||
-        value.second != member.second)
-    {
-        if (info.m_dwFlags & DBTABLE_UPDATE)
-        {
-            if (nDirtyGroup >= 2)
-                pRecord->m_qwDirty |= (unsigned __int64)1 << nDirtyGroup;
-            member = value;
-        }
-        else
-        {
-            BSAssertFail();
-        }
-    }
-}
-
 // Sets year .. second of a timestamp (the fraction is kept).
 inline void InstanceRecord_SetDate(TIMESTAMP_STRUCT& ts, int nYear, int nMonth, int nDay)
 {
@@ -134,9 +65,9 @@ inline void InstanceRecord_SetDate(TIMESTAMP_STRUCT& ts, int nYear, int nMonth, 
 }
 
 #define SR_SET_COLUMN(member, value, group)                                                    \
-    InstanceRecord_SetColumn(this, s_TableInfo, member, value, group)
+    DBRecord_SetColumn(this, s_TableInfo, member, value, group)
 #define SR_COPY_COLUMN(pDest, member, group)                                                   \
-    InstanceRecord_SetColumn(pDest, s_TableInfo, (pDest)->member, member, group)
+    DBRecord_SetColumn(pDest, s_TableInfo, (pDest)->member, member, group)
 
 
 // 0x4a1f10: TypeID 1-2-3-3 (character, NPC, COS, TypeID4 3).
@@ -357,9 +288,6 @@ public:
     virtual void SetHP(int nHP);                                            // 16
     virtual void SetMP(int nMP);                                            // 17
     virtual const char* GetNickName();                                      // 18
-
-    // 0x429150 (CInstanceChar::SetCharName of the analysis)
-    void SetCharName(std::string strName);
 };
 
 C_ASSERT(FIELD_OFFSET(CInstancePC, CharID) == 0x20);
@@ -443,8 +371,6 @@ public:
     virtual void SetMP(int nMP);                                            // 17
 
     // 0x522aa0 / 0x522b50 (SetName / SetTime_112 of the analysis)
-    void SetCharName(std::string strName);
-    void SetRentEndTime(TIMESTAMP_STRUCT tsTime);
 };
 
 C_ASSERT(FIELD_OFFSET(CInstanceCOS, ID) == 0x20);
@@ -887,7 +813,6 @@ public:
     virtual void InitData();                                                // 5
 
     // 0x40bb30 (DBRecord_SetField1C_Dirty4 of the analysis)
-    void SetUserJID(int nUserJID);
 };
 
 C_ASSERT(FIELD_OFFSET(CInstanceDeletedChar, CharID) == 0x18);
@@ -1015,11 +940,6 @@ public:
     virtual void CopyTo(CDBRecord* pDest);                                  // 8
     virtual void Write(CByteStream* pStream, int nMode);                    // 9
     virtual void Read(CByteStream* pStream, int nMode);                     // 10
-
-    // 0x521840 / 0x5218c0 / 0x521940 (SetTime_40 / _56 / _72 of the analysis)
-    void SetPeriodBeginTime(TIMESTAMP_STRUCT tsTime);
-    void SetPeriodEndTime(TIMESTAMP_STRUCT tsTime);
-    void SetMeterRateTime(TIMESTAMP_STRUCT tsTime);
 };
 
 C_ASSERT(FIELD_OFFSET(CInstanceRentItemInfo, nItemDBID) == 0x18);
@@ -1897,7 +1817,6 @@ public:
     virtual void InitData();                                                // 5
 
     // 0x525b70 (SetValue_32 of the analysis)
-    void SetRemainRewardTime(int nTime);
 };
 
 C_ASSERT(FIELD_OFFSET(CInstanceServerEventReward, ServerEventID) == 0x18);
