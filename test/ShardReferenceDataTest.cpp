@@ -772,10 +772,10 @@ static void TestContainers(CReferenceData& data)
     pTheme->ID = 7;
     pTheme->CodeName = "THEME";
     RefCollectionBookItem* pItem = new RefCollectionBookItem;
-    pItem->CodeName = "ITEM";
+    pItem->ItemCodeName = "ITEM";
     data.m_mapCollectionBookTheme[pTheme->CodeName] = pTheme;
     data.m_mapCollectionBookThemeByID[pTheme->ID] = pTheme;
-    data.m_mapCollectionBookItem[pItem->CodeName] = pItem;
+    data.m_mapCollectionBookItem[pItem->ItemCodeName] = pItem;
     data.ClearCollectionBook();
     CHECK(data.m_mapCollectionBookTheme.empty() && data.m_mapCollectionBookItem.empty());
     CHECK(data.m_mapCollectionBookThemeByID.empty());
