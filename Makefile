@@ -476,7 +476,7 @@ $(OBJ)\ServerCommon:
 
 # SR_ShardManager messenger and party manager (SilkroadOnline\Server\ShardManager, SM_social3).
 # They need classes of other groups (SocialExtern.h); "nmake shard_social3" compiles them.
-SHARD_SOCIAL3_OBJS = $(OBJ)\ShardManager\Messenger.obj
+SHARD_SOCIAL3_OBJS = $(OBJ)\ShardManager\Messenger.obj $(OBJ)\ShardManager\PartyManager.obj
 
 $(OBJ)\ShardManager:
 	@if not exist $@ mkdir $@
