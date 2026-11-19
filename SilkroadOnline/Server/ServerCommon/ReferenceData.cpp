@@ -1059,12 +1059,6 @@ static void RefData_DeleteValues(TMap& map)
     map.clear();
 }
 
-CReferenceData::CReferenceData()
-    : m_pTables(NULL)
-{
-    g_pReferenceData = this;
-}
-
 template <class TVector>
 static void RefData_DeleteElements(TVector& vec)
 {
@@ -1073,61 +1067,229 @@ static void RefData_DeleteElements(TVector& vec)
     vec.clear();
 }
 
+// Ranking packets ------------------------------------------------------------------------------
+
+// The empty packet of one ranking type: a 1280-byte buffer holding one 0 byte.
+static CStreamBuffer* RefData_NewRankingPacket()
+{
+    CStreamBuffer* pBuffer = new CStreamBuffer;
+    if (!pBuffer)
+        BSAssertFail();
+    if (pBuffer->m_nCapacity < 1280)
+    {
+        if (pBuffer->m_pBuffer)
+        {
+            operator delete(pBuffer->m_pBuffer);
+            pBuffer->m_pBuffer = NULL;
+        }
+        pBuffer->m_pBuffer = (BYTE*)operator new(0x500);
+        pBuffer->m_nCapacity = 1280;
+    }
+    if (!pBuffer->m_pBuffer)
+        BSAssertFail();
+    pBuffer->m_nWritePos = 0;
+    pBuffer->m_nReadPos = 0;
+    if (!pBuffer->m_pBuffer)
+        BSAssertFail();
+    if (pBuffer->m_nWritePos + 1 > pBuffer->m_nCapacity)
+        BSAssertFailAndThrow();
+    pBuffer->m_pBuffer[pBuffer->m_nWritePos] = 0;
+    ++pBuffer->m_nWritePos;
+    return pBuffer;
+}
+
+RefRankingPackets::RefRankingPackets()
+{
+    for (int i = 0; i < 3; ++i)
+        m_vecActivity.push_back(RefData_NewRankingPacket());
+    for (int j = 0; j < 3; ++j)
+        m_vecContribution.push_back(RefData_NewRankingPacket());
+}
+
+RefRankingPackets::~RefRankingPackets()
+{
+    for (unsigned int i = 0; i < 3; ++i)
+    {
+        if (m_vecActivity.at(i))
+            delete m_vecActivity.at(i);
+    }
+    for (unsigned int j = 0; j < 3; ++j)
+    {
+        if (m_vecContribution.at(j))
+            delete m_vecContribution.at(j);
+    }
+    m_vecActivity.clear();
+    m_vecContribution.clear();
+}
+
+// Magic option and drop class tables ----------------------------------------------------------
+
+// RefData_InitLevelBandMap (0x519b30): the first level of each of the 42 level bands.
+static const int s_aLevelBand[42] =
+{
+    1, 3, 5, 8, 10, 13, 16, 18, 21, 24, 26, 29, 32, 35, 38, 42, 45, 48, 52, 56, 60, 64, 68, 72,
+    76, 80, 85, 90, 94, 99, 104, 109, 114, 120, 127, 134, 141, 148, 156, 164, 173, 183,
+};
+
+RefMagicOptTables::RefMagicOptTables()
+{
+    memset(m_adw00, 0, sizeof(m_adw00));
+    for (int i = 0; i < 23; ++i)
+        m_adw00[i] = 8;
+    for (int nBand = 0; nBand < 42; ++nBand)
+        m_mapLevelBand.insert(std::make_pair(s_aLevelBand[nBand], nBand + 1));
+}
+
+RefMagicOptTables::~RefMagicOptTables()
+{
+    for (unsigned int i = 0; i < m_vecMagicOptGroup.size(); ++i)
+    {
+        if (m_vecMagicOptGroup[i])
+            delete m_vecMagicOptGroup[i];
+    }
+    m_vecMagicOptGroup.clear();
+    RefData_DeleteValues(m_mapMagicOptLevel);
+}
+
+// CReferenceData ------------------------------------------------------------------------------
+
+CReferenceDataInstance::CReferenceDataInstance()
+{
+    if (g_pReferenceData)
+        BSAssertFail();
+    g_pReferenceData = static_cast<CReferenceData*>(this);
+}
+
+CReferenceDataInstance::~CReferenceDataInstance()
+{
+    g_pReferenceData = NULL;
+}
+
+CReferenceData::CReferenceData()
+{
+    m_pTables = NULL;
+}
+
+// The containers below own their rows only here: everything else is either freed by its member
+// destructor (CRefOwnerMap) or left to the end of the process.
 CReferenceData::~CReferenceData()
 {
-    RefData_DeleteElements(m_vecSiegeFortress);
-    RefData_DeleteValues(m_mmapSiegeFortressGuard);
-    RefData_DeleteValues(m_mmapSiegeFortressItemForge);
-    RefData_DeleteElements(m_vecSiegeFortressBattleRank);
-    RefData_DeleteElements(m_vecSiegeStructUpgrade);
+    for (unsigned int i = 0; i < m_vecLevel.size(); ++i)
+    {
+        if (m_vecLevel[i])
+            delete m_vecLevel[i];
+    }
+    m_vecLevel.clear();
+    RefData_DeleteValues(m_mapConditionToBuyScrapItem);
+    RefData_DeleteValues(m_mapRewardPolicyToSellScrapItem);
+    RefData_DeleteValues(m_mapConditionToSellScrapItem);
+    RefData_DeleteValues(m_mapRewardPolicyToBuyScrapItem);
+    RefData_DeleteElements(m_vecMappingShopGroup);
+    RefData_DeleteElements(m_vecMappingShopWithTab);
+    RefData_DeleteValues(m_mapShopGroupByCodeName);
+    RefData_DeleteValues(m_mapShopByCodeName);
+    RefData_DeleteValues(m_mapPackageItemByCodeName);
+    RefData_DeleteValues(m_mapShopTabByCodeName);
+    RefData_DeleteValues(m_mapShopTabGroupByCodeName);
+    m_set22C.clear();
     for (RefSiegeLvlSummonMonsterMap::iterator it = m_mapSiegeLvlSummonMonster.begin();
          it != m_mapSiegeLvlSummonMonster.end(); ++it)
+    {
         RefData_DeleteElements(*it->second);
-    RefData_DeleteValues(m_mapSiegeLvlSummonMonster);
+        delete it->second;
+    }
+    m_mapSiegeLvlSummonMonster.clear();
     RefData_DeleteValues(m_mmapSiegeFortressRewards);
     RefData_DeleteValues(m_mapSiegeBlessBuff);
     RefData_DeleteValues(m_mapSiegeDungeon);
     RefData_DeleteValues(m_mmapSiegeQuest);
     RefData_DeleteValues(m_mmapSiegeQuestReward);
-    RefData_DeleteElements(m_vecLevel);
-    RefData_DeleteValues(m_mapClimate);
-    RefData_DeleteElements(m_vecInstanceWorldRegion);
-    RefData_DeleteElements(m_vecInstanceWorldStartPos);
-    RefData_DeleteValues(m_mmapAISkill);
-    RefData_DeleteValues(m_mapQuest);
-    m_hashGameWorldByCodeName.clear();
-    RefData_DeleteValues(m_mapGameWorld);
-    RefData_DeleteValues(m_mapGachaNpcMap);
-    RefData_DeleteValues(m_mapServerEvent);
-    RefData_DeleteValues(m_mapServerEventReward);
+    // The item option level rows are freed and their slots cleared; the maps keep the slots.
+    RefItemOptLevelMap* apItemOptLevel[2] = { &m_mapItemOptLevel128, &m_mapItemOptLevel134 };
+    for (int nMap = 0; nMap < 2; ++nMap)
+    {
+        for (RefItemOptLevelMap::iterator it = apItemOptLevel[nMap]->begin();
+             it != apItemOptLevel[nMap]->end(); ++it)
+        {
+            for (RefItemOptLevelVector::iterator itRow = it->second.begin();
+                 itRow != it->second.end(); ++itRow)
+            {
+                if (*itRow)
+                {
+                    delete *itRow;
+                    *itRow = NULL;
+                }
+            }
+        }
+    }
+    // Each map of positions is copied and the rows are freed through the copy.
+    for (unsigned int nWorld = 0; nWorld < m_vecGameWorldPosition.size(); ++nWorld)
+    {
+        RefGameWorldPositionMap mapPosition = m_vecGameWorldPosition[nWorld];
+        for (RefGameWorldPositionMap::iterator it = mapPosition.begin(); it != mapPosition.end();
+             ++it)
+        {
+            if (it->second)
+                delete it->second;
+        }
+        mapPosition.clear();
+    }
+    m_vecGameWorldPosition.clear();
+    if (!m_mapServerEvent.empty())
+        RefData_DeleteValues(m_mapServerEvent);
+    if (!m_mapServerEventReward.empty())
+        RefData_DeleteValues(m_mapServerEventReward);
     m_mmapServerEventRewardID.clear();
-    RefData_DeleteValues(m_hashRentItem);
     RefData_DeleteValues(m_mapQuestReward);
-    RefData_DeleteValues(m_mapOptionalTeleport);
-    m_mapGameWorldNPC.clear();
-    RefData_DeleteValues(m_mapObjCharExtraSkill);
-    RefData_DeleteValues(m_mapGameWorldConfig);
-    RefData_DeleteValues(m_mapShardContentConfig);
-    RefData_DeleteValues(m_mapUIString);
-    RefData_DeleteValues(m_mmapGameWorldBindTriggerCategory);
-    RefData_DeleteValues(m_mapTriggerCategory);
-    RefData_DeleteValues(m_mmapTriggerCategoryBindTrigger);
-    RefData_DeleteValues(m_mapTrigger);
-    RefData_DeleteValues(m_mmapTriggerVariable);
-    RefData_DeleteValues(m_mmapTriggerBindEvent);
-    RefData_DeleteValues(m_mmapTriggerBindCondition);
-    RefData_DeleteValues(m_mmapTriggerBindAction);
-    RefData_DeleteValues(m_mapTriggerCommon);
-    RefData_DeleteValues(m_mapTriggerEvent);
-    RefData_DeleteValues(m_mapTriggerCondition);
-    RefData_DeleteValues(m_mapTriggerAction);
-    RefData_DeleteValues(m_mapTriggerConditionParam);
-    RefData_DeleteValues(m_mapTriggerActionParam);
-    RefData_DeleteValues(m_mmapGameWorldBindGameWorldGroup);
-    RefData_DeleteValues(m_mapGameWorldGroup);
-    RefData_DeleteValues(m_mapGameWorldGroupConfig);
-    if (g_pReferenceData == this)
-        g_pReferenceData = NULL;
+    for (RefQuestRewardItemsMap::iterator it = m_mapQuestRewardItems.begin();
+         it != m_mapQuestRewardItems.end(); ++it)
+    {
+        RefQuestRewardItemGroupMap* pGroups = it->second;
+        if (!pGroups)
+            continue;
+        for (RefQuestRewardItemGroupMap::iterator itGroup = pGroups->begin();
+             itGroup != pGroups->end(); ++itGroup)
+        {
+            if (itGroup->second)
+            {
+                RefData_DeleteValues(*itGroup->second);
+                delete itGroup->second;
+            }
+        }
+        delete pGroups;
+    }
+    m_mapQuestRewardItems.clear();
+    RefData_DeleteValues(m_mapEventReward);
+    for (RefEventRewardItemsMap::iterator it = m_mapEventRewardItems.begin();
+         it != m_mapEventRewardItems.end(); ++it)
+    {
+        if (it->second)
+        {
+            RefData_DeleteValues(*it->second);
+            delete it->second;
+        }
+    }
+    m_mapEventRewardItems.clear();
+    ClearCollectionBook();
+}
+
+void CReferenceData::ClearCollectionBook()
+{
+    for (RefCollectionBookItemMap::iterator it = m_mapCollectionBookItem.begin();
+         it != m_mapCollectionBookItem.end(); ++it)
+    {
+        if (it->second)
+            delete it->second;
+    }
+    for (RefCollectionBookThemeMap::iterator it = m_mapCollectionBookTheme.begin();
+         it != m_mapCollectionBookTheme.end(); ++it)
+    {
+        if (it->second)
+            delete it->second;
+    }
+    m_mapCollectionBookItem.clear();
+    m_mapCollectionBookTheme.clear();
+    m_mapCollectionBookThemeByID.clear();
 }
 
 CReferenceData* CReferenceData::GetInstance()
