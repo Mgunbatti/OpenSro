@@ -630,6 +630,30 @@ static void TestContainers(CReferenceData& data)
     data.ClearCollectionBook();
     CHECK(data.m_mapCollectionBookTheme.empty() && data.m_mapCollectionBookItem.empty());
     CHECK(data.m_mapCollectionBookThemeByID.empty());
+
+    RefShardContentConfig* pConfig = new RefShardContentConfig;
+    pConfig->CodeName128 = "DISAPPEAR";
+    pConfig->CodeDesc128 = "MONSTER";
+    pConfig->Value = "1800";
+    pConfig->Type = "INT32";
+    RefShardContentConfig* pOther = new RefShardContentConfig;
+    pOther->CodeName128 = "DISAPPEAR_ITEM";
+    pOther->CodeDesc128 = "MONSTER";
+    pOther->Value = "5";
+    pOther->Type = "INT32";
+    data.m_mapShardContentConfig[pConfig->CodeName128] = pConfig;
+    data.m_mapShardContentConfig[pOther->CodeName128] = pOther;
+    std::vector<int> vecValue;
+    CHECK(data.GetShardContentConfigInt32("DISAPPEAR", "MONSTER", vecValue));
+    CHECK(vecValue.size() == 1 && vecValue[0] == 1800);
+    vecValue.clear();
+    CHECK(!data.GetShardContentConfigInt32("DISAPPEAR", "monster", vecValue));
+    pConfig->Type = "STRING";
+    CHECK(!data.GetShardContentConfigInt32("DISAPPEAR", "MONSTER", vecValue));
+    CHECK(!data.GetShardContentConfigInt32("NONE", "MONSTER", vecValue) && vecValue.empty());
+    data.m_mapShardContentConfig.clear();
+    delete pConfig;
+    delete pOther;
 }
 
 int main()
