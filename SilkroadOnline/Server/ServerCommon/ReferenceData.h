@@ -332,6 +332,8 @@ int RefRow_Read(CRefRow& row, RefServerEvent& r);                // 0x498c70
 // RefRentItem::Read (0x499240): strKey is the hash_map key.
 int RefRow_Read(CRefRow& row, RefRentItem& r, std::string& strKey);
 int RefRow_Read(CRefRow& row, RefQuestReward& r);                // 0x499410
+// RefOptionalTeleport::Read (0x4984e0): the ID, 0 out of service; an unknown region is logged.
+int RefRow_Read(CRefRow& row, RefOptionalTeleport& r);
 // RefQuest_LoadRow (0x497550, RefData_CopyRecord_497570 is the copy): the ID, 0 out of service.
 int RefRec_Read(const CRefQuest& rec, RefQuest& r);
 
@@ -391,6 +393,7 @@ public:
     typedef std::multimap<DWORD, DWORD>                         RefServerEventRewardIdMap;
     typedef stdext::hash_map<std::string, RefRentItem*>         RefRentItemHashMap;
     typedef std::map<DWORD, RefQuestReward*>                    RefQuestRewardMap;
+    typedef std::map<DWORD, RefOptionalTeleport*>               RefOptionalTeleportMap;
 
     // Static object of the original (dynamic initializer 0x50a9b0): sets g_pReferenceData.
     CReferenceData();
@@ -449,7 +452,7 @@ public:
     RefSiegeDungeonMap          m_mapSiegeDungeon;                  // +A68  by FortressID
     RefSiegeQuestMap            m_mmapSiegeQuest;                   // +A74  by QuestType
     RefSiegeQuestRewardMap      m_mmapSiegeQuestReward;             // +A80  by QuestID
-    BYTE                        m_abA8C[0xC];                       // +A8C  (not ported yet)
+    RefOptionalTeleportMap      m_mapOptionalTeleport;              // +A8C  by ID
     RefShardContentConfigMap    m_mapShardContentConfig;            // +A98  by CodeName128
     RefGameWorldNPCMap          m_mapGameWorldNPC;                  // +AA4
     RefObjCharExtraSkillMap     m_mapObjCharExtraSkill;             // +AB0  by RefObjID

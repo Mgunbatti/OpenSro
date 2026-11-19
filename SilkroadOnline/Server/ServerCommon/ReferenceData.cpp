@@ -369,6 +369,30 @@ int RefRow_Read(CRefRow& row, RefQuestReward& r)
     return RefData_StrEqual(r.QuestCodeName.c_str(), "TEMPLE_HAROERIS");
 }
 
+int RefRow_Read(CRefRow& row, RefOptionalTeleport& r)
+{
+    DWORD dwService;
+    row >> dwService;
+    if (!dwService)
+        return 0;
+    WORD wRegionID;
+    row.Id(r.ID) >> r.ObjName128;
+    row.Skip() >> wRegionID;
+    RefRegionRow* pRegion = CReferenceData::GetInstance()->FindRegion(wRegionID);
+    if (!pRegion)
+        LogPrintf(0x2000001, "Invalid Region!![ID:%d][ObjName128:%s]", r.ID, r.ObjName128.c_str());
+    r.dwRegion = (DWORD)(DWORD_PTR)pRegion;
+    r.w24 = 0;
+    row >> r.Pos_X >> r.Pos_Y >> r.Pos_Z >> r.WorldID;
+    row.Skip().Skip() >> r.LevelMin >> r.LevelMax;
+    for (int i = 0; i < 3; ++i)
+    {
+        row >> r.adw34[i];
+        row.Skip();
+    }
+    return r.ID;
+}
+
 int RefRec_Read(const CRefQuest& rec, RefQuest& r)
 {
     if (!rec.m_Data.Service)
@@ -654,11 +678,9 @@ int RefData_LoadGameWorldNPC(CReferenceData* pData, CDBRecord* pRecord)
 
 // RefData_AddRow<Table> (e.g. RefData_AddRowRefQuest 0x4d2ad0): a row the reader rejects is
 // freed; a key that is already in the map frees the row and fails the build.
-template <class TRec, class T, class TMap, TMap CReferenceData::*pMap>
-int RefData_AddRowUnique(CReferenceData* pData, CDBRecord* pRecord)
+template <class T, class TMap, TMap CReferenceData::*pMap>
+int RefData_InsertUnique(CReferenceData* pData, T* pRow, typename TMap::key_type key)
 {
-    T* pRow = new T;
-    typename TMap::key_type key = RefRec_Read(*static_cast<TRec*>(pRecord), *pRow);
     if (!key)
     {
         delete pRow;
@@ -673,6 +695,25 @@ int RefData_AddRowUnique(CReferenceData* pData, CDBRecord* pRecord)
     }
     (pData->*pMap).insert(typename TMap::value_type(key, pRow));
     return 1;
+}
+
+// For a CDBRecord table.
+template <class TRec, class T, class TMap, TMap CReferenceData::*pMap>
+int RefData_AddRowUnique(CReferenceData* pData, CDBRecord* pRecord)
+{
+    T* pRow = new T;
+    typename TMap::key_type key = RefRec_Read(*static_cast<TRec*>(pRecord), *pRow);
+    return RefData_InsertUnique<T, TMap, pMap>(pData, pRow, key);
+}
+
+// For a stream table.
+template <class T, class TMap, TMap CReferenceData::*pMap>
+int RefData_AddRowUniqueStream(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    T* pRow = new T;
+    typename TMap::key_type key = RefRow_Read(row, *pRow);
+    return RefData_InsertUnique<T, TMap, pMap>(pData, pRow, key);
 }
 
 // CRefInstanceGenerator::LoadServerEvent (0x4a69a0): rows in service that have not ended; a
@@ -864,7 +905,10 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, P,                                                                   // 0x53
     REF_LOADED(RefData_LoadRentItem),                                       // 0x55
     P, P,
-    P, P,                                                                   // 0x58
+    P,                                                                      // 0x58
+    REF_LOADED((RefData_AddRowUniqueStream<RefOptionalTeleport,
+                CReferenceData::RefOptionalTeleportMap,
+                &CReferenceData::m_mapOptionalTeleport>)),                  // 0x59
     REF_KEYED(RefShardContentConfig, RefShardContentConfigMap, m_mapShardContentConfig,
               std::string, CodeName128),                                    // 0x5A
     P,                                                                      // 0x5B
@@ -954,6 +998,7 @@ CReferenceData::~CReferenceData()
     m_mmapServerEventRewardID.clear();
     RefData_DeleteValues(m_hashRentItem);
     RefData_DeleteValues(m_mapQuestReward);
+    RefData_DeleteValues(m_mapOptionalTeleport);
     m_mapGameWorldNPC.clear();
     RefData_DeleteValues(m_mapObjCharExtraSkill);
     RefData_DeleteValues(m_mapGameWorldConfig);
