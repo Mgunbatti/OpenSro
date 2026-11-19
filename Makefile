@@ -245,7 +245,8 @@ SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj \
 	$(OBJ)\ServerCommon\RefDataDrop.obj \
 	$(OBJ)\ServerCommon\RefDataTeleport.obj \
 	$(OBJ)\ServerCommon\RefDataShop.obj \
-	$(OBJ)\ServerCommon\RefDataMisc.obj
+	$(OBJ)\ServerCommon\RefDataMisc.obj \
+	$(OBJ)\ServerCommon\RefDataGacha.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
@@ -789,12 +790,10 @@ $(BIN)\ShardRefShopTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_R
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefShopTest.obj $(SHARD_REFDATA_OBJS) \
 	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
-# RefDataGacha.obj needs the object row checks of SM_rf_obj; the test has stand-ins for them.
 $(BIN)\ShardRefMiscTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
-                             $(OBJ)\ServerCommon\RefDataGacha.obj \
                              $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_REFDATA_OBJS) \
-	    $(OBJ)\ServerCommon\RefDataGacha.obj $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \

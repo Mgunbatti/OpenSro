@@ -1055,7 +1055,7 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     RefData_LoadRankingActivity, RefData_LoadRankingContribution,
     REF_LOADED((RefData_AddRowUnique<CRefGachaCode, RefGachaCode, CReferenceData::RefGachaCodeMap,
                 &CReferenceData::m_mapGachaCode>)),                         // 0x46
-    P,
+    RefData_BuildGachaItemSet,
     REF_LOADED((RefData_LoadSiegeVector<CRefSiegeFortress, RefSiegeFortress,
                 &CReferenceData::m_vecSiegeFortress>)),                     // 0x48
     REF_LOADED((RefData_LoadSiegeByFortress<CRefSiegeFortressGuard, RefSiegeFortressGuardData,

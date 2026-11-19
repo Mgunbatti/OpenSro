@@ -5,59 +5,41 @@
 #include "ServerCommon/InstanceRecords.h"
 #include "ServerCommon/RefDataObj.h"
 
-// The gacha item sets (slot 0x47). Kept apart from RefDataMisc.cpp because the reader needs the
-// item checks of the object rows (SM_rf_obj).
+// The gacha item sets (slot 0x47), read against the item rows of RefDataObj.h.
 
 static const char s_szReferenceDataFile[] =
     "D:\\WORK2005\\Source\\SilkroadOnline\\Server\\ServerCommon\\ReferenceData.cpp";
 
-static DWORD RefObj_GetMaxStack(const RefObjCommonRow* pObj)                     // +0x198
-{
-    return *(const DWORD*)((const BYTE*)pObj + 0x198);
-}
-
-// The durability bounds of an item (RefObjItem Dur.L / Dur.U, +0x1B0 / +0x1B4) as the original
-// converts them (_ftol2).
-static __int64 RefObj_GetDurMin(const RefObjCommonRow* pObj)
-{
-    return (__int64)*(const float*)((const BYTE*)pObj + 0x1B0);
-}
-
-static __int64 RefObj_GetDurMax(const RefObjCommonRow* pObj)
-{
-    return (__int64)*(const float*)((const BYTE*)pObj + 0x1B4);
-}
-
-// The checks of one free parameter against the item.
-static void RefGachaItemSet_CheckEntry(CGachaFreeParamEntry& entry, const RefObjCommonRow* pObj)
+// The checks of one free parameter against the item (the durability bounds are converted as
+// the original does, _ftol2).
+static void RefGachaItemSet_CheckEntry(CGachaFreeParamEntry& entry, const RefObjItem* pItem)
 {
     if (entry.bValid != 1)
         return;
     switch (entry.btType)
     {
     case CGachaFreeParamEntry::TYPE_DURABILITY:
-        if (!RefObjItem_IsValidDurabilityOrStack(static_cast<const RefObjItem*>(pObj),
-                                                (DWORD)entry.nValue))
+        if (!RefObjItem_IsValidDurabilityOrStack(pItem, (DWORD)entry.nValue))
         {
             BSAssertFail();
-            __int64 nMin = RefObj_GetDurMin(pObj);
-            if (nMin > RefObj_GetDurMax(pObj))
+            __int64 nMin = (__int64)pItem->Dur.L;
+            if (nMin > (__int64)pItem->Dur.U)
             {
                 NetEngineLog(0x2000001,
                              "CLAMP() ==> min(%.3f) exceeded max(%.3f) value), File: %s, Line: %d",
-                             (double)RefObj_GetDurMin(pObj), (double)RefObj_GetDurMax(pObj),
+                             (double)(__int64)pItem->Dur.L, (double)(__int64)pItem->Dur.U,
                              s_szReferenceDataFile, 4329);
-                entry.nValue = RefObj_GetDurMin(pObj);
+                entry.nValue = (__int64)pItem->Dur.L;
             }
-            if (entry.nValue < RefObj_GetDurMin(pObj))
-                entry.nValue = RefObj_GetDurMin(pObj);
-            else if (entry.nValue >= RefObj_GetDurMax(pObj))
-                entry.nValue = RefObj_GetDurMax(pObj);
+            if (entry.nValue < (__int64)pItem->Dur.L)
+                entry.nValue = (__int64)pItem->Dur.L;
+            else if (entry.nValue >= (__int64)pItem->Dur.U)
+                entry.nValue = (__int64)pItem->Dur.U;
         }
         break;
     case CGachaFreeParamEntry::TYPE_MAGIC_OPTION:
         {
-            if (!RefObj_IsEquipItem(pObj))
+            if (!RefObj_IsEquipItem(pItem))
                 BSAssertFail();
             CReferenceData* pData = CReferenceData::GetInstance();
             RefMagicOptGroupByName* pGroup = pData->m_MagicOpt.FindMagicOptById(entry.dwCode);
@@ -73,7 +55,7 @@ static void RefGachaItemSet_CheckEntry(CGachaFreeParamEntry& entry, const RefObj
                 break;
             }
             DWORD dwValue = (DWORD)entry.nValue;
-            if (!RefMagicOpt_CountApplicableParams(*pLevel, pObj))
+            if (!RefMagicOpt_CountApplicableParams(*pLevel, pItem))
             {
                 BSAssertFail();
                 break;
@@ -84,7 +66,7 @@ static void RefGachaItemSet_CheckEntry(CGachaFreeParamEntry& entry, const RefObj
         }
         break;
     case CGachaFreeParamEntry::TYPE_OPT_LEVEL:
-        if (!RefObj_IsValidSlotForItem(pObj, (BYTE)entry.nValue))
+        if (!RefObj_IsValidSlotForItem(pItem, (BYTE)entry.nValue))
         {
             BSAssertFail();
             if (entry.nValue < 0)
@@ -114,9 +96,10 @@ int RefRow_Read(CRefRow& row, RefGachaItemSetRow& r)
     }
     if (!r.Count)
         BSAssertFail();
-    if (r.Count > RefObj_GetMaxStack(pObj))
+    const RefObjItem* pItem = static_cast<const RefObjItem*>(pObj);
+    if (r.Count > (DWORD)pItem->MaxStack)
         BSAssertFail();
-    WORD wTypeID = RefObj_GetTypeID(pObj);
+    WORD wTypeID = pObj->TypeID;
     if ((wTypeID & 2) == 0 && (wTypeID & 0x1C) == 0xC && (wTypeID & 0x60) == 0x20 &&
         r.Count != 1)
     {
@@ -132,7 +115,7 @@ int RefRow_Read(CRefRow& row, RefGachaItemSetRow& r)
         // The entries of the earlier Desc columns are checked again.
         r.pFreeParam->Parse(r.Param[i].Desc);
         for (unsigned int j = 0; j < r.pFreeParam->m_vecEntry.size(); ++j)
-            RefGachaItemSet_CheckEntry(*r.pFreeParam->m_vecEntry.at(j), pObj);
+            RefGachaItemSet_CheckEntry(*r.pFreeParam->m_vecEntry.at(j), pItem);
     }
     return r.Service;
 }
