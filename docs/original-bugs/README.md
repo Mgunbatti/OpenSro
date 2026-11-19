@@ -176,3 +176,19 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-070](SM-070.md) | SR_ShardManager reference data | minor | The "already has this index" line of the collection book has three %s and two arguments |
 | [SM-071](SM-071.md) | SR_ShardManager reference data | major | A gacha free parameter with '<' but no '>' never finishes parsing |
 | [SM-072](SM-072.md) | SR_ShardManager reference data | minor | A gacha item set row with an unknown object crashes the reader |
+| [SM-200](SM-200.md) | SR_ShardManager guilds | minor | A guild level-up whose master is offline is answered as a failure |
+| [SM-201](SM-201.md) | SR_ShardManager guilds | minor | The failed hostile-guild withdrawal is logged with a missing argument |
+| [SM-202](SM-202.md) | SR_ShardManager guilds | minor | The GP history clean-up result of a guild load is never checked |
+| [SM-203](SM-203.md) | SR_ShardManager guilds | major | A guild war start that fails is answered as success or not at all |
+| [SM-240](SM-240.md) | SR_ShardManager messenger | minor | `_Friend_Remove` error codes are never recognised |
+| [SM-241](SM-241.md) | SR_ShardManager party matching | minor | The master's party matching notice names the requester |
+| [SM-242](SM-242.md) | SR_ShardManager party matching | minor | A failed accepted party matching join keeps the entry locked |
+| [SM-243](SM-243.md) | SR_ShardManager party matching | major | Party matching answer crashes when both users are gone |
+| [SM-270](SM-270.md) | SR_ShardManager party matching | minor | Party matching requests trust the user's party ID |
+| [SM-271](SM-271.md) | SR_ShardManager party matching | minor | A party matching entry that fails to write leaves bytes in the list page |
+| [SM-272](SM-272.md) | SR_ShardManager party matching | minor | Party matching list rebuild leaks a page message |
+| [SM-273](SM-273.md) | SR_ShardManager training camps | minor | A failed accepted mentor application keeps the recruit entry locked |
+| [SM-274](SM-274.md) | SR_ShardManager training camps | minor | Recruit list rebuild leaks a page message |
+| [SM-275](SM-275.md) | SR_ShardManager training camps | minor | Training camp honor points are cut to one byte |
+| [SM-276](SM-276.md) | SR_ShardManager training camps | minor | A failed camp disband removes the members from the character map |
+| [SM-277](SM-277.md) | SR_ShardManager votes | major | A reused vote keeps the tally of the previous vote |
