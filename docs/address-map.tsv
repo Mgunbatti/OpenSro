@@ -3877,3 +3877,15 @@ SR_ShardManager	0x4d21c0	RefData_AddRowRefClimate	RefData_AddRowUnique<CRefClima
 SR_ShardManager	0x4a4560	CRefInstanceGenerator::LoadAISkill	RefData_BuildKeyed<RefAISkill, ...> (row loader)
 SR_ShardManager	0x4cf560	RefData_BuildRefAISkill	RefData_BuildKeyed<RefAISkill, ...>
 SR_ShardManager	0x4cf080	RefData_BuildRefClimate	RefData_BuildLoaded<RefData_AddRowUnique<CRefClimate, ...> >
+SR_ShardManager	0x4a9130	CStreamBuffer::DestroyMembers	RefRankingPackets::~RefRankingPackets
+SR_ShardManager	0x4ec7a0	CReferenceData::ReleaseAll	CReferenceData::~CReferenceData
+SR_ShardManager	0x50a830	CReferenceData::ClearCollectionBook	CReferenceData::ClearCollectionBook
+SR_ShardManager	0x65b810	CReferenceData::GetShardContentConfigInt32	CReferenceData::GetShardContentConfigInt32
+SR_ShardManager	0x50a9b0	CReferenceData::ctor	CReferenceData::CReferenceData (+ CReferenceDataInstance)
+SR_ShardManager	0x4a8f10	CStreamBuffer::ctor	RefRankingPackets::RefRankingPackets
+SR_ShardManager	0x50eb40	RefMagicOptData::ctor	RefMagicOptTables::RefMagicOptTables
+SR_ShardManager	0x519b30	RefData_InitLevelBandMap_519B30	RefMagicOptTables::RefMagicOptTables
+SR_ShardManager	0x4f87f0	RefMagicOptData::dtor	RefMagicOptTables::~RefMagicOptTables
+SR_ShardManager	0x50b450	CRefCharGen::ctor	CRefCharGen::CRefCharGen
+SR_ShardManager	0x4ef0e0	CRefCharGen::dtor	CRefCharGen::~CRefCharGen
+SR_ShardManager	0x4ec720	CStreamBuffer::vf00	CStreamBuffer::~CStreamBuffer
