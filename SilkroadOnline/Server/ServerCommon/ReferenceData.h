@@ -130,6 +130,53 @@ int RefRow_Read(CRefRow& row, RefTriggerConditionParam& r);
 int RefRow_Read(CRefRow& row, RefTriggerActionParam& r);
 int RefRow_Read(CRefRow& row, RefGameWorldGroupConfig& r);
 
+// The part of a _RefGameWorldNPC row kept per key (76 bytes, the vector element of
+// CReferenceData::m_mapGameWorldNPC). Column names are not known.
+struct RefGameWorldNPCEntry
+{
+    std::string      str00;                      // +0
+    WORD             aw1C[4];                    // +1C
+    DWORD            adw24[10];                  // +24
+};
+
+C_ASSERT(sizeof(RefGameWorldNPCEntry) == 76);
+
+// Parsed _RefGameWorldNPC row (108 bytes, no Service column): InitMembers 0x4a6540 /
+// DestroyMembers 0x4a6660.
+struct RefGameWorldNPC
+{
+    int                     ID;                  // +0
+    std::string             strKey;              // +4   key of the map
+    RefGameWorldNPCEntry    Entry;               // +20
+};
+
+C_ASSERT(sizeof(RefGameWorldNPC) == 108);
+
+// Parsed _RefGame_World_Config row (116 bytes): InitMembers 0x4a67e0 / DestroyMembers 0x4a68d0.
+struct RefGameWorldConfig
+{
+    int              ID;                         // +0
+    std::string      GroupCodeName128;           // +4   key of the map
+    std::string      ValueCodeName128;           // +20
+    std::string      Value;                      // +3C
+    std::string      Type;                       // +58
+};
+
+C_ASSERT(sizeof(RefGameWorldConfig) == 116);
+
+// Parsed _RefObjCharExtraSkill row (84 bytes).
+struct RefObjCharExtraSkill
+{
+    int              RefObjID;                   // +0
+    int              aSkillID[20];               // +4
+};
+
+C_ASSERT(sizeof(RefObjCharExtraSkill) == 84);
+
+int RefRow_Read(CRefRow& row, RefGameWorldNPC& r);               // 0x498700
+int RefRow_Read(CRefRow& row, RefGameWorldConfig& r);            // 0x498930
+int RefRow_Read(CRefRow& row, RefObjCharExtraSkill& r);          // 0x4989d0
+
 // Readers of the siege tables (CDBRecord records): copy the record columns into the row. The
 // return value is what the loader tests (Service, or the key column).
 int RefRec_Read(const CRefSiegeFortress& rec, RefSiegeFortress& r);                    // 0x497ea0
@@ -183,6 +230,10 @@ public:
     typedef std::map<DWORD, RefSiegeDungeonData*>               RefSiegeDungeonMap;
     typedef std::multimap<int, RefSiegeQuest*>                  RefSiegeQuestMap;
     typedef std::multimap<int, RefSiegeQuestRewardData*>        RefSiegeQuestRewardMap;
+    typedef std::vector<RefGameWorldNPCEntry>                   RefGameWorldNPCVector;
+    typedef std::map<std::string, RefGameWorldNPCVector>        RefGameWorldNPCMap;
+    typedef std::map<int, RefObjCharExtraSkill*>                RefObjCharExtraSkillMap;
+    typedef std::map<std::string, RefGameWorldConfig*>          RefGameWorldConfigMap;
 
     // Static object of the original (dynamic initializer 0x50a9b0): sets g_pReferenceData.
     CReferenceData();
@@ -220,7 +271,10 @@ public:
     RefSiegeQuestRewardMap      m_mmapSiegeQuestReward;             // +A80  by QuestID
     BYTE                        m_abA8C[0xC];                       // +A8C  (not ported yet)
     RefShardContentConfigMap    m_mapShardContentConfig;            // +A98  by CodeName128
-    BYTE                        m_abAA4[0xE4];                      // +AA4  (not ported yet)
+    RefGameWorldNPCMap          m_mapGameWorldNPC;                  // +AA4
+    RefObjCharExtraSkillMap     m_mapObjCharExtraSkill;             // +AB0  by RefObjID
+    RefGameWorldConfigMap       m_mapGameWorldConfig;               // +ABC  by GroupCodeName128
+    BYTE                        m_abAC8[0xC0];                      // +AC8  (not ported yet)
     RefUIStringMap              m_mapUIString;                      // +B88  by GroupCodeName128
     RefTriggerBindMap           m_mmapGameWorldBindTriggerCategory; // +B94
     RefTriggerCategoryMap       m_mapTriggerCategory;               // +BA0
@@ -248,6 +302,8 @@ C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortressBattleRank) == 0xA24);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSiegeLvlSummonMonster) == 0xA44);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mmapSiegeQuestReward) == 0xA80);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapShardContentConfig) == 0xA98);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldNPC) == 0xAA4);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldConfig) == 0xABC);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapUIString) == 0xB88);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldGroupConfig) == 0xC54);
 C_ASSERT(sizeof(CReferenceData) == 0xC60);

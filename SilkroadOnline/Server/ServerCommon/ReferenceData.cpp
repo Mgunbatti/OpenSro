@@ -167,6 +167,34 @@ int RefRow_Read(CRefRow& row, RefGameWorldGroupConfig& r)
                                    r.Type);
 }
 
+int RefRow_Read(CRefRow& row, RefGameWorldNPC& r)
+{
+    row >> r.ID >> r.strKey >> r.Entry.str00;
+    for (int i = 0; i < 4; ++i)
+        row >> r.Entry.aw1C[i];
+    for (int i = 0; i < 10; ++i)
+        row >> r.Entry.adw24[i];
+    return r.ID;
+}
+
+int RefRow_Read(CRefRow& row, RefGameWorldConfig& r)
+{
+    if (!row.Service())
+        return 0;
+    row >> r.ID >> r.GroupCodeName128 >> r.ValueCodeName128 >> r.Value >> r.Type;
+    return r.ID;
+}
+
+// The row is read whatever the Service column says; Service is the result.
+int RefRow_Read(CRefRow& row, RefObjCharExtraSkill& r)
+{
+    DWORD dwService;
+    row >> dwService >> r.RefObjID;
+    for (int i = 0; i < 20; ++i)
+        row >> r.aSkillID[i];
+    return (int)dwService;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Siege table readers: the columns are members of the CDBRecord record (the data part of the
 // record class has the layout of the row), so the readers are copies.
@@ -412,6 +440,33 @@ int RefData_LoadSiegeQuestReward(CReferenceData* pData, CDBRecord* pRecord)
     return 1;
 }
 
+// CRefInstanceGenerator::LoadGameWorldNPC (0x4a63f0): the rows of one key are collected in a
+// vector (copies of the row part after the key).
+int RefData_LoadGameWorldNPC(CReferenceData* pData, CDBRecord* pRecord)
+{
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    RefGameWorldNPC* pRow = new RefGameWorldNPC;
+    if (!RefRow_Read(row, *pRow))
+    {
+        delete pRow;
+        return 1;
+    }
+    CReferenceData::RefGameWorldNPCMap& map = pData->m_mapGameWorldNPC;
+    CReferenceData::RefGameWorldNPCMap::iterator it = map.find(pRow->strKey);
+    if (it == map.end())
+    {
+        CReferenceData::RefGameWorldNPCVector vec;
+        vec.push_back(pRow->Entry);
+        map.insert(std::make_pair(pRow->strKey, vec));
+    }
+    else
+    {
+        it->second.push_back(pRow->Entry);
+    }
+    // BUG(SM-010): the parsed row is copied and never freed.
+    return 1;
+}
+
 // A table whose builder is not ported yet: nothing is built and the build goes on.
 static int RefData_BuildPending(CReferenceData*, RefTableEntry*, unsigned int)
 {
@@ -475,7 +530,13 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, P,                                                                   // 0x58
     REF_KEYED(RefShardContentConfig, RefShardContentConfigMap, m_mapShardContentConfig,
               std::string, CodeName128),                                    // 0x5A
-    P, P, P, P, RefData_BuildAlchemyMeritPending,                           // 0x5B
+    P,                                                                      // 0x5B
+    REF_LOADED(RefData_LoadGameWorldNPC),
+    REF_KEYED(RefObjCharExtraSkill, RefObjCharExtraSkillMap, m_mapObjCharExtraSkill, int,
+              RefObjID),
+    REF_KEYED(RefGameWorldConfig, RefGameWorldConfigMap, m_mapGameWorldConfig, std::string,
+              GroupCodeName128),                                            // 0x5E
+    RefData_BuildAlchemyMeritPending,
     P, P, P, P, P, P, P, P,                                                 // 0x60
     P, P,                                                                   // 0x68
     REF_KEYED(RefUIString, RefUIStringMap, m_mapUIString, std::string, GroupCodeName128),
@@ -545,6 +606,9 @@ CReferenceData::~CReferenceData()
     RefData_DeleteValues(m_mapSiegeDungeon);
     RefData_DeleteValues(m_mmapSiegeQuest);
     RefData_DeleteValues(m_mmapSiegeQuestReward);
+    m_mapGameWorldNPC.clear();
+    RefData_DeleteValues(m_mapObjCharExtraSkill);
+    RefData_DeleteValues(m_mapGameWorldConfig);
     RefData_DeleteValues(m_mapShardContentConfig);
     RefData_DeleteValues(m_mapUIString);
     RefData_DeleteValues(m_mmapGameWorldBindTriggerCategory);
