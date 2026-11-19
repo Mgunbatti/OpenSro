@@ -19,8 +19,10 @@ enum
     MSG_PARTY_ACK               = 0xB866,
     MSG_PARTY_MATCH_JOIN_REQ    = 0x706D,
     MSG_PARTY_MATCH_INVITE_REQ  = 0x7D1B,
+    MSG_PARTY_MATCH_EXPIRED     = 0x386F,
 
     // result codes
+    PARTY_ERR_MATCH_PARTY_FULL  = 0x2C08,
     PARTY_ERR_ALREADY_IN_PARTY  = 0x2C09,
     PARTY_ERR_DISBANDED         = 0x2C0B,
     PARTY_ERR_NO_PARTY          = 0x2C0D,
@@ -30,7 +32,9 @@ enum
     PARTY_ERR_FULL_8            = 0x2C13,
     PARTY_ERR_FULL_4            = 0x2C14,
     PARTY_ERR_TARGET_IN_PARTY   = 0x2C18,
+    PARTY_ERR_ENTRY_EXISTS      = 0x2C1B,
     PARTY_ERR_NO_MATCH_ENTRY    = 0x2C1C,
+    PARTY_ERR_NOT_ENTRY_MASTER  = 0x2C1D,
     PARTY_ERR_LEVEL             = 0x2C1E,
     PARTY_ERR_JOIN_PENDING      = 0x2C1F,
     PARTY_ERR_MATCH_TYPE        = 0x2C20,
@@ -81,9 +85,25 @@ C_ASSERT(sizeof(Party) == 28);
 // An entry of the party matching board (56 bytes, CChunkAllocatorST<PartyMatchEntry>).
 struct PartyMatchEntry
 {
+    // PartyMatchEntry::ctor (0x454910, PartyMatchEntry::Init 0x455b60): empty title, settings
+    // and IDs zero; the party, master, time and pending flag are left alone. The destructor
+    // (0x4535f0 / 0x450920) only frees the title.
+    PartyMatchEntry()
+    {
+        m_strTitle.clear();
+        m_byMaxLevel = 0;
+        m_byMinLevel = 0;
+        m_byPurpose = 0;
+        m_byPartyType = 0;
+        m_dwPartyID = 0;
+        m_dwID = 0;
+    }
+
     // PartyMatchEntry::Reset (0x44dec0)
     void Reset();
-    // ID, +0x30, the master's name, the member count and the settings (0x44f640). FALSE when the
+    // PartyMatchEntry_ReadFromMsg (0x455970): ID, party ID, type, purpose, levels, title.
+    void ReadFromMsg(CMsg* pMsg);
+    // ID, registration time, the master's name, the member count and the settings (0x44f640). FALSE when the
     // master is not online (nothing written) or the party has lost its master (partly written).
     BOOL WriteToMsg(CMsg* pMsg);
 
@@ -96,7 +116,7 @@ struct PartyMatchEntry
     std::string m_strTitle;         // +0x0C
     Party*      m_pParty;           // +0x28
     DWORD       m_dwMasterJID;      // +0x2C
-    DWORD       m_dw30;             // +0x30
+    DWORD       m_dwRegTime;        // +0x30 time() of the registration / last change
     DWORD       m_bJoinPending;     // +0x34
 };
 
@@ -149,13 +169,38 @@ public:
     // The answer of the entry's master (trs_party_job, 0x44fbe0).
     void OnPartyMatchJoinAnswer(trs_party_job* pJob, BYTE byAnswer);
 
-    // Provided by SM_social4 (0x450680..0x451630)
+    // Party matching board (0x4504c0..0x451630)
+
+    // Every tick (CMainProcess_TickPartyMatchExpiry): entries without a pending join that are
+    // older than an hour are removed, their master gets 0x386F (0x4504c0).
+    void ExpireMatchEntries();
+    // Subtypes 10..13 of 0x7866 (0x450680, 0x450990, 0x450ba0, 0x450d20)
     void OnRegisterPartyMatch(CMsg* pMsg);
     void OnModifyPartyMatch(CMsg* pMsg);
     void OnDeletePartyMatch(CMsg* pMsg);
     void OnPartyMatchList(CMsg* pMsg);
-    void RemoveMatchEntry(CUser* pUser, DWORD dwEntryID);
+    // The entry of pUser's party; pUser must be its master (0x451110). 1 or an error code.
+    WORD RegisterMatchEntryForParty(DWORD* pdwEntryID, CUser* pUser,
+                                    const PartyMatchEntry* pSettings);
+    // The entry of a user without party; strName goes to the user (0x451290).
+    WORD AddMatchEntry(DWORD* pdwEntryID, const PartyMatchEntry* pSettings, CUser* pUser,
+                       const std::string& strName);
+    // 0x4513c0
+    WORD ModifyMatchEntry(const PartyMatchEntry* pSettings, CUser* pUser);
+    // 0x451490
+    WORD RemoveMatchEntry(CUser* pUser, DWORD dwEntryID);
+    // CUser::Reset (0x451590)
+    void OnCharLogout(CUser* pUser, DWORD dwEntryID);
+    // The list pages of the board, 23 entries per message; the entry count of a page is kept
+    // in its opcode field (0x451630).
     void RebuildMatchListCache();
+    // CPartyManager_NextMatchSerial (0x44def0)
+    DWORD NextMatchSerial()
+    {
+        if (++m_dwMatchSerial == 0)
+            m_dwMatchSerial = 1;
+        return m_dwMatchSerial;
+    }
 
 public:
     DWORD                               m_dwPartyIDCounter;     // +0x04
@@ -164,7 +209,7 @@ public:
     DWORD                               m_dwMatchSerial;        // +0x8C (not initialised)
     PartyMatchMap                       m_mapMatchEntry;        // +0x90
     CChunkAllocatorST<PartyMatchEntry>  m_MatchEntryPool;       // +0x9C
-    std::vector<CMsg*>                  m_vecMatchListCache;    // +0xF8 (element type: SM_social4)
+    std::vector<CMsg*>                  m_vecMatchListCache;    // +0xF8 list pages
 };
 
 C_ASSERT(FIELD_OFFSET(CPartyManager, m_hashParty) == 0x08);
@@ -174,8 +219,8 @@ C_ASSERT(FIELD_OFFSET(CPartyManager, m_mapMatchEntry) == 0x90);
 C_ASSERT(FIELD_OFFSET(CPartyManager, m_MatchEntryPool) == 0x9C);
 C_ASSERT(sizeof(CPartyManager) == 0x108);
 
-// Provided by SM_social4 (0x4558e0)
-void PartyMatchJoinRequest_ReadFromMsg(CMsg* pMsg, sPartyInfo* pInfo);
+// 0x4558e0: entry ID, two DWORDs, the party type and the member info; returns the member mask.
+BYTE PartyMatchJoinRequest_ReadFromMsg(CMsg* pMsg, sPartyInfo* pInfo);
 
 // g_pPartyManager (0x8a892c); GetSingleton_CPartyManager (0x418440) asserts it.
 extern CPartyManager* g_pPartyManager;

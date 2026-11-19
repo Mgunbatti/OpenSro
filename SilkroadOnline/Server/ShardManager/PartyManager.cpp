@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "BSLib/Util/TimeSpan.h"
 #include "BSNet/NetEngine.h"
 
 CPartyManager* g_pPartyManager = NULL;
@@ -224,7 +225,7 @@ void PartyMatchEntry::Reset()
 {
     m_pParty = NULL;
     m_dwMasterJID = 0;
-    m_dw30 = 0;
+    m_dwRegTime = 0;
     m_bJoinPending = 0;
     m_strTitle.clear();
     m_byMaxLevel = 0;
@@ -242,7 +243,7 @@ BOOL PartyMatchEntry::WriteToMsg(CMsg* pMsg)
     CUser* pMaster = GetSingleton_CClientManager()->FindUserByJID(m_dwMasterJID);
     if (!pMaster)
         return FALSE;
-    *pMsg << m_dwID << m_dw30;
+    *pMsg << m_dwID << m_dwRegTime;
 
     const char* pszName;
     if (m_byPurpose == 2 || m_byPurpose == 3)
@@ -259,7 +260,7 @@ BOOL PartyMatchEntry::WriteToMsg(CMsg* pMsg)
         }
         else
         {
-            const std::string& strName = pMaster->GetString258();
+            const std::string& strName = pMaster->GetMatchName();
             if (strName.empty())
                 BSAssertFail();
             pszName = strName.c_str();
@@ -874,4 +875,433 @@ void CPartyManager::OnPartyMatchJoinAnswer(trs_party_job* pJob, BYTE byAnswer)
     pParty->WriteToMsg(pNotify);
     SendToShardAndFree(pNotify, 0);
     RebuildMatchListCache();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Party matching board
+
+namespace
+{
+
+// Error reply of the board requests: the rest of the request is dropped, then 2 and the code.
+void SendMatchError(CMsg* pMsg, CMsg* pReply, DWORD dwSessionID, WORD wCode)
+{
+    pMsg->SkipRemaining();
+    *pReply << (BYTE)2 << wCode;
+    SendAndRelease(dwSessionID, pReply);
+}
+
+void SendMatchOk(CMsg* pReply, DWORD dwSessionID, DWORD dwEntryID)
+{
+    *pReply << (BYTE)1 << dwEntryID;
+    SendAndRelease(dwSessionID, pReply);
+}
+
+// The inlined pool free of the board: the entry is reset first.
+void FreeMatchEntry(CChunkAllocatorST<PartyMatchEntry>& pool, PartyMatchEntry* pEntry)
+{
+    pEntry->Reset();
+    pool.Free(pEntry);
+}
+
+}
+
+BYTE PartyMatchJoinRequest_ReadFromMsg(CMsg* pMsg, sPartyInfo* pInfo)
+{
+    *pMsg >> pInfo->m_dwMatchEntryID >> pInfo->m_dw04 >> pInfo->m_dw08 >> pInfo->m_byPartyType;
+    return sPartyMemberInfo_Read(&pInfo->m_Member, pMsg);
+}
+
+void PartyMatchEntry::ReadFromMsg(CMsg* pMsg)
+{
+    *pMsg >> m_dwID >> m_dwPartyID >> m_byPartyType >> m_byPurpose >> m_byMinLevel
+          >> m_byMaxLevel >> m_strTitle;
+}
+
+void CPartyManager::ExpireMatchEntries()
+{
+    BOOL bExpired = FALSE;
+    CDateTime dtNow(_time32(NULL));
+    PartyMatchMap::iterator it = m_mapMatchEntry.begin();
+    while (it != m_mapMatchEntry.end())
+    {
+        PartyMatchEntry* pEntry = it->second;
+        if (!pEntry)
+            BSAssertFail();
+        if (pEntry->m_bJoinPending ||
+            (dtNow - CDateTime((__time32_t)pEntry->m_dwRegTime)).GetTotalMinutes() <= 60)
+        {
+            ++it;
+            continue;
+        }
+        bExpired = TRUE;
+        CUser* pMaster = GetSingleton_CClientManager()->FindUserByJID(pEntry->m_dwMasterJID);
+        if (!pMaster)
+        {
+            BSAssertFail();
+            ++it;
+            continue;
+        }
+        PartyMatchMap::iterator itNext = it;
+        ++itNext;
+        CMsg* pNotify = g_pNetEngine->AllocMsg(FALSE);
+        pNotify->SetOpcode(MSG_PARTY_MATCH_EXPIRED);
+        *pNotify << pMaster->GetJID();
+        SendAndRelease(pMaster->GetSessionID(), pNotify);
+        if (RemoveMatchEntry(pMaster, pEntry->m_dwID) == 1)
+            it = itNext;
+        else
+            ++it;
+    }
+    if (bExpired)
+        RebuildMatchListCache();
+}
+
+void CPartyManager::OnRegisterPartyMatch(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwJID;
+    *pMsg >> dwRequestID >> dwJID;
+    PartyMatchEntry settings;
+    DWORD dwEntryID = 0;
+    CMsg* pReply = MakeReplyB866(dwRequestID);
+    if (!pReply)
+        BSAssertFail();
+
+    CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+    if (!pUser)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_NO_USER);
+        return;
+    }
+    if (pUser->GetMatchEntryID())
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_ENTRY_EXISTS);
+        return;
+    }
+    settings.ReadFromMsg(pMsg);
+
+    WORD wResult;
+    DWORD dwPartyID = pUser->GetPartyMemberInfo().m_dwPartyID;
+    if (dwPartyID)
+    {
+        // BUG(SM-270): a party ID without party (FindParty NULL) is dereferenced.
+        if (FindParty(dwPartyID)->m_byType != settings.m_byPartyType)
+        {
+            SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_MATCH_TYPE);
+            return;
+        }
+        wResult = RegisterMatchEntryForParty(&dwEntryID, pUser, &settings);
+    }
+    else
+    {
+        std::string strName;
+        *pMsg >> strName;
+        wResult = AddMatchEntry(&dwEntryID, &settings, pUser, strName);
+    }
+    if (wResult != 1)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, wResult);
+        return;
+    }
+    SendMatchOk(pReply, dwSessionID, dwEntryID);
+    RebuildMatchListCache();
+}
+
+void CPartyManager::OnModifyPartyMatch(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwJID;
+    *pMsg >> dwRequestID >> dwJID;
+    PartyMatchEntry settings;
+    CMsg* pReply = MakeReplyB866(dwRequestID);
+    if (!pReply)
+        BSAssertFail();
+
+    CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+    if (!pUser)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_NO_USER);
+        return;
+    }
+    if (!pUser->GetMatchEntryID())
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_NO_MATCH_ENTRY);
+        return;
+    }
+    settings.ReadFromMsg(pMsg);
+    WORD wResult = ModifyMatchEntry(&settings, pUser);
+    if (wResult != 1)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, wResult);
+        return;
+    }
+    SendMatchOk(pReply, dwSessionID, pUser->GetMatchEntryID());
+    RebuildMatchListCache();
+}
+
+void CPartyManager::OnDeletePartyMatch(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    DWORD dwRequestID, dwJID, dwEntryID;
+    *pMsg >> dwRequestID >> dwJID >> dwEntryID;
+    CMsg* pReply = MakeReplyB866(dwRequestID);
+    if (!pReply)
+        BSAssertFail();
+
+    CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+    if (!pUser)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_NO_USER);
+        return;
+    }
+    WORD wResult = RemoveMatchEntry(pUser, dwEntryID);
+    if (wResult != 1)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, wResult);
+        return;
+    }
+    SendMatchOk(pReply, dwSessionID, dwEntryID);
+    RebuildMatchListCache();
+}
+
+void CPartyManager::OnPartyMatchList(CMsg* pMsg)
+{
+    DWORD dwSessionID = pMsg->m_dwSessionID;
+    BYTE byPage = 0;
+    PartyMatchEntry* pOwnEntry = NULL;
+    DWORD dwRequestID, dwJID;
+    *pMsg >> dwRequestID >> dwJID >> byPage;
+    CMsg* pReply = MakeReplyB866(dwRequestID);
+    if (!pReply)
+        BSAssertFail();
+
+    CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+    if (!pUser)
+    {
+        SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_NO_USER);
+        return;
+    }
+
+    // The entry of the user, or the one of its party's master, goes in front of the page.
+    DWORD dwEntryID = pUser->GetMatchEntryID();
+    if (!dwEntryID && pUser->GetPartyMemberInfo().m_dwPartyID)
+    {
+        // BUG(SM-270): a party ID without party (FindParty NULL) is dereferenced.
+        Party* pParty = FindParty(pUser->GetPartyMemberInfo().m_dwPartyID);
+        CUser* pMaster = GetSingleton_CClientManager()->FindUserByJID(pParty->m_dwMasterJID);
+        if (!pMaster)
+            BSAssertFail();
+        dwEntryID = pMaster->GetMatchEntryID();
+    }
+    if (dwEntryID)
+    {
+        PartyMatchMap::iterator it = m_mapMatchEntry.find(dwEntryID);
+        if (it == m_mapMatchEntry.end())
+        {
+            SendMatchError(pMsg, pReply, dwSessionID, PARTY_ERR_NO_PARTY);
+            return;
+        }
+        pOwnEntry = it->second;
+        if (!pOwnEntry)
+            BSAssertFail();
+    }
+
+    DWORD dwPages = (DWORD)m_vecMatchListCache.size();
+    if (!dwPages)
+    {
+        *pReply << (BYTE)1 << (BYTE)0 << (BYTE)0 << (BYTE)0;
+    }
+    else
+    {
+        if (dwPages >= 0xFF)
+            BSAssertFail();
+        if (dwPages <= byPage)
+            byPage = 0;
+        CMsg* pPage = m_vecMatchListCache.at(byPage);
+        if (pPage->m_nCapacity >= MSG_HEADER_SIZE)
+            pPage->m_wReadPos = MSG_HEADER_SIZE;
+        BYTE byCount = (BYTE)pPage->GetOpcode();
+        if (pOwnEntry)
+        {
+            ++byCount;
+            *pReply << (BYTE)1 << (BYTE)dwPages << byPage << byCount;
+            pOwnEntry->WriteToMsg(pReply);
+        }
+        else
+        {
+            *pReply << (BYTE)1 << (BYTE)dwPages << byPage << byCount;
+        }
+        pReply->CopyPayloadFrom(pPage, 1);
+    }
+    SendAndRelease(dwSessionID, pReply);
+}
+
+WORD CPartyManager::RegisterMatchEntryForParty(DWORD* pdwEntryID, CUser* pUser,
+                                               const PartyMatchEntry* pSettings)
+{
+    if (!pUser)
+        BSAssertFail();
+    DWORD dwPartyID = pUser->GetPartyMemberInfo().m_dwPartyID;
+    if (!dwPartyID)
+        return PARTY_ERR_NO_PARTY;
+    Party* pParty = GetSingleton_CPartyManager()->FindParty(dwPartyID);
+    if (!pParty)
+        return PARTY_ERR_NO_PARTY;
+    if (pParty->m_dwMasterJID != pUser->GetJID())
+        return PARTY_ERR_NOT_ENTRY_MASTER;
+    if (pParty->IsFull())
+        return PARTY_ERR_MATCH_PARTY_FULL;
+    *pdwEntryID = NextMatchSerial();
+    if (m_mapMatchEntry.find(*pdwEntryID) != m_mapMatchEntry.end())
+        return PARTY_ERR_ENTRY_EXISTS;
+
+    PartyMatchEntry* pEntry = m_MatchEntryPool.Alloc();
+    if (!pEntry)
+        BSAssertFail();
+    pEntry->m_byPartyType = pParty->m_byType;
+    pEntry->m_byPurpose = pSettings->m_byPurpose;
+    pEntry->m_byMinLevel = pSettings->m_byMinLevel;
+    pEntry->m_byMaxLevel = pSettings->m_byMaxLevel;
+    pEntry->m_strTitle.assign(pSettings->m_strTitle, 0, std::string::npos);
+    pEntry->m_dwPartyID = pUser->GetPartyMemberInfo().m_dwPartyID;
+    pEntry->m_dwID = *pdwEntryID;
+    pEntry->m_dwMasterJID = pUser->GetJID();
+    pEntry->m_pParty = pParty;
+    _time32((__time32_t*)&pEntry->m_dwRegTime);
+    pEntry->m_bJoinPending = 0;
+    pUser->SetMatchEntryID(*pdwEntryID);
+    m_mapMatchEntry.insert(PartyMatchMap::value_type(*pdwEntryID, pEntry));
+    return 1;
+}
+
+WORD CPartyManager::AddMatchEntry(DWORD* pdwEntryID, const PartyMatchEntry* pSettings,
+                                  CUser* pUser, const std::string& strName)
+{
+    if (!pUser)
+        BSAssertFail();
+    *pdwEntryID = NextMatchSerial();
+    if (m_mapMatchEntry.find(*pdwEntryID) != m_mapMatchEntry.end())
+        return PARTY_ERR_ENTRY_EXISTS;
+
+    PartyMatchEntry* pEntry = m_MatchEntryPool.Alloc();
+    if (!pEntry)
+        BSAssertFail();
+    pEntry->m_byPartyType = pSettings->m_byPartyType;
+    pEntry->m_byPurpose = pSettings->m_byPurpose;
+    pEntry->m_byMinLevel = pSettings->m_byMinLevel;
+    pEntry->m_byMaxLevel = pSettings->m_byMaxLevel;
+    pEntry->m_strTitle.assign(pSettings->m_strTitle, 0, std::string::npos);
+    pEntry->m_dwPartyID = 0;
+    pEntry->m_dwID = *pdwEntryID;
+    pEntry->m_dwMasterJID = pUser->GetJID();
+    pEntry->m_pParty = NULL;
+    _time32((__time32_t*)&pEntry->m_dwRegTime);
+    pEntry->m_bJoinPending = 0;
+    pUser->SetMatchEntryID(*pdwEntryID);
+    pUser->SetMatchName(strName);
+    m_mapMatchEntry.insert(PartyMatchMap::value_type(*pdwEntryID, pEntry));
+    return 1;
+}
+
+WORD CPartyManager::ModifyMatchEntry(const PartyMatchEntry* pSettings, CUser* pUser)
+{
+    if (!pUser)
+        BSAssertFail();
+    PartyMatchMap::iterator it = m_mapMatchEntry.find(pSettings->m_dwID);
+    if (it == m_mapMatchEntry.end())
+        return PARTY_ERR_NO_MATCH_ENTRY;
+    PartyMatchEntry* pEntry = it->second;
+    if (!pEntry)
+        BSAssertFail();
+    if (pEntry->m_dwMasterJID != pUser->GetJID())
+        return PARTY_ERR_NOT_ENTRY_MASTER;
+    if (pEntry->m_byPartyType != pSettings->m_byPartyType)
+        return 5;
+    pEntry->m_byPurpose = pSettings->m_byPurpose;
+    pEntry->m_byMinLevel = pSettings->m_byMinLevel;
+    pEntry->m_byMaxLevel = pSettings->m_byMaxLevel;
+    pEntry->m_strTitle.assign(pSettings->m_strTitle, 0, std::string::npos);
+    _time32((__time32_t*)&pEntry->m_dwRegTime);
+    return 1;
+}
+
+WORD CPartyManager::RemoveMatchEntry(CUser* pUser, DWORD dwEntryID)
+{
+    PartyMatchMap::iterator it = m_mapMatchEntry.find(dwEntryID);
+    if (it == m_mapMatchEntry.end())
+        return PARTY_ERR_NO_MATCH_ENTRY;
+    PartyMatchEntry* pEntry = it->second;
+    if (pUser->GetJID() != pEntry->m_dwMasterJID)
+        return PARTY_ERR_NOT_ENTRY_MASTER;
+    if (pEntry->m_pParty && pEntry->m_pParty->m_dwID != pUser->GetPartyMemberInfo().m_dwPartyID)
+        return PARTY_ERR_NO_PARTY;
+    pUser->SetMatchEntryID(0);
+    FreeMatchEntry(m_MatchEntryPool, pEntry);
+    m_mapMatchEntry.erase(it);
+    return 1;
+}
+
+void CPartyManager::OnCharLogout(CUser* pUser, DWORD dwEntryID)
+{
+    if (!dwEntryID)
+        return;
+    PartyMatchMap::iterator it = m_mapMatchEntry.find(dwEntryID);
+    if (it == m_mapMatchEntry.end())
+        return;
+    PartyMatchEntry* pEntry = it->second;
+    if (pUser->GetJID() != pEntry->m_dwMasterJID)
+        return;
+    pUser->SetMatchEntryID(0);
+    FreeMatchEntry(m_MatchEntryPool, pEntry);
+    m_mapMatchEntry.erase(it);
+    RebuildMatchListCache();
+}
+
+void CPartyManager::RebuildMatchListCache()
+{
+    for (DWORD i = 0; i < m_vecMatchListCache.size(); ++i)
+        g_pNetEngine->ReleaseMsg(m_vecMatchListCache[i]);
+    m_vecMatchListCache.clear();
+
+    DWORD dwLeft = (DWORD)m_mapMatchEntry.size();
+    if (!dwLeft)
+        return;
+    BYTE byCount = 0;
+    CMsg* pPage = NULL;
+    PartyMatchMap::iterator it = m_mapMatchEntry.begin();
+    while (it != m_mapMatchEntry.end())
+    {
+        // BUG(SM-272): when every entry so far failed, the empty page is dropped without release.
+        if (!byCount)
+        {
+            pPage = g_pNetEngine->AllocMsg(FALSE);
+            if (!pPage)
+                BSAssertFail();
+        }
+        PartyMatchEntry* pEntry = it->second;
+        if (!pEntry)
+            BSAssertFail();
+        PartyMatchMap::iterator itNext = it;
+        ++itNext;
+        // BUG(SM-271): an entry that fails after writing its ID and time stays in the page.
+        if (pEntry->WriteToMsg(pPage) == TRUE)
+        {
+            ++byCount;
+        }
+        else
+        {
+            // The master keeps the entry ID (CUser +0x24C).
+            FreeMatchEntry(m_MatchEntryPool, pEntry);
+            m_mapMatchEntry.erase(it);
+        }
+        --dwLeft;
+        it = itNext;
+        if (byCount == 23 || !dwLeft)
+        {
+            pPage->SetOpcode(byCount);
+            m_vecMatchListCache.push_back(pPage);
+            byCount = 0;
+        }
+    }
 }

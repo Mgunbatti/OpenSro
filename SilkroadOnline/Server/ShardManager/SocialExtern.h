@@ -201,7 +201,9 @@ public:
     DWORD GetMatchEntryID() const;              // +0x24C
     void SetMatchEntryID(DWORD dwID);
     BYTE GetByte250() const;                    // +0x250
-    const std::string& GetString258() const;    // +0x258
+    // +0x254: the name a user without party registers on the party matching board with.
+    const std::string& GetMatchName() const;
+    void SetMatchName(const std::string& strName);
 
     // Character_GetNameCStr_404360
     const char* GetCharName() const
