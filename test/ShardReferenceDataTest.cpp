@@ -513,6 +513,19 @@ static void TestFindRefObj(CReferenceData& data)
           data.FindGameWorldByCodeName("INS_TEMPLE_SETH") == data.FindGameWorld(3));
     CHECK(data.BuildFromTable(&gameWorld.entry, 0x3D) == 0);
 
+    // copies into vectors: an instance world region without WorldID is freed
+    FakeTable<CRefInstanceWorldRegion> worldRegion;
+    worldRegion.AddRecord()->WorldID = 3;
+    worldRegion.AddRecord()->WorldID = 0;
+    CHECK(data.BuildFromTable(&worldRegion.entry, 0x3E) == 1);
+    CHECK(data.m_vecInstanceWorldRegion.size() == 1 &&
+          data.m_vecInstanceWorldRegion[0]->WorldID == 3);
+    FakeTable<CRefLevel> level;
+    level.AddRecord()->Lvl = 1;
+    level.AddRecord()->Exp_M = 9;               // no Lvl: asserts, kept
+    CHECK(data.BuildFromTable(&level.entry, 0x00) == 1);
+    CHECK(data.m_vecLevel.size() == 2 && data.m_vecLevel[1]->Exp_M == 9);
+
     // gacha NPCs by NPC_ID
     FakeTable<CRefGachaNpcMap> gachaNpc;
     CRefGachaNpcMap* pNpc = gachaNpc.AddRecord();
