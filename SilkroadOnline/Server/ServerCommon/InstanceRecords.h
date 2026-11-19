@@ -24,9 +24,10 @@
 // a column of an update group marks its dirty bit. InitData (slot 5) resets the columns the
 // original resets, in its order.
 
-// The parsed _RefObjCommon row of the reference data (SM_ref, not part of this file). The
-// instance records only keep a pointer to it and read a few fields by their offsets.
-struct RefObjCommonRow;
+// The parsed _RefObjCommon row of the reference data (RefDataObj.h, not part of this file).
+// The instance records only keep a pointer to it and read a few fields by their offsets.
+class RefObjCommon;
+typedef RefObjCommon RefObjCommonRow;
 
 // RefData_HashFindAt108 (0x42e280) on the CReferenceData singleton (0x8a8944, asserted when not
 // created): the object row of an object id, NULL when there is none. Defined by the reference

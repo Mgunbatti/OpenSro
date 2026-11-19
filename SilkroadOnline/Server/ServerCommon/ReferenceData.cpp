@@ -6,6 +6,7 @@
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataObj.h"
 #include "ServerCommon/RefDataQuest.h"
 #include "ServerFramework/ServerDataExtern.h"
 
@@ -1015,19 +1016,19 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     &RefData_BuildCopyVector<CRefLevel, RefLevelData, &CReferenceData::m_vecLevel>,  // 0x00
     REF_LOADED((RefData_AddRowUnique<CRefClimate, RefClimateData, CReferenceData::RefClimateMap,
                 &CReferenceData::m_mapClimate>)),                           // 0x01
-    P, P, P, P,
+    P, P, RefData_BuildRefSkillMastery, RefData_BuildRefSkill,              // 0x02
     REF_LOADED((RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData,
                 CReferenceData::RefGachaNpcMapMap,
                 &CReferenceData::m_mapGachaNpcMap>)),                       // 0x06
     RefData_BuildMagicOpt,                                                  // 0x07
     RefData_BuildMagicOptAssign,
     REF_LOADED(RefData_LoadMagicOptGroup),
-    P, P, P, P, P, P,                                                       // 0x0A
+    P, RefData_BuildRefObjCommon, P, P, P, P,                               // 0x0A
     P, RefData_BuildItemOptLevel, P, P, P, P, P, P,                         // 0x10
     P, P, P, P, P, P, P, P,                                                 // 0x18
     P, P, P, P, P, P, P, P,                                                 // 0x20
     P, P, P, P, P, P, P, P,                                                 // 0x28
-    P, P, P, P, P, P, P, P,                                                 // 0x30
+    P, P, P, P, P, P, P, RefData_BuildRefCharGenData,                       // 0x30
     RefData_BuildHive,                                                      // 0x38
     REF_KEYED(RefAISkill, RefAISkillMap, m_mmapAISkill, DWORD, TacticsID),  // 0x39
     RefData_BuildTactics,
@@ -1726,17 +1727,6 @@ void RefMagicOptTables::BuildMagicOptAssignTables(CDBRecordList& listRows)
             pSlots->AddUnique(pGroup);
         }
     }
-}
-
-BOOL RefObj_IsEquipItem(const RefObjCommonRow* pObj)
-{
-    if (!pObj)
-    {
-        BSAssertFail();
-        return FALSE;
-    }
-    WORD wTypeID = RefObj_GetTypeID(pObj);
-    return !(wTypeID & 2) && (wTypeID & 0x1C) == 0xC && (wTypeID & 0x60) == 0x20;
 }
 
 MagOptEachLevelSlots* RefData_GetMagicOptAssignForItem(const RefObjCommonRow* pObj)

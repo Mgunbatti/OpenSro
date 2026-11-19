@@ -361,8 +361,9 @@ int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r);
 // RefData_CopyGachaCode (0x4978e0): CodeName128 and GachaSetID; the key is GachaSetID.
 int RefRec_Read(const CRefGachaCode& rec, RefGachaCode& r);
 
-// Opaque _RefObjCommon row (see InstanceRecords.h).
-struct RefObjCommonRow;
+// The _RefObjCommon row (RefDataObj.h).
+class RefObjCommon;
+typedef RefObjCommon RefObjCommonRow;
 
 // _RefSkillMastery row (36 bytes).
 typedef RefSkillMasteryData RefSkillMasteryRow;
@@ -1053,7 +1054,7 @@ BOOL MagOptEachLevel_IsValueInRange(const RefMagicOptGroupByName* pGroup, DWORD 
                                     DWORD dwMLevel);
 // RefMagicOpt::FindLevelEntryById (0x51c8f0): the level of a group with this ID.
 RefMagicOptLevel* RefMagicOpt_FindLevelEntryById(WORD wID, const RefMagicOptGroupByName* pGroup);
-// RefObj_IsEquipItem (0x51ac90).
+// RefObj_IsEquipItem (0x51ac90, RefDataObj.cpp).
 BOOL RefObj_IsEquipItem(const RefObjCommonRow* pObj);
 // RefData_GetMagicOptAssignForItem (0x51acc0): NULL for an item that is no equipment.
 MagOptEachLevelSlots* RefData_GetMagicOptAssignForItem(const RefObjCommonRow* pObj);

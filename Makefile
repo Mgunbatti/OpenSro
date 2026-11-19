@@ -240,7 +240,8 @@ SHARD_INST_OBJS = $(OBJ)\ServerCommon\InstanceRecords.obj
 # SHARD_REFDATA_OBJS: the reference data (CReferenceData, the table builders and row readers).
 # Needs SHARD_REC_OBJS (the siege rows are the data parts of the record classes).
 SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj \
-	$(OBJ)\ServerCommon\RefDataQuest.obj
+	$(OBJ)\ServerCommon\RefDataQuest.obj \
+	$(OBJ)\ServerCommon\RefDataObj.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
