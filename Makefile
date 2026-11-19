@@ -347,28 +347,6 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
-# SR_ShardManager social part 1 (SM_social1): party info, guild / alliance / guild manager and the
-# crest uploader. ServerCommon parts in $(OBJ)\ServerCommon, the shard manager classes in
-# $(OBJ)\ShardManager ("nmake shard_social1" compiles them; nothing links them yet).
-SHARD_SOCIAL1_OBJS = $(OBJ)\ServerCommon\PartyInfo.obj \
-	$(OBJ)\ServerCommon\GuildCommon.obj \
-	$(OBJ)\ShardManager\Guild.obj \
-	$(OBJ)\ShardManager\CrestUploader.obj
-
-shard_social1: $(OBJ)\ServerCommon $(OBJ)\ShardManager $(SHARD_SOCIAL1_OBJS)
-
-$(OBJ)\ShardManager:
-	@if not exist $@ mkdir $@
-
-{SilkroadOnline\Server\ShardManager}.cpp{$(OBJ)\ShardManager}.obj:
-	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
-
-# SR_ShardManager social part 2 (SM_social2): the shard manager's part of the shared guild classes
-# ("nmake shard_social2"; GuildCommon.obj and Guild.obj are in SHARD_SOCIAL1_OBJS).
-SHARD_SOCIAL2_OBJS = $(OBJ)\ShardManager\GuildCommonShard.obj
-
-shard_social2: $(OBJ)\ServerCommon $(OBJ)\ShardManager $(SHARD_SOCIAL1_OBJS) $(SHARD_SOCIAL2_OBJS)
-
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
 $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
 $(OBJ)\FarmManager $(FARM_OBJ)\BSLib $(FARM_OBJ)\BSNet $(FARM_OBJ)\ServerFramework \
@@ -474,10 +452,16 @@ $(OBJ)\ServerCommon:
 {SilkroadOnline\Server\ServerCommon}.cpp{$(OBJ)\ServerCommon}.obj:
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ServerCommon\ $<
 
-# SR_ShardManager messenger, party manager and training camps (SilkroadOnline\Server\ShardManager,
-# SM_social3 / SM_social4). They need classes of other groups (SocialExtern.h); "nmake
-# shard_social" compiles them.
-SHARD_SOCIAL_OBJS = $(OBJ)\ShardManager\Messenger.obj $(OBJ)\ShardManager\PartyManager.obj \
+# SR_ShardManager social classes (SM_social1..4): party info, guilds / alliances / guild manager,
+# crest uploader, messenger, party manager and party matching, training camps, GM levels and
+# votes. ServerCommon parts in $(OBJ)\ServerCommon, the shard manager classes in
+# $(OBJ)\ShardManager. They need classes of other groups (GuildExtern.h, SocialExtern.h);
+# "nmake shard_social" compiles them, nothing links them yet (the exe link will need wininet.lib
+# for CSimpleFTP).
+SHARD_SOCIAL_OBJS = $(OBJ)\ServerCommon\PartyInfo.obj $(OBJ)\ServerCommon\GuildCommon.obj \
+                    $(OBJ)\ShardManager\Guild.obj $(OBJ)\ShardManager\GuildCommonShard.obj \
+                    $(OBJ)\ShardManager\CrestUploader.obj \
+                    $(OBJ)\ShardManager\Messenger.obj $(OBJ)\ShardManager\PartyManager.obj \
                     $(OBJ)\ShardManager\TrainingCamp.obj $(OBJ)\ServerCommon\TrainingCampCommon.obj \
                     $(OBJ)\ShardManager\GMLevelManager.obj $(OBJ)\ShardManager\Vote.obj
 
