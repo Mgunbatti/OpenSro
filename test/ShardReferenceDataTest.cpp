@@ -455,9 +455,9 @@ static void TestFindRefObj(CReferenceData& data)
     CHECK(data.FindRefObj(1234) == pObj && data.FindRefObj(1) == NULL);
     data.m_hashRefObj.erase(1234);
 
-    static BYTE abRegion[0x60];
-    std::string* pstrRegion = new (abRegion + 0x34) std::string("CHINA_JANGAN");
-    data.m_mapRegion[25000] = (RefRegionRow*)abRegion;
+    RefRegionRow region;
+    region.AreaName = "CHINA_JANGAN";
+    data.m_mapRegion[25000] = &region;
     CHECK(strcmp(RefData_GetRegionName(25000), "CHINA_JANGAN") == 0);
     CHECK(strcmp(RefData_GetRegionName(1), "Unknown Region") == 0);
 
@@ -487,14 +487,13 @@ static void TestFindRefObj(CReferenceData& data)
     if (data.m_mapOptionalTeleport.size() == 2)
     {
         RefOptionalTeleport* p = data.m_mapOptionalTeleport[30];
-        CHECK(p->dwRegion == (DWORD)(DWORD_PTR)abRegion && p->Pos_X == 100);
+        CHECK(p->dwRegion == (DWORD)(DWORD_PTR)&region && p->Pos_X == 100);
         CHECK(p->LevelMax == 105 && p->adw34[2] == 7);
         CHECK(data.m_mapOptionalTeleport[31]->dwRegion == 0);
     }
     CHECK(logs.size() == 1 && logs[0].dwFlags == 0x2000001 &&
           logs[0].strText == "Invalid Region!![ID:31][ObjName128:TELEPORT]");
     data.m_mapRegion.clear();
-    pstrRegion->~basic_string();
 
     RefGameWorld world;
     data.m_hashGameWorldByCodeName["INS_TEMPLE_SETH"] = &world;

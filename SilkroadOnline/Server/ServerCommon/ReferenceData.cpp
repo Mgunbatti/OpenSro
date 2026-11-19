@@ -8,6 +8,7 @@
 #include "ServerCommon/InstanceRecords.h"
 #include "ServerCommon/RefDataObj.h"
 #include "ServerCommon/RefDataQuest.h"
+#include "ServerCommon/RefDataTeleport.h"
 #include "ServerFramework/ServerDataExtern.h"
 
 CReferenceData* g_pReferenceData = NULL;
@@ -999,15 +1000,6 @@ static int RefData_BuildItemOptLevel(CReferenceData* pData, RefTableEntry*, unsi
     return pData->LoadByItemOptLevelTables();
 }
 
-// Slot 95 (_RefAlchemyMerit): the empty-table warning of the dispatcher (typo kept); the
-// positions (CRefInstanceGenerator::LoadGameWorldPositions 0x4adb60) are not ported yet.
-static int RefData_BuildAlchemyMeritPending(CReferenceData*, RefTableEntry* pTable, unsigned int)
-{
-    if (pTable->m_listRows.size() == 0)
-        BSMessageBoxPrintf("!!warning!! _RefAlchemyMerit Empty!! 'EquipReslove' will be fail!!");
-    return 1;
-}
-
 #define P RefData_BuildPending
 
 // The switch of CRefInstanceGenerator::BuildFromTable (0x4ac550), one entry per slot.
@@ -1016,7 +1008,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     &RefData_BuildCopyVector<CRefLevel, RefLevelData, &CReferenceData::m_vecLevel>,  // 0x00
     REF_LOADED((RefData_AddRowUnique<CRefClimate, RefClimateData, CReferenceData::RefClimateMap,
                 &CReferenceData::m_mapClimate>)),                           // 0x01
-    P, P, RefData_BuildRefSkillMastery, RefData_BuildRefSkill,              // 0x02
+    RefData_BuildRegionBindAssocServer,                                     // 0x02
+    RefData_BuildRegion,
+    RefData_BuildRefSkillMastery, RefData_BuildRefSkill,
     REF_LOADED((RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData,
                 CReferenceData::RefGachaNpcMapMap,
                 &CReferenceData::m_mapGachaNpcMap>)),                       // 0x06
@@ -1024,7 +1018,10 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     RefData_BuildMagicOptAssign,
     REF_LOADED(RefData_LoadMagicOptGroup),
     P, RefData_BuildRefObjCommon, P, P, P, P,                               // 0x0A
-    P, RefData_BuildItemOptLevel, P, P, P, P, P, P,                         // 0x10
+    P, RefData_BuildItemOptLevel,                                           // 0x10
+    RefData_BuildTeleport,                                                  // 0x12
+    RefData_BuildTeleLink,
+    P, P, P, P,
     P, P, P, P, P, P, P, P,                                                 // 0x18
     P, P, P, P, P, P, P, P,                                                 // 0x20
     RefData_BuildDropGold,                                                  // 0x28
@@ -1087,7 +1084,7 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
               RefObjID),
     REF_KEYED(RefGameWorldConfig, RefGameWorldConfigMap, m_mapGameWorldConfig, std::string,
               GroupCodeName128),                                            // 0x5E
-    RefData_BuildAlchemyMeritPending,
+    RefData_BuildAlchemyMerit,                                              // 0x5F
     REF_LOADED(RefData_LoadServerEvent),                                    // 0x60
     RefData_BuildServerEventReward,
     RefData_BuildServerEventReward,
@@ -2423,6 +2420,5 @@ const char* RefData_GetRegionName(WORD wRegionID)
     RefRegionRow* pRegion = CReferenceData::GetInstance()->FindRegion(wRegionID);
     if (!pRegion)
         return "Unknown Region";
-    return reinterpret_cast<const std::string*>(reinterpret_cast<const BYTE*>(pRegion) + 0x34)
-        ->c_str();
+    return pRegion->AreaName.c_str();
 }

@@ -373,11 +373,80 @@ typedef RefSkillMasteryData RefSkillMasteryRow;
 // Rows of tables whose readers are not ported yet: placeholders of the size the loader
 // allocates. Replace each by the real row when its table is ported.
 
-// _RefRegion (RefData_RecCtor_RefRegion 0x4dd630 / RecDtor 0x4dd520: 3 strings, 2 vectors); the
-// region name is the string at +0x34.
-struct RefRegionRow { BYTE ab[0xB0]; };                    // TODO(type)
-// _RefTeleport (RecDtor 0x4dd380: string, words, vector of owned objects).
-struct RefTeleportRow { BYTE ab[0x4C]; };                  // TODO(type)
+// _RefRegion row (176 bytes, RefData_RecCtor_RefRegion 0x4dd630 / RecDtor 0x4dd520), read by
+// RefData_ReadRegionLinkRow (0x48eb80, RefDataTeleport.cpp).
+struct RefRegionRow
+{
+    WORD                wRegionID;               // +0
+    BYTE                IsBattleField;           // +2
+    RefClimateData*     pClimate;                // +4   NULL without Climate
+    DWORD               MaxCapacity;             // +8
+    DWORD               AssocObjID;              // +C
+    int                 AssocServer;             // +10  from _RefRegionBindAssocServer
+    std::string         AssocFile256;            // +14
+    std::string         AreaName;                // +30
+    std::string         ContinentName;           // +4C
+    RefRegionRow*       apLinkedRegion[10];      // +68  LinkedRegion_1..10
+    std::vector<DWORD>  vec90;                   // +90  not filled by SR_ShardManager
+    std::vector<DWORD>  vecA0;                   // +A0  not filled by SR_ShardManager
+
+    RefRegionRow();
+};
+
+C_ASSERT(FIELD_OFFSET(RefRegionRow, AreaName) == 0x30);
+C_ASSERT(FIELD_OFFSET(RefRegionRow, apLinkedRegion) == 0x68);
+C_ASSERT(sizeof(RefRegionRow) == 0xB0);
+
+struct RefTeleportRow;
+
+// One restriction of a teleport link (Restrict<n>, Data<n>_1, Data<n>_2).
+struct RefTeleLinkRestrict
+{
+    DWORD               Restrict;                // +0
+    DWORD               Data1;                   // +4
+    DWORD               Data2;                   // +8
+};
+
+// _RefTeleLink row (28 bytes, RefTeleLink::InitMembers 0x515860, RefTeleLink::Read 0x4930f0),
+// owned by the teleport it leaves from.
+struct RefTeleLink
+{
+    RefTeleportRow*     pTargetTeleport;         // +0
+    DWORD               Fee;                     // +4
+    BYTE                RestrictBindMethod;      // +8
+    BYTE                RunTimeTeleportMethod;   // +9
+    BYTE                CheckResult;             // +A
+    std::vector<RefTeleLinkRestrict> vecRestrict; // +C  the restrictions with Restrict != 0
+
+    RefTeleLink();
+};
+
+C_ASSERT(sizeof(RefTeleLink) == 0x1C);
+
+// _RefTeleport row (76 bytes, RefData_RecCtor_RefTeleport 0x4d2f50 / RecDtor 0x4dd380, read by
+// RefTeleport::Read 0x493870).
+struct RefTeleportRow
+{
+    DWORD               ID;                      // +0
+    std::string         CodeName128;             // +4
+    RefRegionRow*       pGenRegion;              // +20
+    WORD                w24;                     // +24  always 0
+    short               GenPos_X;                // +26
+    short               GenPos_Y;                // +28
+    short               GenPos_Z;                // +2A
+    short               GenWorldID;              // +2C
+    RefObjCommonRow*    pAssocRefObj;            // +30
+    BYTE                CanBringCOS;             // +34
+    std::vector<RefTeleLink*> vecLink;           // +38  owned
+    WORD                GenAreaRadius;           // +48
+
+    RefTeleportRow();
+    ~RefTeleportRow();
+};
+
+C_ASSERT(FIELD_OFFSET(RefTeleportRow, pAssocRefObj) == 0x30);
+C_ASSERT(FIELD_OFFSET(RefTeleportRow, vecLink) == 0x38);
+C_ASSERT(sizeof(RefTeleportRow) == 0x4C);
 // _RefEventZone (2 strings + string[5]).
 struct RefEventZoneRow { BYTE ab[0xE0]; };                 // TODO(type)
 // _RefEvent (2 strings).
@@ -593,9 +662,21 @@ C_ASSERT(sizeof(RefMagicOptGroupRow) == 0x70);
 // RefMagicOptGroup::Read (0x492360): the group key (second column), 0 for a row that is
 // dropped.
 DWORD RefRow_Read(CRefRow& row, RefMagicOptGroupRow& r);
-// The 0xA0-byte position rows of CRefInstanceGenerator::LoadGameWorldPositions (0x4adb60,
-// RefData_ReadPosRecord 0x498a70; dtor 0x50a420: string +8, std::string[3] at +72).
-struct RefGameWorldPositionRow { BYTE ab[0xA0]; };         // TODO(type)
+// The 0xA0-byte rows of slot 0x5F (_RefAlchemyMerit) that CRefInstanceGenerator::
+// LoadGameWorldPositions (0x4adb60) keeps per index (RefData_ReadPosRecord 0x498a70; dtor
+// 0x50a420).
+struct RefGameWorldPositionRow
+{
+    BYTE                bIndex;                  // +0   index into m_vecGameWorldPosition
+    BYTE                bKey;                    // +1   key in that map
+    std::string         str04;                   // +4
+    float               af20[4];                 // +20
+    __int64             an30[3];                 // +30
+    std::string         astr48[3];               // +48
+};
+
+C_ASSERT(FIELD_OFFSET(RefGameWorldPositionRow, astr48) == 0x48);
+C_ASSERT(sizeof(RefGameWorldPositionRow) == 0xA0);
 // Parsed _RefQuestRewardItems row (140 bytes): InitMembers 0x4a71b0 (only the strings) /
 // DestroyMembers 0x513c50. Column names are not known.
 struct RefQuestRewardItemsRow
@@ -1200,7 +1281,7 @@ public:
     typedef stdext::hash_map<std::string, RefObjVector*>        RefObjByLevelHashMap;
     typedef CRefOwnerMap<std::map<DWORD, RefGameWorld*> >        RefGameWorldMap;
     typedef stdext::hash_map<std::string, RefGameWorld*>        RefGameWorldByCodeNameHashMap;
-    typedef std::vector<std::string*>                           RefRegionBindAssocServerVector;
+    typedef std::vector<RefRegionBindAssocServerData*>          RefRegionBindAssocServerVector;
     typedef std::map<std::string, RefObjVector>                 RefObjListByCodeNameMap;
     typedef std::map<DWORD, RefObjVector>                       RefObjListByIDMap;
     typedef std::map<std::string, RefShardContentConfig*>       RefShardContentConfigMap;
