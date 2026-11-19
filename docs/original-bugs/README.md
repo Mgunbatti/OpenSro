@@ -152,3 +152,5 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-005](SM-005.md) | SR_ShardManager DB records | crash | An item with more than 12 magic parameters overruns the parameter array |
 | [SM-006](SM-006.md) | SR_ShardManager reference data | crash | Reading past the end of a reference data row |
 | [SM-007](SM-007.md) | SR_ShardManager reference data | minor | A reference row with a duplicate key leaks |
+| [SM-008](SM-008.md) | SR_ShardManager reference data | minor | A reference row out of service leaks |
+| [SM-009](SM-009.md) | SR_ShardManager reference data | minor | Siege rows out of service are loaded |
