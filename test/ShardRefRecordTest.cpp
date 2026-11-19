@@ -298,7 +298,7 @@ static void TestFieldWrites()
     CHECK(shop.GetData() == shop.m_pBuffer);
     shop.AllocData(64);                          // too small: replaced
     CHECK(shop.m_nCapacity == 64 && shop.m_nWritePos == 0);
-    shop.Reserved08(1);
+    shop.CopyTo(NULL);
 }
 
 int main()

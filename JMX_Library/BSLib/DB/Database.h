@@ -211,8 +211,9 @@ public:
     // buffer) and assigned to the std::string at GetData() + nOffset; any other column is
     // copied with its nSize bytes.
     virtual void SetField(const DBColumnInfo* pColumn, const void* pValue);  // 7
-    // SR_ShardManager 0x41a890: empty (ret 4); no caller in the library.
-    virtual void Reserved08(DWORD dwParam);                                 // 8
+    // SR_ShardManager 0x41a890: empty (ret 4). The instance records copy their columns to
+    // another record of the same class with it (e.g. CInstanceRentItemInfo 0x521b00).
+    virtual void CopyTo(CDBRecord* pDest);                                  // 8
 #else
     virtual void SetField(const DBColumnInfo* pColumn, const void* pValue) = 0;   // 7
 #endif

@@ -672,9 +672,9 @@ void CDBRecord::SetField(const DBColumnInfo* pColumn, const void* pValue)
 }
 
 // SR_ShardManager 0x41a890
-void CDBRecord::Reserved08(DWORD dwParam)
+void CDBRecord::CopyTo(CDBRecord* pDest)
 {
-    (void)dwParam;
+    (void)pDest;
 }
 
 // SR_ShardManager 0x61a850
