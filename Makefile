@@ -352,7 +352,8 @@ all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 # $(OBJ)\ShardManager ("nmake shard_social1" compiles them; nothing links them yet).
 SHARD_SOCIAL1_OBJS = $(OBJ)\ServerCommon\PartyInfo.obj \
 	$(OBJ)\ServerCommon\GuildCommon.obj \
-	$(OBJ)\ShardManager\Guild.obj
+	$(OBJ)\ShardManager\Guild.obj \
+	$(OBJ)\ShardManager\CrestUploader.obj
 
 shard_social1: $(OBJ)\ServerCommon $(OBJ)\ShardManager $(SHARD_SOCIAL1_OBJS)
 
