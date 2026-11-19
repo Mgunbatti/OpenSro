@@ -167,9 +167,15 @@ public:                                                                         
 
 // Runtime class, table description and its dynamic initializer.
 #define SR_IMPLEMENT_RECORD(class_name, base_name, table_name, flags, columns, column_count) \
+    SR_IMPLEMENT_RECORD_RTC(class_name, base_name, &base_name::class##base_name, table_name,  \
+                            flags, columns, column_count)
+
+// The same for a base without a runtime class of its own (pBaseClass: the next one up).
+#define SR_IMPLEMENT_RECORD_RTC(class_name, base_name, pBaseClass, table_name, flags, columns, \
+                                column_count)                                               \
     CRuntimeClass class_name::class##class_name =                                           \
         { #class_name, sizeof(class_name), class_name::CreateObject,                        \
-          class_name::DeleteObject, &base_name::class##base_name };                         \
+          class_name::DeleteObject, pBaseClass };                                           \
     CDBTableInfo class_name::s_TableInfo;                                                   \
     int class_name::InitTableInfo()                                                         \
     {                                                                                       \

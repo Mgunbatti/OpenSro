@@ -234,6 +234,9 @@ SHARD_LIBS = $(SHARD_LIBDIR)\ServerFramework.lib $(SHARD_LIBDIR)\BSNet.lib \
 # record classes of ServerCommon.
 SHARD_APP_INC = /ISilkroadOnline\Server
 SHARD_REC_OBJS = $(OBJ)\ServerCommon\RefRecords.obj
+# SHARD_INST_OBJS: the instance record classes (they need ReferenceData_FindRefObj of the
+# reference data).
+SHARD_INST_OBJS = $(OBJ)\ServerCommon\InstanceRecords.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
