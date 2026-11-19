@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "BSLib/ChunkAllocator.h"
+#include "ServerCommon/PoolObject.h"
 #include "ServerCommon/InstanceRecords.h"
 #include "ShardManager/SocialExtern.h"
 
@@ -28,54 +29,6 @@ enum
     MESSENGER_ERR_FULL_TARGET   = 0x640F,
     MESSENGER_ERR_MEMO_FULL     = 0x6414,
 };
-
-// ---------------------------------------------------------------------------------------------
-// Pooled objects
-
-// The pattern of CMessenger, Friend and Memo: a static CChunkAllocatorST<T> hands the objects out
-// with an in-use byte set; FreePtr and the Release slot clear it, reset the object and give it
-// back.
-template <class T>
-T* PoolObject_Alloc()
-{
-    T* p = T::s_Pool.Alloc();
-    p->m_bInUse = 1;
-    return p;
-}
-
-// CMessenger_FreePtr (0x445f30) / Friend_FreePtr (0x44c950) / Memo_FreePtr (0x44c9c0)
-template <class T>
-void PoolObject_FreePtr(T*& p)
-{
-    if (p)
-    {
-        if (p->m_bInUse)
-        {
-            p->m_bInUse = 0;
-            p->ResetForPool();
-            T::s_Pool.Free(p);
-        }
-        p = NULL;
-    }
-}
-
-// CMessenger::vf01 (0x445f60) / Friend::vf00 (0x44c980) / Memo::vf00 (0x44c9f0)
-void PoolObject_LogDoubleRelease(const char* pszName);
-
-template <class T>
-void PoolObject_Release(T* p, const char* pszName)
-{
-    if (p->m_bInUse)
-    {
-        p->m_bInUse = 0;
-        p->ResetForPool();
-        T::s_Pool.Free(p);
-    }
-    else
-    {
-        PoolObject_LogDoubleRelease(pszName);
-    }
-}
 
 // One friend of a messenger (20 bytes, pool "Friend").
 class Friend
