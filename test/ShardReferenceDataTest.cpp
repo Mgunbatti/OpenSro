@@ -531,6 +531,19 @@ static void TestFindRefObj(CReferenceData& data)
     climate.AddRecord()->ID = 4;                // duplicate: fails the build
     CHECK(data.BuildFromTable(&climate.entry, 0x01) == 0 && data.m_mapClimate.size() == 1);
 
+    FakeTable<CRefAISkill> aiSkill;
+    for (int i = 0; i < 3; ++i)
+    {
+        CDBRecStream* pRow = aiSkill.AddRow();
+        PutDword(pRow, i < 2 ? 60 : 0);         // TacticsID 0: freed
+        PutString(pRow, "SKILL_MOB_ATTACK", 20);
+        PutByte(pRow, 1);
+        PutDword(pRow, 2);
+        PutDword(pRow, 3 + i);
+    }
+    CHECK(data.BuildFromTable(&aiSkill.entry, 0x39) == 1);
+    CHECK(data.m_mmapAISkill.size() == 2 && data.m_mmapAISkill.count(60) == 2);
+
     // gacha NPCs by NPC_ID
     FakeTable<CRefGachaNpcMap> gachaNpc;
     CRefGachaNpcMap* pNpc = gachaNpc.AddRecord();
