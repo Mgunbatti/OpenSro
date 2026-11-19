@@ -217,6 +217,13 @@ int RefRow_Read(CRefRow& row, RefObjCharExtraSkill& r)
     return (int)dwService;
 }
 
+// The row of every TacticsID is kept (no Service column).
+int RefRow_Read(CRefRow& row, RefAISkill& r)
+{
+    row >> r.TacticsID >> r.SkillCodeName >> r.b20 >> r.dw24 >> r.dw28;
+    return (int)r.TacticsID;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Server event, rent item and quest reward readers
 
@@ -963,7 +970,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, P, P, P, P, P, P, P,                                                 // 0x20
     P, P, P, P, P, P, P, P,                                                 // 0x28
     P, P, P, P, P, P, P, P,                                                 // 0x30
-    P, P, P, P,                                                             // 0x38
+    P,                                                                      // 0x38
+    REF_KEYED(RefAISkill, RefAISkillMap, m_mmapAISkill, DWORD, TacticsID),  // 0x39
+    P, P,
     REF_LOADED((RefData_AddRowUnique<CRefQuest, RefQuest, CReferenceData::RefQuestMap,
                 &CReferenceData::m_mapQuest>)),                             // 0x3C
     RefData_BuildGameWorld,
@@ -1084,6 +1093,7 @@ CReferenceData::~CReferenceData()
     RefData_DeleteValues(m_mapClimate);
     RefData_DeleteElements(m_vecInstanceWorldRegion);
     RefData_DeleteElements(m_vecInstanceWorldStartPos);
+    RefData_DeleteValues(m_mmapAISkill);
     RefData_DeleteValues(m_mapQuest);
     m_hashGameWorldByCodeName.clear();
     RefData_DeleteValues(m_mapGameWorld);

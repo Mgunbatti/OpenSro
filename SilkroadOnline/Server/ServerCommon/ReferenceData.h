@@ -328,6 +328,20 @@ struct RefQuestReward
 
 C_ASSERT(sizeof(RefQuestReward) == 156);
 
+// Parsed TAB_REFAISKILL row (44 bytes, InitMembers in CRefInstanceGenerator::LoadAISkill
+// 0x4a4560).
+struct RefAISkill
+{
+    DWORD            TacticsID;                  // +0   key of the multimap
+    std::string      SkillCodeName;              // +4
+    BYTE             b20;                        // +20
+    DWORD            dw24;                       // +24
+    DWORD            dw28;                       // +28
+};
+
+C_ASSERT(sizeof(RefAISkill) == 44);
+
+int RefRow_Read(CRefRow& row, RefAISkill& r);                    // 0x4970e0
 int RefRow_Read(CRefRow& row, RefServerEvent& r);                // 0x498c70
 // RefRentItem::Read (0x499240): strKey is the hash_map key.
 int RefRow_Read(CRefRow& row, RefRentItem& r, std::string& strKey);
@@ -366,6 +380,7 @@ public:
     typedef std::map<DWORD, RefSkillMasteryRow*>                RefSkillMasteryMap;
     typedef std::map<DWORD, RefSkill*>                          RefSkillMap;
     typedef std::map<DWORD, RefGachaNpcMapData*>                RefGachaNpcMapMap;
+    typedef std::multimap<DWORD, RefAISkill*>                   RefAISkillMap;
     typedef std::map<DWORD, RefGameWorld*>                      RefGameWorldMap;
     typedef stdext::hash_map<std::string, RefGameWorld*>        RefGameWorldByCodeNameHashMap;
     typedef std::map<std::string, RefShardContentConfig*>       RefShardContentConfigMap;
@@ -447,7 +462,9 @@ public:
     RefObjByCodeNameHashMap     m_hashRefObjByCodeName;             // +090
     BYTE                        m_ab0B8[0x58];                      // +0B8  (not ported yet)
     RefGachaNpcMapMap           m_mapGachaNpcMap;                   // +110  by NPC_ID
-    BYTE                        m_ab11C[0x760];                     // +11C  (not ported yet)
+    BYTE                        m_ab11C[0x140];                     // +11C  (not ported yet)
+    RefAISkillMap               m_mmapAISkill;                      // +25C  by TacticsID
+    BYTE                        m_ab268[0x614];                     // +268  (not ported yet)
     RefSkillMasteryMap          m_mapSkillMastery;                  // +87C
     RefSkillMap                 m_mapSkill;                         // +888
     BYTE                        m_ab894[0xC];                       // +894  (not ported yet)
@@ -506,6 +523,7 @@ C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObjByCodeName) == 0x90);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecLevel) == 0x10);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGachaNpcMap) == 0x110);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecInstanceWorldStartPos) == 0x970);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mmapAISkill) == 0x25C);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkillMastery) == 0x87C);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkill) == 0x888);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorld) == 0x92C);
