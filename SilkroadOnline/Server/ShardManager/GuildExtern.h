@@ -47,9 +47,11 @@ CShardDB* GetSingleton_CShardDB();
 
 enum
 {
+    SHARD_DB_TABLE_GUILD            = 0x0B,
     SHARD_DB_TABLE_GUILDMEMBER      = 0x0C,
     SHARD_DB_TABLE_ALLIEDCLANS      = 0x0D,
     SHARD_DB_TABLE_GUILDWAR         = 0x0E,
+    SHARD_DB_TABLE_GPHISTORY        = 0x0F,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -71,6 +73,9 @@ public:
     DWORD GetJID() const;
     // The DWORD at +0x6C (guild ID of the user; cleared when the member leaves).
     void SetGuildID(DWORD dwGuildID);
+    DWORD GetGuildID() const;
+    // The DWORD at +0x7C (CharID of the selected character). [SM_social2]
+    DWORD GetCharID() const;
 };
 
 class CClientManager
@@ -78,7 +83,38 @@ class CClientManager
 public:
     // CClientManager::FindUserByCharName (0x4043f0)
     CUser* FindUserByCharName(const std::string& strName);
+    // CClientManager::FindUserByJID (0x404380) [SM_social2]
+    CUser* FindUserByJID(DWORD dwJID);
 };
+
+// Provided by SM_main [SM_social2]: CharName_IsValid (0x40f200), the name filter of the main
+// process (g_pMainProcess is asserted before the call).
+BOOL CharName_IsValid(const std::string& strName);
+
+// ---------------------------------------------------------------------------------------------
+// Provided by the transaction group [SM_social2]: the guild job of the hostile guild request
+// (trs_guild_job, pool 0x4204b0) and the overlapped job manager.
+class trs_guild_job
+{
+public:
+    // trs_guild_job_PoolAlloc_4204B0 (0x4204b0)
+    static trs_guild_job* Alloc();
+    // Virtual slot 1: the job's parameters.
+    void Setup(DWORD dwJID, WORD wOpcode, DWORD dw0, float fTimeout, DWORD dwWarID,
+               DWORD dwTargetGuildID);
+    // Virtual slot 3: back to the pool.
+    void Release();
+};
+
+class COverlappedJobMgr
+{
+public:
+    // COverlappedJobMgr::StartJob (0x422150)
+    BOOL StartJob(trs_guild_job* pJob, CUser* pUser, CMsg* pMsg);
+};
+
+// GetSingleton_COverlappedJobMgr (0x40baf0)
+COverlappedJobMgr* GetSingleton_COverlappedJobMgr();
 
 extern CClientManager* g_pClientManager;            // 0x85884C
 
@@ -103,7 +139,24 @@ class CVote
 public:
     void AddChoice(DWORD dwCharID);
     BYTE GetKind() const;
+    // The DWORD at +0x08 (vote ID, compared by CGuildCommon::RemoveMasterCandidate).
+    // [SM_social2]
+    DWORD GetID() const;
+    // Virtual slot 8 (vf+0x20): the vote into a message. [SM_social2]
+    void WriteToMsg(CMsg* pMsg);
 };
+
+// [SM_social2] The vote manager (0x8A8934).
+class CVoteManager
+{
+public:
+    // CVoteManager::CreateVote (0x461d60): a master vote of the guild.
+    CVote* CreateVote(class CGuild* pGuild, DWORD dwGuildID);
+    // CVoteManager::RemoveVote (0x462120)
+    void RemoveVote(CVote* pVote);
+};
+
+extern CVoteManager* g_pVoteManager;                // 0x8A8934
 
 // ---------------------------------------------------------------------------------------------
 // Provided by the training camp group.

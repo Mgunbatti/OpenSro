@@ -363,6 +363,12 @@ $(OBJ)\ShardManager:
 {SilkroadOnline\Server\ShardManager}.cpp{$(OBJ)\ShardManager}.obj:
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
 
+# SR_ShardManager social part 2 (SM_social2): the shard manager's part of the shared guild classes
+# ("nmake shard_social2"; GuildCommon.obj and Guild.obj are in SHARD_SOCIAL1_OBJS).
+SHARD_SOCIAL2_OBJS = $(OBJ)\ShardManager\GuildCommonShard.obj
+
+shard_social2: $(OBJ)\ServerCommon $(OBJ)\ShardManager $(SHARD_SOCIAL1_OBJS) $(SHARD_SOCIAL2_OBJS)
+
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
 $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
 $(OBJ)\FarmManager $(FARM_OBJ)\BSLib $(FARM_OBJ)\BSNet $(FARM_OBJ)\ServerFramework \
