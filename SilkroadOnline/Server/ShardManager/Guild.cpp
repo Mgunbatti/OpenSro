@@ -1,5 +1,7 @@
 #include "ShardManager/Guild.h"
 #include "ShardManager/CrestUploader.h"
+#include "ShardManager/TrainingCamp.h"
+#include "ShardManager/Vote.h"
 
 #include <strsafe.h>
 
@@ -2259,7 +2261,7 @@ void CGuildManager::OnMasterVoteStart(CMsg* pMsg)
     {
         if (!g_pVoteManager)
             BSAssertFail();
-        CVote* pVote = g_pVoteManager->CreateVote(pGuild, dwGuildID);
+        CVote* pVote = g_pVoteManager->CreateVote(dwGuildID);
         if (!pVote)
         {
             wResult = 0x4C34;

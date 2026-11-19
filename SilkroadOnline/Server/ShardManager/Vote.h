@@ -19,50 +19,6 @@ enum
 };
 
 // ---------------------------------------------------------------------------------------------
-// Provided by SM_social2 (guild): only what the votes call.
-
-class CInstanceGuildMember;
-
-class CGuildMember
-{
-public:
-    CInstanceGuildMember* GetRecord() const;        // +0x0C
-};
-
-class CGuildCommon
-{
-public:
-    // Guild_GetID_45E4F0 (0x45e4f0)
-    DWORD GetID() const;
-    // The CharID of the master record (+0x08, record +0x1C).
-    DWORD GetMasterCharID() const;
-    // CGuildCommon::FindMember (0x4408a0)
-    CGuildMember* FindMember(DWORD dwCharID);
-    // CGuildCommon::RemoveMasterCandidate (0x440cd0)
-    void RemoveMasterCandidate(DWORD dwVoteID);
-};
-
-class CGuild : public CGuildCommon
-{
-public:
-    // CGuild::DelegateMaster (0x436bd0)
-    WORD DelegateMaster(CInstanceGuildMember* pNewMaster, CInstanceGuildMember* pOldMaster);
-};
-
-class CGuildManager
-{
-public:
-    // CGuildMgrCommon::FindGuild (0x40bf10)
-    CGuildCommon* FindGuild(DWORD dwGuildID);
-    // CGuildManager::SendMasterDelegated (0x43d310)
-    void SendMasterDelegated(DWORD dwGuildID, DWORD dwNewMasterCharID, DWORD dwOldMasterCharID);
-};
-
-// g_pGuildManager (0x8a8924); GetSingleton_CGuildManager (0x40bab0) asserts it.
-extern CGuildManager* g_pGuildManager;
-CGuildManager* GetSingleton_CGuildManager();
-
-// ---------------------------------------------------------------------------------------------
 // Votes
 
 // The ballot of one voter (20 bytes, pooled).

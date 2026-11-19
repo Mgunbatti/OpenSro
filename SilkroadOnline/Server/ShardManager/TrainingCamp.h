@@ -219,7 +219,7 @@ public:
 C_ASSERT(sizeof(CTrainingCamp) == 0x18);
 
 // ---------------------------------------------------------------------------------------------
-// Mentor application job (Provided by SM_social1: trs_mentor_job, 0x4203b0)
+// Mentor application job (Provided by the transaction group: trs_mentor_job, 0x4203b0)
 
 // The application of a character (0x2C bytes, trs_mentor_job +0x3C).
 struct TrainingCampApplyReq

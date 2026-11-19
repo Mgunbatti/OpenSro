@@ -4,6 +4,7 @@
 #include "ServerCommon/GuildCommon.h"
 #include "ServerFramework/ServerDataExtern.h"
 #include "ShardManager/GuildExtern.h"
+#include "ShardManager/Vote.h"
 
 #include <strsafe.h>
 
@@ -226,7 +227,7 @@ void CGuildCommon::RemoveMasterCandidate(DWORD dwVoteID)
     for (std::vector<CVote*>::iterator it = m_vecCandidate.begin(); it != m_vecCandidate.end();
          ++it)
     {
-        if ((*it)->GetID() == dwVoteID)
+        if ((*it)->m_dwID == dwVoteID)
         {
             m_vecCandidate.erase(it);
             return;

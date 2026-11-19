@@ -1,6 +1,7 @@
 #include "ShardManager/Vote.h"
 
 #include "BSNet/NetEngine.h"
+#include "ShardManager/Guild.h"
 
 CVoteManager* g_pVoteManager = NULL;
 
@@ -155,7 +156,7 @@ void CVote::OnDecided()
     if (!pGuild)
         return;
     pGuild->RemoveMasterCandidate(m_dwID);
-    DWORD dwOldMaster = pGuild->GetMasterCharID();
+    DWORD dwOldMaster = pGuild->m_pMasterRecord->CharID;
     DWORD dwWinner = m_vecChoice.at(m_byWinner);
     if (dwOldMaster == dwWinner)
         return;
@@ -163,7 +164,7 @@ void CVote::OnDecided()
     CGuildMember* pNew = pGuild->FindMember(dwWinner);
     if (!pOld || !pNew)
         return;
-    if (pGuild->DelegateMaster(pNew->GetRecord(), pOld->GetRecord()) == 1)
+    if (pGuild->DelegateMaster(pNew->m_pRecord, pOld->m_pRecord) == 1)
         GetSingleton_CGuildManager()->SendMasterDelegated(pGuild->GetID(), dwWinner, dwOldMaster);
 }
 
