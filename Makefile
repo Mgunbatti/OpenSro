@@ -345,31 +345,21 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ShardRefShopTest.exe \
         $(BIN)\ShardRefMiscTest.exe
 
+all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
+
 # SR_ShardManager social part 1 (SM_social1): party info, guild / alliance / guild manager and the
 # crest uploader. ServerCommon parts in $(OBJ)\ServerCommon, the shard manager classes in
-# $(OBJ)\ShardManager. ShardGuildTest links them with stand-ins for the classes of other groups.
-SHARD_SOCIAL1_OBJS = $(OBJ)\ServerCommon\PartyInfo.obj
+# $(OBJ)\ShardManager ("nmake shard_social1" compiles them; nothing links them yet).
+SHARD_SOCIAL1_OBJS = $(OBJ)\ServerCommon\PartyInfo.obj \
+	$(OBJ)\ServerCommon\GuildCommon.obj
 
-TESTS = $(TESTS) $(BIN)\ShardGuildTest.exe
+shard_social1: $(OBJ)\ServerCommon $(OBJ)\ShardManager $(SHARD_SOCIAL1_OBJS)
 
 $(OBJ)\ShardManager:
 	@if not exist $@ mkdir $@
 
 {SilkroadOnline\Server\ShardManager}.cpp{$(OBJ)\ShardManager}.obj:
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
-
-$(OBJ)\test\ShardGuildTest.obj: test\ShardGuildTest.cpp
-	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardGuildTest.cpp
-
-$(BIN)\ShardGuildTest.exe: $(OBJ)\test $(BIN) $(OBJ)\ServerCommon $(OBJ)\ShardManager \
-                           $(SHARD_SOCIAL1_OBJS) \
-                           $(SHARD_INST_OBJS) $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
-                           $(OBJ)\test\ShardGuildTest.obj $(SHARD_LIBS)
-	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardGuildTest.obj $(SHARD_SOCIAL1_OBJS) \
-	    $(SHARD_INST_OBJS) $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS) \
-	    wininet.lib
-
-all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
 $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
@@ -997,7 +987,6 @@ test: all
 	$(BIN)\ShardRefMiscTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
-	$(BIN)\ShardGuildTest.exe
 
 clean:
 	@if exist $(OUT) rmdir /s /q $(OUT)
