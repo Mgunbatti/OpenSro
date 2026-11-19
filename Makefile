@@ -237,6 +237,8 @@ SHARD_REC_OBJS = $(OBJ)\ServerCommon\RefRecords.obj
 # SHARD_INST_OBJS: the instance record classes (they need ReferenceData_FindRefObj of the
 # reference data).
 SHARD_INST_OBJS = $(OBJ)\ServerCommon\InstanceRecords.obj
+# SHARD_REFDATA_OBJS: the reference data (CReferenceData, the table builders and row readers).
+SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
@@ -326,7 +328,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\StringCheckTest.exe \
         $(BIN)\SimpleFTPTest.exe \
         $(BIN)\ShardRefRecordTest.exe \
-        $(BIN)\ShardInstanceRecordTest.exe
+        $(BIN)\ShardInstanceRecordTest.exe \
+        $(BIN)\ShardReferenceDataTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -592,6 +595,9 @@ $(OBJ)\test\ShardRefRecordTest.obj: test\ShardRefRecordTest.cpp
 $(OBJ)\test\ShardInstanceRecordTest.obj: test\ShardInstanceRecordTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardInstanceRecordTest.cpp
 
+$(OBJ)\test\ShardReferenceDataTest.obj: test\ShardReferenceDataTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardReferenceDataTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -720,6 +726,11 @@ $(BIN)\ShardInstanceRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_INST_OBJS) \
                                     $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_INST_OBJS) \
 	    $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\ShardReferenceDataTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
+                                   $(OBJ)\test\ShardReferenceDataTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardReferenceDataTest.obj $(SHARD_REFDATA_OBJS) \
+	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
@@ -890,6 +901,7 @@ test: all
 	$(BIN)\NewScheduleTest.exe
 	$(BIN)\ShardRefRecordTest.exe
 	$(BIN)\ShardInstanceRecordTest.exe
+	$(BIN)\ShardReferenceDataTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
 
