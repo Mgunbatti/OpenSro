@@ -3828,3 +3828,52 @@ SR_ShardManager	0x4d00f0	RefData_BuildRefSiegeQuestReward	RefData_BuildLoaded<Re
 SR_ShardManager	0x4d0450	RefData_BuildRefGameWorldNPC	RefData_BuildLoaded<RefData_LoadGameWorldNPC>
 SR_ShardManager	0x4d04c0	RefData_BuildRefObjCharExtraSkill	RefData_BuildKeyed<RefObjCharExtraSkill>
 SR_ShardManager	0x4d0570	RefData_BuildRefGameWorldConfig	RefData_BuildKeyed<RefGameWorldConfig>
+SR_ShardManager	0x41ae20	CRefGameWorldMgr::FindByCodeName	CReferenceData::FindGameWorldByCodeName
+SR_ShardManager	0x42db00	RefData_MapFindValue_42DB00	CReferenceData::FindRegion
+SR_ShardManager	0x42dc30	RefData_MapFindValue_42DC30	CReferenceData::FindGameWorld
+SR_ShardManager	0x42de30	RefData_HashFindObjAt144	CReferenceData::FindRefObjByCodeName
+SR_ShardManager	0x46f7f0	RefData_FindSkillMastery	CReferenceData::FindSkillMastery
+SR_ShardManager	0x46f920	RefData_FindSkill	CReferenceData::FindSkill
+SR_ShardManager	0x47d980	RefData_FindServerEventReward	CReferenceData::FindServerEventReward
+SR_ShardManager	0x486590	RefData_GetRegionName	RefData_GetRegionName
+SR_ShardManager	0x48eb50	RefRegion_CopyRow	RefData_KeepCopy(const RefLevelData&)
+SR_ShardManager	0x4970e0	RefAISkill::Read	RefRow_Read(CRefRow&, RefAISkill&)
+SR_ShardManager	0x497550	RefQuest_LoadRow_497550	RefRec_Read(const CRefQuest&, RefQuest&)
+SR_ShardManager	0x4976d0	RefGameWorld_CopyRow_4976D0	RefRec_Read(const CRefGameWorld&, RefGameWorld&)
+SR_ShardManager	0x497750	RefInstanceWorldRegion_CopyKey	RefData_KeepCopy(const RefInstanceWorldRegionData&)
+SR_ShardManager	0x497760	RefData_CopyRowHeader_497760	RefRec_Read(const CRefClimate&, RefClimateData&)
+SR_ShardManager	0x497e80	RefGachaNpcMap_CopyRow	RefRec_Read(const CRefGachaNpcMap&, RefGachaNpcMapData&)
+SR_ShardManager	0x4984e0	RefOptionalTeleport::Read	RefRow_Read(CRefRow&, RefOptionalTeleport&)
+SR_ShardManager	0x498c70	RefServerEvent::Read	RefRow_Read(CRefRow&, RefServerEvent&)
+SR_ShardManager	0x498ea0	RefServerEventReward::vf00	RefServerEventReward::Read
+SR_ShardManager	0x499010	RefServerEventReward_ExpUPForPlayers::vf00	RefServerEventReward_ExpUPForPlayers::Read
+SR_ShardManager	0x499190	RefServerEventReward_SpawnMonster::vf00	RefServerEventReward_SpawnMonster::Read
+SR_ShardManager	0x499240	RefRentItem::Read	RefRow_Read(CRefRow&, RefRentItem&, std::string&)
+SR_ShardManager	0x499410	RefQuestReward::Read	RefRow_Read(CRefRow&, RefQuestReward&)
+SR_ShardManager	0x49f880	RefData_SkipServiceFilteredColumn	CRefRow::Skip
+SR_ShardManager	0x461240	Util_SystemTimeDiffSeconds	RefData_TimestampDiffSeconds
+SR_ShardManager	0x4a69a0	CRefInstanceGenerator::LoadServerEvent	RefData_LoadServerEvent
+SR_ShardManager	0x4d05e0	RefData_BuildRefServerEvent	RefData_BuildLoaded<RefData_LoadServerEvent>
+SR_ShardManager	0x4a6ad0	CRefInstanceGenerator::LoadServerEventReward	RefData_LoadServerEventReward
+SR_ShardManager	0x4a6c90	CRefInstanceGenerator::ReadServerEventRewardDetail	RefData_ReadServerEventRewardDetail
+SR_ShardManager	0x4d0650	RefData_BuildRefServerEventReward	RefData_BuildServerEventReward
+SR_ShardManager	0x4a6d10	CRefInstanceGenerator::LoadRentItem	RefData_LoadRentItem
+SR_ShardManager	0x4d0700	RefData_BuildRefRentItem	RefData_BuildLoaded<RefData_LoadRentItem>
+SR_ShardManager	0x4a6e30	CRefInstanceGenerator::LoadQuestReward	RefData_LoadQuestReward
+SR_ShardManager	0x4d0780	RefData_BuildRefQuestReward	RefData_BuildLoaded<RefData_LoadQuestReward>
+SR_ShardManager	0x4d2ad0	RefData_AddRowRefQuest	RefData_AddRowUnique<CRefQuest, RefQuest, ...>
+SR_ShardManager	0x4cf810	RefData_BuildRefQuest	RefData_BuildLoaded<RefData_AddRowUnique<CRefQuest, ...> >
+SR_ShardManager	0x4d2e20	RefData_AddRowRefOptionalTeleport	RefData_AddRowUniqueStream<RefOptionalTeleport, ...>
+SR_ShardManager	0x4d0370	RefData_BuildRefOptionalTeleport	RefData_BuildLoaded<RefData_AddRowUniqueStream<RefOptionalTeleport, ...> >
+SR_ShardManager	0x4d2bb0	RefData_AddRowRefGameWorld	RefData_AddRowUnique<CRefGameWorld, RefGameWorld, ...>
+SR_ShardManager	0x4cf880	RefData_BuildRefGameWorld	RefData_BuildGameWorld
+SR_ShardManager	0x4aa550	CRefInstanceGenerator::IndexSkillsByCodeName	RefData_BuildGameWorld
+SR_ShardManager	0x4d2d60	RefData_AddRowRefGachaNpcMap	RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData, ...>
+SR_ShardManager	0x4cfc00	RefData_BuildRefGachaNpcMap	RefData_BuildLoaded<RefData_AddRowUnique<CRefGachaNpcMap, ...> >
+SR_ShardManager	0x4ceff0	RefData_BuildRefLevel	RefData_BuildCopyVector<CRefLevel, RefLevelData, ...>
+SR_ShardManager	0x4cf8f0	RefData_BuildRefInstanceWorldRegion	RefData_BuildCopyVector<CRefInstanceWorldRegion, ...>
+SR_ShardManager	0x4cf990	RefData_BuildRefInstanceWorldStartPos	RefData_BuildCopyVector<CRefInstanceWorldStartPos, ...>
+SR_ShardManager	0x4d21c0	RefData_AddRowRefClimate	RefData_AddRowUnique<CRefClimate, RefClimateData, ...>
+SR_ShardManager	0x4a4560	CRefInstanceGenerator::LoadAISkill	RefData_BuildKeyed<RefAISkill, ...> (row loader)
+SR_ShardManager	0x4cf560	RefData_BuildRefAISkill	RefData_BuildKeyed<RefAISkill, ...>
+SR_ShardManager	0x4cf080	RefData_BuildRefClimate	RefData_BuildLoaded<RefData_AddRowUnique<CRefClimate, ...> >
