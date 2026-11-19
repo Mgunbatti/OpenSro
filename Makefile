@@ -346,7 +346,9 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ShardRefMiscTest.exe
 
 # SR_ShardManager game worlds (SilkroadOnline\Server\ShardManager): the climate, the game worlds
-# and their layers. Compiled with SHARD_DEFS and SHARD_APP_INC.
+# and their layers, siege fortress, flag world and battle arena managers and the schedule jobs.
+# Compiled with SHARD_DEFS and SHARD_APP_INC (directory and inference rule with the social
+# objects below); "nmake shard_world" compiles them, nothing links them yet.
 SHARD_WORLD_OBJS = $(OBJ)\ShardManager\Climate.obj \
 	$(OBJ)\ShardManager\GameWorld.obj \
 	$(OBJ)\ShardManager\ShardScheduleJob.obj \
@@ -355,12 +357,6 @@ SHARD_WORLD_OBJS = $(OBJ)\ShardManager\Climate.obj \
 	$(OBJ)\ShardManager\SiegeFortress.obj \
 	$(OBJ)\ShardManager\BattleArena.obj
 TESTS = $(TESTS) $(BIN)\ShardClimateTest.exe
-
-$(OBJ)\ShardManager:
-	@if not exist $@ mkdir $@
-
-{SilkroadOnline\Server\ShardManager}.cpp{$(OBJ)\ShardManager}.obj:
-	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
 
 $(OBJ)\test\ShardClimateTest.obj: test\ShardClimateTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardClimateTest.cpp
@@ -498,6 +494,8 @@ $(OBJ)\ShardManager:
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
 
 shard_social: $(OBJ)\ShardManager $(OBJ)\ServerCommon $(SHARD_SOCIAL_OBJS)
+
+shard_world: $(OBJ)\ShardManager $(SHARD_WORLD_OBJS)
 
 {JMX_CommonServers\GlobalManager}.cpp{$(OBJ)\GlobalManager}.obj:
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\GlobalManager\ $<
