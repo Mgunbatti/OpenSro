@@ -229,6 +229,12 @@ SHARD_SRVFW_OBJS = $(SRVFW_OBJS:build\obj\ServerFramework=build\obj\shard\Server
 SHARD_LIBS = $(SHARD_LIBDIR)\ServerFramework.lib $(SHARD_LIBDIR)\BSNet.lib \
              $(SHARD_LIBDIR)\BSLib.lib
 
+# SR_ShardManager application (SilkroadOnline\Server, the original D:\WORK2005\Source\SilkroadOnline\
+# Server tree), compiled with SHARD_DEFS and linked with SHARD_LIBS. SHARD_REC_OBJS: the reference
+# record classes of ServerCommon.
+SHARD_APP_INC = /ISilkroadOnline\Server
+SHARD_REC_OBJS = $(OBJ)\ServerCommon\RefRecords.obj
+
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
 # GLOBAL_EXE_OBJS; the tests link the parts they need with their own stand-ins.
@@ -315,7 +321,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\Framework201108Test.exe \
         $(BIN)\NewScheduleTest.exe \
         $(BIN)\StringCheckTest.exe \
-        $(BIN)\SimpleFTPTest.exe
+        $(BIN)\SimpleFTPTest.exe \
+        $(BIN)\ShardRefRecordTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -417,6 +424,12 @@ $(FARM_LIBDIR)\ServerFramework.lib: $(FARM_OBJ)\ServerFramework $(FARM_LIBDIR) $
 
 $(OBJ)\GlobalManager:
 	@if not exist $@ mkdir $@
+
+$(OBJ)\ServerCommon:
+	@if not exist $@ mkdir $@
+
+{SilkroadOnline\Server\ServerCommon}.cpp{$(OBJ)\ServerCommon}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ServerCommon\ $<
 
 {JMX_CommonServers\GlobalManager}.cpp{$(OBJ)\GlobalManager}.obj:
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\GlobalManager\ $<
@@ -569,6 +582,9 @@ $(OBJ)\test\StringCheckTest.obj: test\StringCheckTest.cpp
 $(OBJ)\test\NewScheduleTest.obj: test\NewScheduleTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\NewScheduleTest.cpp
 
+$(OBJ)\test\ShardRefRecordTest.obj: test\ShardRefRecordTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefRecordTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -687,6 +703,11 @@ $(BIN)\StringCheckTest.exe: $(OBJ)\test\StringCheckTest.obj $(SHARD_LIBS)
 
 $(BIN)\NewScheduleTest.exe: $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\ShardRefRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_REC_OBJS) \
+                               $(OBJ)\test\ShardRefRecordTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefRecordTest.obj $(SHARD_REC_OBJS) \
+	    $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
 $(BIN)\GlobalManagerTest.exe: $(OBJ)\GlobalManager $(OBJ)\test\GlobalManagerTest.obj \
@@ -855,6 +876,7 @@ test: all
 	$(BIN)\GlobalManagerMainTest.exe
 	$(BIN)\Framework201108Test.exe
 	$(BIN)\NewScheduleTest.exe
+	$(BIN)\ShardRefRecordTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
 
