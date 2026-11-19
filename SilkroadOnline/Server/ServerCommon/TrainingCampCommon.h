@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "BSNet/Msg.h"
+#include "ServerCommon/GuildCommon.h"
 #include "ServerCommon/InstanceRecords.h"
 #include "ServerCommon/PoolObject.h"
 
@@ -211,10 +212,10 @@ public:
     // 0x45e3d0: member count byte and the members.
     virtual void WriteMembersToMsg(CMsg* pMsg);                            // 5
 
-    // Guild_GetID_45E4F0 (0x45e4f0, the same code as CGuildCommon::GetID)
+    // Guild_GetID_45E4F0 (0x45e4f0, the same function as CGuildCommon::GetID)
     DWORD GetID() const
     {
-        return m_pCamp ? m_pCamp->ID : 0;
+        return Guild_GetRecordID(m_pCamp);
     }
     // 0x45e490: NULL for 0 or an unknown character.
     TrainingCampMember* FindMember(DWORD dwCharID);

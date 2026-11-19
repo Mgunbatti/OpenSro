@@ -119,6 +119,15 @@ typedef std::map<DWORD, GUILD_HOSTILE_ENTRY> GuildHostileMap;     // guild ID ->
 // The member limit per guild level 1..5 (dword_781A88).
 extern const DWORD g_adwGuildMemberLimit[5];
 
+// Guild_GetID_45E4F0 (0x45e4f0): the ID of a guild or training camp record (the record pointer
+// at +4 of its owner), 0 without a record. CGuildCommon::GetID and CTrainingCampCommon::GetID
+// are this one function.
+template <class TRecord>
+inline DWORD Guild_GetRecordID(const TRecord* pRecord)
+{
+    return pRecord ? pRecord->ID : 0;
+}
+
 // The guild (0x50 bytes with CGuild, which adds no data).
 class CGuildCommon
 {
@@ -148,10 +157,10 @@ public:
     // CGuildCommon::vf07 (0x440de0): there is a hostile entry for the guild.
     virtual BOOL IsHostileGuild(DWORD dwGuildID);                          // 7
 
-    // Guild_GetID_45E4F0 (0x45e4f0): the ID of the record.
+    // Guild_GetID_45E4F0 (0x45e4f0): the ID of the record, 0 without one.
     DWORD GetID() const
     {
-        return m_pRecord->ID;
+        return Guild_GetRecordID(m_pRecord);
     }
     // Guild_GetLevel_4409C0 (0x4409c0)
     BYTE GetLevel() const
