@@ -325,7 +325,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\NewScheduleTest.exe \
         $(BIN)\StringCheckTest.exe \
         $(BIN)\SimpleFTPTest.exe \
-        $(BIN)\ShardRefRecordTest.exe
+        $(BIN)\ShardRefRecordTest.exe \
+        $(BIN)\ShardInstanceRecordTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -588,6 +589,9 @@ $(OBJ)\test\NewScheduleTest.obj: test\NewScheduleTest.cpp
 $(OBJ)\test\ShardRefRecordTest.obj: test\ShardRefRecordTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefRecordTest.cpp
 
+$(OBJ)\test\ShardInstanceRecordTest.obj: test\ShardInstanceRecordTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardInstanceRecordTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -710,6 +714,11 @@ $(BIN)\NewScheduleTest.exe: $(OBJ)\test\NewScheduleTest.obj $(SHARD_LIBS)
 $(BIN)\ShardRefRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_REC_OBJS) \
                                $(OBJ)\test\ShardRefRecordTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefRecordTest.obj $(SHARD_REC_OBJS) \
+	    $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\ShardInstanceRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_INST_OBJS) \
+                                    $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_INST_OBJS) \
 	    $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
@@ -880,6 +889,7 @@ test: all
 	$(BIN)\Framework201108Test.exe
 	$(BIN)\NewScheduleTest.exe
 	$(BIN)\ShardRefRecordTest.exe
+	$(BIN)\ShardInstanceRecordTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
 
