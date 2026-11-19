@@ -479,7 +479,7 @@ $(OBJ)\ServerCommon:
 # shard_social" compiles them.
 SHARD_SOCIAL_OBJS = $(OBJ)\ShardManager\Messenger.obj $(OBJ)\ShardManager\PartyManager.obj \
                     $(OBJ)\ShardManager\TrainingCamp.obj $(OBJ)\ServerCommon\TrainingCampCommon.obj \
-                    $(OBJ)\ShardManager\GMLevelManager.obj
+                    $(OBJ)\ShardManager\GMLevelManager.obj $(OBJ)\ShardManager\Vote.obj
 
 $(OBJ)\ShardManager:
 	@if not exist $@ mkdir $@
