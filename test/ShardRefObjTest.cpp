@@ -200,8 +200,8 @@ static void PutItemRow(CDBRecStream* pRow, int nID)
 
 static void ApplySpecialMonster(RefObjChar* pChar)
 {
-    pChar->m_dw188 = 0;
-    pChar->m_dw18C = 0;
+    pChar->SpecialFlag1 = 0;
+    pChar->SpecialFlag2 = 0;
 }
 
 static void TestTypeID()
@@ -269,8 +269,8 @@ static void TestObjCommon(CReferenceData& data, RefTableVector& tables)
           && pMob->DescStrID128.empty());
     CHECK(pMob->ReqLevel[0].Type == 1 && pMob->ReqLevel[3].Level == 13 && pMob->Price == 100
           && pMob->CostBorrow == 103 && pMob->CostRepair == 101);
-    CHECK(RefObj_GetTypeID(pMob) == RefTypeID_Pack(0, 1, 1, 2, 1, 0));
-    CHECK(RefObj_GetByte198(pMob) == 5);
+    CHECK(pMob->TypeID == RefTypeID_Pack(0, 1, 1, 2, 1, 0));
+    CHECK(static_cast<const RefObjChar*>(pMob)->Lvl == 5);
 
     RefObjItem* pItem = static_cast<RefObjItem*>(data.FindRefObj(20));
     CHECK(pItem != NULL && pItem->GP == 42 && pItem->ItemClass == 4 && pItem->ReqGender == 2);

@@ -240,7 +240,7 @@ static void RefDropClassEntry_AddItem(RefDropClassEntry& entry, const RefDropIte
 {
     entry.dwCount += assign.Weight;
     entry.mapProb.insert(std::make_pair(entry.dwCount, assign));
-    WORD wTypeID = RefObj_GetTypeID(assign.pItem);
+    WORD wTypeID = assign.pItem->TypeID;
     if (!RefDrop_IsEquip(wTypeID))
         return;
     DWORD dwKey = wTypeID;
@@ -277,7 +277,7 @@ static void RefDropClassSlot_AddItem(RefDropClassSlot& slot, unsigned int nClass
 // The drop class of an item (0..10), -1 for an item no drop class takes.
 static int RefDrop_GetDropClass(const RefObjCommonRow* pItem)
 {
-    WORD wTypeID = RefObj_GetTypeID(pItem);
+    WORD wTypeID = pItem->TypeID;
     if (RefDrop_IsEquip(wTypeID))
         return pItem->Rarity == 2 ? 1 : 0;
     if (RefDrop_IsExpendable(wTypeID, 0x80))

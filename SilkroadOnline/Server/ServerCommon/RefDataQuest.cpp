@@ -14,12 +14,6 @@ static const char s_szNoRentItem[] = "xxx";
 // ---------------------------------------------------------------------------------------------
 // Helpers
 
-// The object ID of a _RefObjCommon row (+8).
-static int RefQuest_GetObjID(const RefObjCommonRow* pObj)
-{
-    return *(const int*)((const BYTE*)pObj + 8);
-}
-
 // The reward check of the item readers: "xxx" (case sensitive) or a known rent item.
 static BOOL RefQuest_IsKnownRentCode(CReferenceData* pData, const std::string& strCodeName)
 {
@@ -354,7 +348,7 @@ int RefRow_Read(CRefRow& row, RefQuestRewardItemsRow& r)
         r.str50 >> r.dw6C >> r.str70;
     CReferenceData* pData = CReferenceData::GetInstance();
     RefObjCommonRow* pObj = pData->FindRefObjByCodeName(strItemCodeName);
-    r.ItemObjID = pObj ? RefQuest_GetObjID(pObj) : 0;
+    r.ItemObjID = pObj ? pObj->ID : 0;
     return RefQuest_IsKnownRentCode(CReferenceData::GetInstance(), r.str30);
 }
 
@@ -390,7 +384,7 @@ int RefRow_Read(CRefRow& row, RefEventRewardItemsRow& r)
     RefObjCommonRow* pObj = CReferenceData::GetInstance()->FindRefObjByCodeName(strItemCodeName);
     if (!pObj)
         return 0;
-    r.ItemObjID = RefQuest_GetObjID(pObj);
+    r.ItemObjID = pObj->ID;
     return RefQuest_IsKnownRentCode(CReferenceData::GetInstance(), r.str10);
 }
 
@@ -508,7 +502,7 @@ void RefData_BuildEventItemList(CReferenceData* pData)
          it != pData->m_hashRefObj.end(); ++it)
     {
         RefObjCommonRow* pObj = it->second;
-        WORD wTypeID = RefObj_GetTypeID(pObj);
+        WORD wTypeID = pObj->TypeID;
         if ((wTypeID & 2) || (wTypeID & 0x1C) != 0xC || (wTypeID & 0x60) != 0x20)
             continue;
         WORD wTID3 = (wTypeID >> 7) & 0xF;
@@ -516,15 +510,15 @@ void RefData_BuildEventItemList(CReferenceData* pData)
             continue;
         if ((wTypeID & 0x780) == 0x300 && (wTypeID & 0xF800) == 0x8000)
             continue;
-        if (!(*(const DWORD*)((const BYTE*)pObj + 0x8C) & 1))
+        if (!(pObj->Flags & REFOBJ_CAN_TRADE))
             continue;
-        const char* pszCodeName = RefObj_GetCodeName(pObj).c_str();
+        const char* pszCodeName = pObj->CodeName128.c_str();
         BOOL bExcluded = FALSE;
         for (int i = 0; i < 4 && !bExcluded; ++i)
             bExcluded = RefQuest_StrEqualNoCase(s_apszNoEventItem[i], pszCodeName);
         if (bExcluded)
             continue;
-        int nClass = *((const BYTE*)pObj + 0x1A8) - 1;
+        int nClass = static_cast<const RefObjItem*>(pObj)->ItemClass - 1;
         if (RefObj_IsEquipOfCountry(pObj, 0))
         {
             pData->m_map9CC[(DWORD)(nClass / 3)].push_back(pObj);

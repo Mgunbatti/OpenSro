@@ -1,5 +1,7 @@
 #include "ServerCommon/RefDataTeleport.h"
 
+#include "ServerCommon/RefDataObj.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <strsafe.h>
@@ -24,19 +26,6 @@ static typename TMap::mapped_type RefTeleport_FindValue(TMap& map, const TKey& k
     if (it == map.end())
         return NULL;
     return it->second;
-}
-
-// The members of the object row (RefObjCommon, not ported here) that a teleport uses: the
-// teleport of the object (+0x190) and its set of teleport flags (+0x90: 7 resurrection point,
-// 9 resurrection target, 8 pets allowed).
-static RefTeleportRow*& RefObj_Teleport(RefObjCommonRow* pRefObj)
-{
-    return *reinterpret_cast<RefTeleportRow**>(reinterpret_cast<BYTE*>(pRefObj) + 0x190);
-}
-
-static std::set<BYTE>& RefObj_TeleportFlags(RefObjCommonRow* pRefObj)
-{
-    return *reinterpret_cast<std::set<BYTE>*>(reinterpret_cast<BYTE*>(pRefObj) + 0x90);
 }
 
 typedef int (*PFN_REF_TELEPORT_LOAD)(CReferenceData* pData, CDBRecord* pRecord);
@@ -316,10 +305,10 @@ int RefRow_Read(CRefRow& row, RefTeleportRow& r)
         r.pAssocRefObj = pRefObj;
         if (pRefObj)
         {
-            if (RefObj_Teleport(pRefObj))
+            if (pRefObj->pTeleport)
                 BSAssertFail();
-            RefObj_Teleport(pRefObj) = &r;
-            RefObj_TeleportFlags(pRefObj).clear();
+            pRefObj->pTeleport = &r;
+            pRefObj->TeleportFlags.clear();
         }
         else
         {
@@ -337,9 +326,9 @@ int RefRow_Read(CRefRow& row, RefTeleportRow& r)
     if (r.pAssocRefObj)
     {
         if (bCanBeResurrectPos)
-            RefObj_TeleportFlags(r.pAssocRefObj).insert(7);
+            r.pAssocRefObj->TeleportFlags.insert(7);
         if (bCanGotoResurrectPos)
-            RefObj_TeleportFlags(r.pAssocRefObj).insert(9);
+            r.pAssocRefObj->TeleportFlags.insert(9);
     }
     row >> r.GenAreaRadius >> r.CanBringCOS;
     row.Skip();
@@ -416,7 +405,7 @@ static void RefTeleport_AddLink(RefTeleportRow& teleport, RefTeleLink* pLink)
 {
     teleport.vecLink.push_back(pLink);
     if (teleport.pAssocRefObj && teleport.CanBringCOS == 1)
-        RefObj_TeleportFlags(teleport.pAssocRefObj).insert(8);
+        teleport.pAssocRefObj->TeleportFlags.insert(8);
 }
 
 static int RefData_LoadTeleLink(CReferenceData* pData, CDBRecord* pRecord)

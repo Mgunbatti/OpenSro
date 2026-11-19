@@ -6,6 +6,7 @@
 #include "BSLib/BSDebug.h"
 #include "BSLib/Util/StringCheck.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataObj.h"
 #include "ServerFramework/ServerDataExtern.h"
 
 // The source file the original's assert dialogs name.
@@ -240,7 +241,7 @@ BOOL RefData_ValidateCollectionBook(CReferenceData* pData)
         const char* pszError = NULL;
         if (itObj == pData->m_hashRefObjByCodeName.end() || !itObj->second)
             pszError = "Ilegal '_RefCollectionBook_Item' ItemCodeName : %s";
-        else if (!RefTID_IsCollectionBookItem(RefObj_GetTypeID(itObj->second)))
+        else if (!RefTID_IsCollectionBookItem(itObj->second->TypeID))
             pszError = "%s is not 'CollectionBookItem'";
         else if (!pItem->SlotIndex)
             pszError = "SlotIndex is 0. '_RefCollectionBook_Item' ItemCodeName : %s";
@@ -362,11 +363,11 @@ static void RefData_BuildMonsterKindList(CReferenceData* pData,
          it != pData->m_hashRefObj.end(); ++it)
     {
         RefObjCommonRow* pObj = it->second;
-        WORD wTypeID = RefObj_GetTypeID(pObj);
+        WORD wTypeID = pObj->TypeID;
         if (!RefTID_IsMonster(wTypeID) || (wTypeID & 0xF800) != wTID4)
             continue;
-        unsigned int nKind = RefData_MonsterKind(RefObj_GetCodeName(pObj), psz1, psz2);
-        unsigned int nLevel = (unsigned int)RefObj_GetByte198(pObj) - 1;
+        unsigned int nKind = RefData_MonsterKind(pObj->CodeName128, psz1, psz2);
+        unsigned int nLevel = (unsigned int)static_cast<const RefObjChar*>(pObj)->Lvl - 1;
         if (nLevel > 0x8B)
         {
             BSAssertFail();
@@ -388,11 +389,6 @@ void RefData_BuildThiefMonsterList(CReferenceData* pData)
                                  "MOB_EU_THIEF");
 }
 
-static BYTE RefObj_GetRarity(const RefObjCommonRow* pObj)                        // +0x89
-{
-    return *((const BYTE*)pObj + 0x89);
-}
-
 void RefData_BuildTrapMonsterList(CReferenceData* pData, const std::string& strKind)
 {
     std::string strPrefix = std::string("MOB_") + strKind;
@@ -400,17 +396,17 @@ void RefData_BuildTrapMonsterList(CReferenceData* pData, const std::string& strK
          it != pData->m_hashRefObj.end(); ++it)
     {
         RefObjCommonRow* pObj = it->second;
-        WORD wTypeID = RefObj_GetTypeID(pObj);
+        WORD wTypeID = pObj->TypeID;
         if (!RefTID_IsMonster(wTypeID) || (wTypeID & 0xF800) == 0x1000 ||
             (wTypeID & 0xF800) == 0x1800)
         {
             continue;
         }
-        BYTE btRarity = RefObj_GetRarity(pObj);
+        BYTE btRarity = pObj->Rarity;
         if (btRarity == 3 || btRarity == 8)
             continue;
         // The code name is compared over the length of the other string (as the original).
-        const char* pszCode = RefObj_GetCodeName(pObj).c_str();
+        const char* pszCode = pObj->CodeName128.c_str();
         if (CompareStringA(0x400, 0, pszCode, (int)strPrefix.size(), strPrefix.c_str(),
                            (int)strPrefix.size()) == 2 &&
             CompareStringA(0x400, 0, pszCode, 17, "MOB_TQ_QINSHITRAP", 17) != 2 &&
@@ -506,21 +502,21 @@ void CSpecialCodeList::ApplyToItem(RefObjCommonRow* pObj)
 {
     if (!pObj)
         return;
-    RefObj_SpecialFlag1(pObj) = 0;
-    RefObj_SpecialFlag2(pObj) = 0;
+    pObj->SpecialFlag1 = 0;
+    pObj->SpecialFlag2 = 0;
     for (std::vector<SpecialCodeEntry*>::iterator it = m_vecEntry.begin(); it != m_vecEntry.end();
          ++it)
     {
         SpecialCodeEntry* pEntry = *it;
         if (!pEntry)
             continue;
-        const char* pszCode = RefObj_GetCodeName(pObj).c_str();
+        const char* pszCode = pObj->CodeName128.c_str();
         const char* pszEntry = pEntry->strCodeName.c_str();
         if (CompareStringA(0x400, 0, pszEntry, lstrlenA(pszEntry), pszCode,
                            lstrlenA(pszCode)) == 2)
         {
-            RefObj_SpecialFlag1(pObj) |= pEntry->dwFlag1;
-            RefObj_SpecialFlag2(pObj) |= pEntry->dwFlag2;
+            pObj->SpecialFlag1 |= pEntry->dwFlag1;
+            pObj->SpecialFlag2 |= pEntry->dwFlag2;
         }
     }
 }
@@ -529,8 +525,8 @@ void CSpecialCodeList::ApplyToChar(RefObjCommonRow* pObj)
 {
     if (!pObj)
         return;
-    RefObj_SpecialFlag1(pObj) = 0;
-    RefObj_SpecialFlag2(pObj) = 0;
+    pObj->SpecialFlag1 = 0;
+    pObj->SpecialFlag2 = 0;
     for (std::vector<SpecialCodeEntry*>::iterator it = m_vecEntry.begin(); it != m_vecEntry.end();
          ++it)
     {
@@ -539,10 +535,10 @@ void CSpecialCodeList::ApplyToChar(RefObjCommonRow* pObj)
             continue;
         int nLength = (int)pEntry->strCodeName.size();
         if (CompareStringA(0x400, 0, pEntry->strCodeName.c_str(), nLength,
-                           RefObj_GetCodeName(pObj).c_str(), nLength) == 2)
+                           pObj->CodeName128.c_str(), nLength) == 2)
         {
-            RefObj_SpecialFlag1(pObj) |= pEntry->dwFlag1;
-            RefObj_SpecialFlag2(pObj) |= pEntry->dwFlag2;
+            pObj->SpecialFlag1 |= pEntry->dwFlag1;
+            pObj->SpecialFlag2 |= pEntry->dwFlag2;
             return;
         }
     }

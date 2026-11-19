@@ -24,8 +24,8 @@
 // a column of an update group marks its dirty bit. InitData (slot 5) resets the columns the
 // original resets, in its order.
 
-// The parsed _RefObjCommon row of the reference data (RefDataObj.h, not part of this file).
-// The instance records only keep a pointer to it and read a few fields by their offsets.
+// The parsed _RefObjCommon row of the reference data (RefDataObj.h). The instance records keep a
+// pointer to it and read a few of its members (InstanceRecords.cpp).
 class RefObjCommon;
 typedef RefObjCommon RefObjCommonRow;
 
@@ -33,26 +33,6 @@ typedef RefObjCommon RefObjCommonRow;
 // created): the object row of an object id, NULL when there is none. Defined by the reference
 // data (SM_ref).
 RefObjCommonRow* ReferenceData_FindRefObj(int nRefObjID);
-
-inline const std::string& RefObj_GetCodeName(const RefObjCommonRow* pRefObj)     // +0x14
-{
-    return *(const std::string*)((const BYTE*)pRefObj + 0x14);
-}
-
-inline WORD RefObj_GetTypeID(const RefObjCommonRow* pRefObj)                     // +0x80
-{
-    return *(const WORD*)((const BYTE*)pRefObj + 0x80);
-}
-
-inline BYTE RefObj_GetByte198(const RefObjCommonRow* pRefObj)                    // +0x198
-{
-    return *((const BYTE*)pRefObj + 0x198);
-}
-
-inline int RefObj_GetDword250(const RefObjCommonRow* pRefObj)                    // +0x250
-{
-    return *(const int*)((const BYTE*)pRefObj + 0x250);
-}
 
 // Sets year .. second of a timestamp (the fraction is kept).
 inline void InstanceRecord_SetDate(TIMESTAMP_STRUCT& ts, int nYear, int nMonth, int nDay)

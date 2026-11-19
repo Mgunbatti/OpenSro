@@ -110,7 +110,7 @@ public:
     BYTE             Country;                    // +88
     BYTE             Rarity;                     // +89
     DWORD            Flags;                      // +8C   REFOBJ_*
-    std::set<DWORD>  m_set90;                    // +90   TODO(type) not filled by the readers
+    std::set<BYTE>   TeleportFlags;              // +90   by the teleport table (7, 8, 9)
     int              Price;                      // +9C
     int              CostBorrow;                 // +A0
     int              CostRepair;                 // +A4
@@ -133,15 +133,16 @@ public:
     std::string      AssocFile[5];               // +F4   Obj, Drop, Icon, 1, 2
     int              GP;                         // +180  "GP:<n>" in AssocFile1_128
     int              Link;                       // +184
-    DWORD            m_dw188;                    // +188  set by the special monster code list
-    DWORD            m_dw18C;                    // +18C  set by the special monster code list
-    DWORD            m_dw190;                    // +190
+    DWORD            SpecialFlag1;               // +188  set by the special code lists
+    DWORD            SpecialFlag2;               // +18C  set by the special code lists
+    RefTeleportRow*  pTeleport;                  // +190  the teleport of the object (slot 0x12)
     DWORD            m_dw194;                    // +194
 };
 
 C_ASSERT(FIELD_OFFSET(RefObjCommon, CodeName128) == 0x10);
 C_ASSERT(FIELD_OFFSET(RefObjCommon, TypeID) == 0x80);
-C_ASSERT(FIELD_OFFSET(RefObjCommon, m_set90) == 0x90);
+C_ASSERT(FIELD_OFFSET(RefObjCommon, TeleportFlags) == 0x90);
+C_ASSERT(FIELD_OFFSET(RefObjCommon, pTeleport) == 0x190);
 C_ASSERT(FIELD_OFFSET(RefObjCommon, ReqLevel) == 0xB4);
 C_ASSERT(FIELD_OFFSET(RefObjCommon, pRegion) == 0xD8);
 C_ASSERT(FIELD_OFFSET(RefObjCommon, AssocFile) == 0xF4);
@@ -362,12 +363,6 @@ public:
 };
 
 C_ASSERT(sizeof(RefObjStruct) == 0x198);
-
-// The structures of a region (vector at RefRegion +0x90, RefObj_AddUniqueLinkedID 0x4a0450).
-inline std::vector<RefObjCommon*>& RefRegion_GetStructs(RefRegionRow* pRegion)
-{
-    return *(std::vector<RefObjCommon*>*)((BYTE*)pRegion + 0x90);
-}
 
 void RefObj_AddUniqueLinkedID(RefRegionRow* pRegion, RefObjCommon* pObj);
 

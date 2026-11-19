@@ -388,7 +388,7 @@ struct RefRegionRow
     std::string         AreaName;                // +30
     std::string         ContinentName;           // +4C
     RefRegionRow*       apLinkedRegion[10];      // +68  LinkedRegion_1..10
-    std::vector<DWORD>  vec90;                   // +90  not filled by SR_ShardManager
+    std::vector<RefObjCommon*> vecStruct;        // +90  the structures (RefObj_AddUniqueLinkedID)
     std::vector<DWORD>  vecA0;                   // +A0  not filled by SR_ShardManager
 
     RefRegionRow();

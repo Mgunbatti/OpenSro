@@ -4,6 +4,7 @@
 // with SHARD_DEFS.
 
 #include "ServerCommon/RefDataQuest.h"
+#include "ServerCommon/RefDataObj.h"
 
 #include <string.h>
 
@@ -365,7 +366,7 @@ static RefObjCommonRow* MakeObj(FakeObj& obj, int nID, WORD wTypeID, BYTE bCount
 {
     memset(obj.ab, 0, sizeof(obj.ab));
     *(int*)(obj.ab + 8) = nID;
-    new (obj.ab + 0x14) std::string(pszCodeName);
+    new (obj.ab + FIELD_OFFSET(RefObjCommon, CodeName128)) std::string(pszCodeName);
     *(WORD*)(obj.ab + 0x80) = wTypeID;
     obj.ab[0x89] = bCountry;
     *(DWORD*)(obj.ab + 0x8C) = dwFlags;
@@ -397,7 +398,8 @@ static void TestEventItemList(CReferenceData& data)
     data.m_map9CC.clear();
     data.m_map9E4.clear();
     for (int i = 0; i < 6; ++i)
-        reinterpret_cast<std::string*>(aObj[i].ab + 0x14)->~basic_string();
+        reinterpret_cast<std::string*>(aObj[i].ab + FIELD_OFFSET(RefObjCommon, CodeName128))
+            ->~basic_string();
 }
 
 int main()

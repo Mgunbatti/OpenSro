@@ -3,6 +3,7 @@
 // code lists, the TypeID tests and the sDataStream parameters. Compiled with SHARD_DEFS.
 
 #include "ServerCommon/RefDataMisc.h"
+#include "ServerCommon/RefDataObj.h"
 
 #include <string.h>
 
@@ -68,7 +69,7 @@ struct FakeTable
     }
 };
 
-// An object row with the fields the functions read (code name +0x14, TypeID +0x80, Rarity +0x89,
+// An object row with the fields the functions read (code name +0x10, TypeID +0x80, Rarity +0x89,
 // flags +0x188 / +0x18C, level +0x198).
 struct FakeObj
 {
@@ -77,7 +78,7 @@ struct FakeObj
     FakeObj(const char* pszCodeName, WORD wTypeID, BYTE btLevel, BYTE btRarity)
     {
         memset(ab, 0, sizeof(ab));
-        new (ab + 0x14) std::string(pszCodeName);
+        new (ab + FIELD_OFFSET(RefObjCommon, CodeName128)) std::string(pszCodeName);
         *(WORD*)(ab + 0x80) = wTypeID;
         ab[0x89] = btRarity;
         ab[0x198] = btLevel;
@@ -85,7 +86,7 @@ struct FakeObj
 
     ~FakeObj()
     {
-        ((std::string*)(ab + 0x14))->~basic_string();
+        ((std::string*)(ab + FIELD_OFFSET(RefObjCommon, CodeName128)))->~basic_string();
     }
 
     RefObjCommonRow* Row()
@@ -333,18 +334,18 @@ static void TestSpecialCodeLists(CReferenceData& data)
 
     FakeObj ticket("ITEM_ETC_E070919_TICKET", ItemTID(3, 1, 1), 0, 0);
     FakeObj ticket2("ITEM_ETC_E070919_TICKET_2", ItemTID(3, 1, 1), 0, 0);
-    RefObj_SpecialFlag2(ticket.Row()) = 9;
+    ticket.Row()->SpecialFlag2 = 9;
     pItems->ApplyToItem(ticket.Row());
     pItems->ApplyToItem(ticket2.Row());
-    CHECK(RefObj_SpecialFlag1(ticket.Row()) == 2 && RefObj_SpecialFlag2(ticket.Row()) == 0);
-    CHECK(RefObj_SpecialFlag1(ticket2.Row()) == 0);
+    CHECK(ticket.Row()->SpecialFlag1 == 2 && ticket.Row()->SpecialFlag2 == 0);
+    CHECK(ticket2.Row()->SpecialFlag1 == 0);
 
     FakeObj mob("MOB_TQ_SKELETON", CharTID(1, 1), 1, 0);
     FakeObj other("MOB_CH_TIGER", CharTID(1, 1), 1, 0);
     pMonsters->ApplyToChar(mob.Row());
     pMonsters->ApplyToChar(other.Row());
-    CHECK(RefObj_SpecialFlag1(mob.Row()) == 0 && RefObj_SpecialFlag2(mob.Row()) == 1);
-    CHECK(RefObj_SpecialFlag2(other.Row()) == 0);
+    CHECK(mob.Row()->SpecialFlag1 == 0 && mob.Row()->SpecialFlag2 == 1);
+    CHECK(other.Row()->SpecialFlag2 == 0);
 
     CSpecialCodeList::DestroyItemList();
     CSpecialCodeList::DestroyMonsterList();

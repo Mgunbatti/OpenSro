@@ -19,17 +19,6 @@ static const char s_szReferenceDataH[] =
 // The code name of "no row" in the shop tables.
 static const char s_szNone[] = "xxx";
 
-// Object fields the shop tables read (see InstanceRecords.h for the others).
-static DWORD RefShop_GetObjID(const RefObjCommonRow* pRefObj)                   // +8
-{
-    return *(const DWORD*)((const BYTE*)pRefObj + 0x8);
-}
-
-static DWORD RefShop_GetObjAvailableOPs(const RefObjCommonRow* pRefObj)         // +8C
-{
-    return *(const DWORD*)((const BYTE*)pRefObj + 0x8C);
-}
-
 // TypeID 3/3/3/8 without the bit 1: a trade good (IsSpecialty).
 static BOOL RefShop_IsSpecialty(WORD wTID)
 {
@@ -158,14 +147,14 @@ void RefPackageItem::AddScrapItem(RefScrapOfPackageItem* pScrapItem)
     if (!pScrapItem)
         BSAssertFail();
     m_vecAssignedScrapOfPackageItems.push_back(pScrapItem);
-    if (RefShop_IsSpecialty(RefObj_GetTypeID(m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem))
-        != RefShop_IsSpecialty(RefObj_GetTypeID(pScrapItem->m_pRefObjItem)))
+    if (RefShop_IsSpecialty(m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem->TypeID)
+        != RefShop_IsSpecialty(pScrapItem->m_pRefObjItem->TypeID))
     {
         BSMessageBoxPrintf("(%s) Specialty don't discord with Normal Type Item",
                            CodeName128.c_str());
         if (RefShop_IsSpecialty(
-                RefObj_GetTypeID(m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem))
-                != RefShop_IsSpecialty(RefObj_GetTypeID(pScrapItem->m_pRefObjItem)) &&
+                m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem->TypeID)
+                != RefShop_IsSpecialty(pScrapItem->m_pRefObjItem->TypeID) &&
             !BSAssertDialog(3157, s_szReferenceDataCpp,
                             "m_vecAssignedScrapOfPackageItems[0]->m_InstanceInfoOfItem."
                             "m_pRefObjItem->GetTID().IsSpecialty() == pScrapItem->"
@@ -173,7 +162,7 @@ void RefPackageItem::AddScrapItem(RefScrapOfPackageItem* pScrapItem)
             DebugBreak();
     }
     m_bSpecialty = RefShop_IsSpecialty(
-        RefObj_GetTypeID(m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem));
+        m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem->TypeID);
 }
 
 void RefPackageItem::ValidatePrice()
@@ -181,7 +170,7 @@ void RefPackageItem::ValidatePrice()
     if (m_vecAssignedScrapOfPackageItems.size() == 1)
     {
         DWORD dwMask = Price.dwMask;
-        if (RefObj_GetTypeID(m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem) & 1)
+        if (m_vecAssignedScrapOfPackageItems.at(0)->m_pRefObjItem->TypeID & 1)
         {
             RefPrice_GetCurrencyTypeTable();
             if (!(dwMask & 2))
@@ -200,7 +189,7 @@ void RefPackageItem::ValidatePrice()
          it != m_vecAssignedScrapOfPackageItems.end(); ++it)
     {
         RefScrapOfPackageItem* pRefScrap = *it;
-        WORD wTID = RefObj_GetTypeID(pRefScrap->m_pRefObjItem);
+        WORD wTID = pRefScrap->m_pRefObjItem->TypeID;
         if ((wTID & 2) == 0 && (wTID & 0x1C) == 0xC && (wTID & 0x60) == 0x60 &&
             !pRefScrap->m_dwData)
         {
@@ -434,7 +423,7 @@ static void RefShop_ReadItemTID(CRefRow& row, RefShopItemTID& r)
         RefObjCommonRow* pRefObj = RefShop_GetReferenceData()->FindRefObjByCodeName(
             r.ItemCodeName);
         if (pRefObj)
-            r.RefItemID = RefShop_GetObjID(pRefObj);
+            r.RefItemID = (DWORD)pRefObj->ID;
         else
             BSMessageBoxPrintf("can't find %s from _RefObjCommon. check _RefObjCommon",
                                r.ItemCodeName.c_str());
@@ -589,7 +578,7 @@ static DWORD RefRow_Read(CRefRow& row, RefScrapOfPackageItem& r)
                            strPackageItem.c_str(), strItem.c_str());
         exit(0);
     }
-    r.RefItemID = RefShop_GetObjID(pRefObj);
+    r.RefItemID = (DWORD)pRefObj->ID;
     for (int i = 0; i < 12; ++i)
         row >> r.MagParam[i];
     RefShop_ReadParams(row, r.aParam);
@@ -709,17 +698,17 @@ static DWORD RefRow_Read(CRefRow& row, RefShopGoods& r)
          it != pPackageItem->m_vecAssignedScrapOfPackageItems.end(); ++it)
     {
         RefObjCommonRow* pRefItem = (*it)->m_pRefObjItem;
-        if ((!pRefItem || !(RefShop_GetObjAvailableOPs(pRefItem) & 2)) &&
+        if ((!pRefItem || !(pRefItem->Flags & REFOBJ_CAN_SELL)) &&
             !BSAssertDialog(3400, s_szReferenceDataCpp,
                             "pRefItem != NULL && (pRefItem->m_dwAvailableOPs & "
                             "OBJ_INTERACT_FLAG_CAN_SELL)"))
             DebugBreak();
-        WORD wTID = RefObj_GetTypeID(pRefItem);
+        WORD wTID = pRefItem->TypeID;
         if ((wTID & 2) == 0 && (wTID & 0x1C) == 0xC && (wTID & 1) &&
             pTab->CodeName128.find("MALL_", 0, 5) == std::string::npos)
             BSAssertFail();
-        if (RefShop_IsSpecialty(RefObj_GetTypeID(pRefItem)))
-            RefShop_GetReferenceData()->m_set22C.insert(RefShop_GetObjID(pRefItem));
+        if (RefShop_IsSpecialty(pRefItem->TypeID))
+            RefShop_GetReferenceData()->m_set22C.insert((DWORD)pRefItem->ID);
     }
     return dwTabID;
 }
@@ -779,7 +768,7 @@ static DWORD RefRow_Read(CRefRow& row, RefShopGroup& r)
                 DebugBreak();
             return 0;
         }
-        r.RefNPCID = RefShop_GetObjID(pNPC);
+        r.RefNPCID = (DWORD)pNPC->ID;
     }
     RefShop_ReadParams(row, r.aParam);
     return r.ID;

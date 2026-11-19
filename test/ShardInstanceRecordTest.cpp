@@ -4,6 +4,7 @@
 // Compiled with SHARD_DEFS.
 
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataObj.h"
 #include "ServerCommon/ReferenceData.h"
 
 #include <string.h>
@@ -231,7 +232,7 @@ static void TestCopyAndStreams()
 
     CInstanceCOS cos;
     cos.CharName.clear();
-    new (s_abRefObj + 0x14) std::string("COS_PET");
+    new (s_abRefObj + FIELD_OFFSET(RefObjCommon, CodeName128)) std::string("COS_PET");
     cos.m_pRefObj = (RefObjCommonRow*)s_abRefObj;
     CHECK(strcmp(cos.GetName(), "COS_PET") == 0);
 }

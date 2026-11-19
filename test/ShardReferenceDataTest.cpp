@@ -3,6 +3,7 @@
 // log line of an empty table. Compiled with SHARD_DEFS.
 
 #include "ServerCommon/ReferenceData.h"
+#include "ServerCommon/RefDataObj.h"
 
 #include <string.h>
 
@@ -448,7 +449,8 @@ static void TestFindRefObj(CReferenceData& data)
     RefObjCommonRow* pObj = (RefObjCommonRow*)abObj;
     data.m_hashRefObj[1234] = pObj;
     CHECK(strcmp(RefData_GetObjectCodeName(1), "Unknown Object") == 0);
-    std::string* pstrCodeName = new (abObj + 0x14) std::string("ITEM_CH_SWORD_01_A");
+    std::string* pstrCodeName =
+        new (abObj + FIELD_OFFSET(RefObjCommon, CodeName128)) std::string("ITEM_CH_SWORD_01_A");
     CHECK(strcmp(RefData_GetObjectCodeName(1234), "ITEM_CH_SWORD_01_A") == 0);
     pstrCodeName->~basic_string();
     CHECK(CReferenceData::GetInstance() == &data);

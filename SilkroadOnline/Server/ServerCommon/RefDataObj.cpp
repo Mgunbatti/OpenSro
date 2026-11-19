@@ -69,7 +69,7 @@ static BOOL RefTypeID_Is_3_1_13_4(WORD wTypeID)
 RefObjCommon::RefObjCommon()
     : ID(0), OrgObjID(0), TypeID(0), Flags(0), MaxContain(0), pRegion(NULL), Dir(0), OffsetX(0),
       OffsetY(0), OffsetZ(0), Speed1(0), Speed2(0), Scale(0), BCHeight(0), BCRadius(0), Link(0),
-      m_dw190(0)
+      pTeleport(NULL)
 {
     for (int i = 0; i < 4; ++i)
     {
@@ -183,7 +183,7 @@ void RefObjCommon::CopyFrom(const RefObjCommon& src)
     Rarity = src.Rarity;
     Flags = src.Flags;
     if (this != &src)
-        m_set90 = src.m_set90;
+        TeleportFlags = src.TeleportFlags;
     Price = src.Price;
     CostBorrow = src.CostBorrow;
     CostRepair = src.CostRepair;
@@ -208,8 +208,8 @@ void RefObjCommon::CopyFrom(const RefObjCommon& src)
         AssocFile[i] = src.AssocFile[i];
     GP = src.GP;
     Link = src.Link;
-    m_dw188 = src.m_dw188;
-    m_dw18C = src.m_dw18C;
+    SpecialFlag1 = src.SpecialFlag1;
+    SpecialFlag2 = src.SpecialFlag2;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -584,7 +584,7 @@ int RefObjChar::Read(CRefRow& row, int nReserved)
 
 void RefObj_AddUniqueLinkedID(RefRegionRow* pRegion, RefObjCommon* pObj)
 {
-    std::vector<RefObjCommon*>& vec = RefRegion_GetStructs(pRegion);
+    std::vector<RefObjCommon*>& vec = pRegion->vecStruct;
     if (std::find(vec.begin(), vec.end(), pObj) != vec.end())
         BSAssertFail();
     // BUG(SM-042): the duplicate is only asserted and added again.

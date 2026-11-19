@@ -626,12 +626,12 @@ int RefData_LoadSiegeLvlSummonMonster(CReferenceData* pData, CDBRecord* pRecord)
         pLevels = it->second;
     }
     RefObjCommonRow* pObj = CReferenceData::GetInstance()->FindRefObj(pRow->RefObjID);
-    if (!pObj || pLevels->at(RefObj_GetByte198(pObj) - 1))
+    if (!pObj || pLevels->at(static_cast<const RefObjChar*>(pObj)->Lvl - 1))
     {
         BSAssertFail();
         return 0;
     }
-    pLevels->at(RefObj_GetByte198(pObj) - 1) = pRow;
+    pLevels->at(static_cast<const RefObjChar*>(pObj)->Lvl - 1) = pRow;
     return 1;
 }
 
@@ -1247,20 +1247,10 @@ static BOOL RefData_StrEqualNoCase(const char* psz1, const char* psz2)
     return CompareStringA(0x400, 0x10001, psz1, lstrlenA(psz1), psz2, lstrlenA(psz2)) == 2;
 }
 
-static BYTE RefObj_GetCountry(const RefObjCommonRow* pObj)                       // +0x88
-{
-    return *((const BYTE*)pObj + 0x88);
-}
-
-static BYTE RefObj_GetItemClass(const RefObjCommonRow* pObj)                     // +0x1A8
-{
-    return *((const BYTE*)pObj + 0x1A8);
-}
-
 // The key of an item in MagOptEachLevelTable: TID3 | TID4 << 16.
 static DWORD RefObj_GetMagOptAssignKey(const RefObjCommonRow* pObj)
 {
-    WORD wTypeID = RefObj_GetTypeID(pObj);
+    WORD wTypeID = pObj->TypeID;
     return ((wTypeID >> 7) & 0xF) | ((DWORD)(wTypeID & 0xF800) << 5);
 }
 
@@ -1534,7 +1524,7 @@ BOOL RefMagicOpt_IsApplicableToItem(const RefMagicOptAvailItem& item,
         BSAssertFail();
     if (!pObj)
         BSAssertFail();
-    WORD wObjType = RefObj_GetTypeID(pObj);
+    WORD wObjType = pObj->TypeID;
     if ((wObjType & 2) || (wObjType & 0x1C) != 0xC || (wObjType & 0x60) != 0x20)
         BSAssertFail();
     if (item.nKind == RefMagicOptAvailItem::KIND_OBJECT)
@@ -1561,7 +1551,7 @@ BOOL RefMagicOpt_IsApplicableToItem(const RefMagicOptAvailItem& item,
     WORD wTID4 = wType >> 11;
     if (wTID4 && wTID4 != (wObjType >> 11))
         return FALSE;
-    return (int)RefObj_GetItemClass(pObj) >= item.nReqClass;
+    return (int)static_cast<const RefObjItem*>(pObj)->ItemClass >= item.nReqClass;
 }
 
 BOOL RefMagicOpt_CountApplicableParams(const RefMagicOptLevel& level,
@@ -1748,9 +1738,9 @@ MagOptEachLevelSlots* RefData_GetMagicOptAssignForItem(const RefObjCommonRow* pO
 {
     if (!RefObj_IsEquipItem(pObj))
         return NULL;
-    if (RefObj_GetCountry(pObj) >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
+    if (pObj->Country >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
         BSAssertFail();
-    return MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[RefObj_GetCountry(pObj)],
+    return MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[pObj->Country],
                                      RefObj_GetMagOptAssignKey(pObj));
 }
 
@@ -1761,10 +1751,10 @@ BOOL RefData_FindAssignedMagicOptEntry(WORD wID, const RefObjCommonRow* pObj,
     if (!pObj)
         BSAssertFail();
     DWORD dwKey = RefObj_GetMagOptAssignKey(pObj);
-    if (RefObj_GetCountry(pObj) >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
+    if (pObj->Country >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
         BSAssertFail();
     MagOptEachLevelSlots* pSlots =
-        MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[RefObj_GetCountry(pObj)], dwKey);
+        MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[pObj->Country], dwKey);
     if (!pSlots)
         return FALSE;
     RefMagicOptGroupByName* pFound = NULL;
@@ -1935,7 +1925,7 @@ unsigned __int64 RefMagicOptByItemOptLevel::Read(CDBRecStream* pRow, CDBRecStrea
     if (!MagOptEachLevel_IsValueInRange(pLevel->pGroup, Value, pLevel->MLevel))
     {
         BSMessageBoxPrintf("(%s) error data out of range to MagicoptionValue",
-                           RefObj_GetCodeName(pObj).c_str());
+                           pObj->CodeName128.c_str());
         if (!BSAssertDialog(4730, s_szReferenceDataFile, "FALSE"))
             DebugBreak();
         return 0;
@@ -2422,7 +2412,7 @@ const char* RefData_GetObjectCodeName(int nRefObjID)
     RefObjCommonRow* pObj = CReferenceData::GetInstance()->FindRefObj(nRefObjID);
     if (!pObj)
         return "Unknown Object";
-    return RefObj_GetCodeName(pObj).c_str();
+    return pObj->CodeName128.c_str();
 }
 
 const char* RefData_GetRegionName(WORD wRegionID)

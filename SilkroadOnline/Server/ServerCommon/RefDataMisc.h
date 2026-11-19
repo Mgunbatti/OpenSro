@@ -215,17 +215,6 @@ private:
 
 C_ASSERT(sizeof(CSpecialCodeList) == 0x14);
 
-// The two flag words of an object (RefObjCommon +0x188 / +0x18C).
-inline DWORD& RefObj_SpecialFlag1(RefObjCommonRow* pObj)
-{
-    return *(DWORD*)((BYTE*)pObj + 0x188);
-}
-
-inline DWORD& RefObj_SpecialFlag2(RefObjCommonRow* pObj)
-{
-    return *(DWORD*)((BYTE*)pObj + 0x18C);
-}
-
 // ServerConfigExtraMap_GetInstance (0x4a0e00, the name of the analysis): the function-static
 // set of the special item IDs that RefObjItem::Read fills (RefObjItem_RegisterSpecialItem).
 stdext::hash_set<int>& RefObjItem_GetSpecialItemIDSet();

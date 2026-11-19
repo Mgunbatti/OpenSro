@@ -1,5 +1,7 @@
 #include "ServerCommon/InstanceRecords.h"
 
+#include "ServerCommon/RefDataObj.h"
+
 #include <string.h>
 
 #include "BSLib/Util/TimeSpan.h"
@@ -51,7 +53,7 @@ CInstanceChar::~CInstanceChar()
 
 int CInstanceChar::GetRefObjDword250()
 {
-    return RefObj_GetDword250(m_pRefObj);
+    return static_cast<const RefObjChar*>(m_pRefObj)->ExpToGive;
 }
 
 BS_IMPLEMENT_RUNTIME_CLASS(CInstanceSlot, NULL, NULL, &CDBRecord::classCDBRecord)
@@ -359,12 +361,12 @@ void CInstanceCOS::Write(CByteStream* pStream, int nMode)
     pStream->Write<DWORD>(RefCharID);
     if (m_pRefObj == NULL)
         BSAssertFail();
-    WORD wTypeID = RefObj_GetTypeID(m_pRefObj);
+    WORD wTypeID = m_pRefObj->TypeID;
     if (nMode != 1)
         return;
     if (m_pRefObj == NULL)
         BSAssertFail();
-    WORD wType = RefObj_GetTypeID(m_pRefObj);
+    WORD wType = m_pRefObj->TypeID;
     // TypeID1 1 (character), TypeID2 2 (NPC), TypeID3 3 (COS)
     if ((wType & 2) == 0 || (wType & 0x1C) != 4 || (wType & 0x60) != 0x40 ||
         (wType & 0x780) != 0x180)
@@ -387,13 +389,13 @@ const char* CInstanceCOS::GetName()
         return CharName.c_str();
     if (m_pRefObj == NULL)
         BSAssertFail();
-    return RefObj_GetCodeName(m_pRefObj).c_str();
+    return m_pRefObj->CodeName128.c_str();
 }
 
 // 0x5235c0 (shared with the siege fortress objects)
 BYTE CInstanceCOS::GetLevel()
 {
-    return RefObj_GetByte198(m_pRefObj);
+    return static_cast<const RefObjChar*>(m_pRefObj)->Lvl;
 }
 
 // 0x524f20
@@ -1264,7 +1266,7 @@ void CInstanceItem::Write(CByteStream* pStream, int nMode)
 {
     WriteRentItemInfo(pStream, nMode);
     pStream->Write<DWORD>(RefItemID);
-    WORD wTypeID = RefObj_GetTypeID(m_pRefObj);
+    WORD wTypeID = m_pRefObj->TypeID;
     if (nMode == 1 || nMode == 4)
     {
         BOOL bBionic = (wTypeID & 2) != 0;
@@ -2250,12 +2252,12 @@ const char* CInstanceSiegeFortressObject::GetName()
 {
     if (m_pRefObj == NULL)
         BSAssertFail();
-    return RefObj_GetCodeName(m_pRefObj).c_str();
+    return m_pRefObj->CodeName128.c_str();
 }
 
 BYTE CInstanceSiegeFortressObject::GetLevel()
 {
-    return RefObj_GetByte198(m_pRefObj);
+    return static_cast<const RefObjChar*>(m_pRefObj)->Lvl;
 }
 
 int CInstanceSiegeFortressObject::GetHP()
@@ -2326,12 +2328,12 @@ const char* CInstanceSiegeFortressStruct::GetName()
 {
     if (m_pRefObj == NULL)
         BSAssertFail();
-    return RefObj_GetCodeName(m_pRefObj).c_str();
+    return m_pRefObj->CodeName128.c_str();
 }
 
 BYTE CInstanceSiegeFortressStruct::GetLevel()
 {
-    return RefObj_GetByte198(m_pRefObj);
+    return static_cast<const RefObjChar*>(m_pRefObj)->Lvl;
 }
 
 int CInstanceSiegeFortressStruct::GetHP()
