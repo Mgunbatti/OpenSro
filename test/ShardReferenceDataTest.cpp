@@ -6,6 +6,8 @@
 
 #include <string.h>
 
+#include <new>
+
 #include "BSNet/NetEngine.h"
 
 #include "LogCapture.h"
