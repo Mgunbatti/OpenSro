@@ -1152,6 +1152,301 @@ void CInstanceRentItemInfo::Read(CByteStream* pStream, int nMode)
 }
 
 // ---------------------------------------------------------------------------------------------
+// CInstanceItem (_ITEMS): ctor 0x52f7a0, dtor 0x52f820, slots 2 / 3 0x521eb0 / 0x521ed0, table description 0x635ee0.
+// BUG(SM-005): MagParamNum above 12 is only asserted; CopyTo / Write / Read run on past MagParam.
+
+static const DBRecordColumnDef s_aColumnsCInstanceItem[] =
+{
+    { "ID64", 0, FIELD_OFFSET(CInstanceItem, ID64), 0 },
+    { "RefItemID", 0, FIELD_OFFSET(CInstanceItem, RefItemID), 1 },
+    { "OptLevel", 0, FIELD_OFFSET(CInstanceItem, OptLevel), 3 },
+    { "Variance", 0, FIELD_OFFSET(CInstanceItem, Variance), 4 },
+    { "Data", 0, FIELD_OFFSET(CInstanceItem, Data), 2 },
+    { "CreaterName", 0, FIELD_OFFSET(CInstanceItem, CreaterName), 1 },
+    { "MagParamNum", 0, FIELD_OFFSET(CInstanceItem, MagParamNum), 5 },
+    { "MagParam", 1, FIELD_OFFSET(CInstanceItem, MagParam[0]), 5 },
+    { "MagParam", 2, FIELD_OFFSET(CInstanceItem, MagParam[1]), 5 },
+    { "MagParam", 3, FIELD_OFFSET(CInstanceItem, MagParam[2]), 5 },
+    { "MagParam", 4, FIELD_OFFSET(CInstanceItem, MagParam[3]), 5 },
+    { "MagParam", 5, FIELD_OFFSET(CInstanceItem, MagParam[4]), 5 },
+    { "MagParam", 6, FIELD_OFFSET(CInstanceItem, MagParam[5]), 5 },
+    { "MagParam", 7, FIELD_OFFSET(CInstanceItem, MagParam[6]), 5 },
+    { "MagParam", 8, FIELD_OFFSET(CInstanceItem, MagParam[7]), 5 },
+    { "MagParam", 9, FIELD_OFFSET(CInstanceItem, MagParam[8]), 5 },
+    { "MagParam", 10, FIELD_OFFSET(CInstanceItem, MagParam[9]), 5 },
+    { "MagParam", 11, FIELD_OFFSET(CInstanceItem, MagParam[10]), 5 },
+    { "MagParam", 12, FIELD_OFFSET(CInstanceItem, MagParam[11]), 5 },
+    { "Serial64", 0, FIELD_OFFSET(CInstanceItem, Serial64), 1 },
+};
+
+SR_IMPLEMENT_RECORD(CInstanceItem, CInstanceObj, "_ITEMS", 0x5, s_aColumnsCInstanceItem, _countof(s_aColumnsCInstanceItem))
+
+void CInstanceItem::InitData()
+{
+    SR_SET_COLUMN(ID64, 0, 0);
+    SR_SET_COLUMN(RefItemID, 0, 1);
+    SR_SET_COLUMN(OptLevel, 0, 3);
+    SR_SET_COLUMN(Variance, 0, 4);
+    SR_SET_COLUMN(Data, 0, 2);
+    CreaterName.clear();
+    SR_SET_COLUMN(MagParamNum, 0, 5);
+    SR_SET_COLUMN(Serial64, 0, 1);
+    m_pRentItemInfo = NULL;
+    CInstanceObj::InitData();
+}
+
+void CInstanceItem::CopyTo(CDBRecord* pDest)
+{
+    CInstanceItem* p = (CInstanceItem*)pDest;
+    if (m_pRefObj == NULL)
+        BSAssertFail();
+    p->m_pRefObj = m_pRefObj;
+    DBRecord_SetColumn(p, s_TableInfo, p->ID64, 0, 0);
+    SR_COPY_COLUMN(p, RefItemID, 1);
+    SR_COPY_COLUMN(p, OptLevel, 3);
+    SR_COPY_COLUMN(p, Variance, 4);
+    SR_COPY_COLUMN(p, Data, 2);
+    p->SetColumn(&InstanceItemData::CreaterName, CreaterName);
+    SR_COPY_COLUMN(p, MagParamNum, 5);
+    // BUG(SM-005): the index is only asserted.
+    __int64* pSrcParams = MagParam;
+    __int64* pDestParams = p->MagParam;
+    for (int i = 0; i < MagParamNum; ++i)
+    {
+        if (i < 0 || i >= 12)
+            BSAssertFail();
+        DBRecord_SetColumn(p, s_TableInfo, pDestParams[i], pSrcParams[i], 5);
+    }
+    SR_COPY_COLUMN(p, Serial64, 1);
+
+    CInstanceRentItemInfo* pRentItemInfo = m_pRentItemInfo;
+    if (pRentItemInfo != NULL && pRentItemInfo->GetTableInfo()->m_pTable != NULL)
+    {
+        CDBRecord* pCopy = pRentItemInfo->GetTableInfo()->m_pTable->CreateRecord();
+        pRentItemInfo->CopyTo(pCopy);
+        p->m_pRentItemInfo = (CInstanceRentItemInfo*)pCopy;
+    }
+    else
+    {
+        p->m_pRentItemInfo = NULL;
+    }
+
+    for (BindingOptionMap::iterator it = m_mapBindingOptions.begin();
+         it != m_mapBindingOptions.end(); ++it)
+    {
+        BindingOptionList& options = it->second;
+        for (BindingOptionList::iterator itOption = options.begin(); itOption != options.end();
+             ++itOption)
+        {
+            CInstanceBindingOptionWithItem* pOption = *itOption;
+            CDBRecord* pCopy = NULL;
+            if (pOption->GetTableInfo()->m_pTable != NULL)
+            {
+                pCopy = pOption->GetTableInfo()->m_pTable->CreateRecord();
+                pOption->CopyTo(pCopy);
+            }
+            if (pCopy == NULL)
+                BSAssertFail();
+            p->AddBindingOption(it->first, (CInstanceBindingOptionWithItem*)pCopy);
+        }
+    }
+}
+
+void CInstanceItem::ResolveRefObj()
+{
+    if (m_pRefObj != NULL)
+        BSAssertFail();
+    m_pRefObj = ReferenceData_FindRefObj(RefItemID);
+}
+
+// Mode 1 / 4: the client layout of the item type; mode 2: the short form; mode 3: every column.
+void CInstanceItem::Write(CByteStream* pStream, int nMode)
+{
+    WriteRentItemInfo(pStream, nMode);
+    pStream->Write<DWORD>(RefItemID);
+    WORD wTypeID = RefObj_GetTypeID(m_pRefObj);
+    if (nMode == 1 || nMode == 4)
+    {
+        BOOL bBionic = (wTypeID & 2) != 0;
+        if (!bBionic)
+        {
+            if (InstanceItem_IsTypeID_3_3_5_Not1(wTypeID))
+            {
+                pStream->Write<DWORD>(Data);
+                return;
+            }
+            if (InstanceItem_IsTypeID(wTypeID, 3))
+            {
+                pStream->Write<WORD>((WORD)Data);
+                if (InstanceItem_IsTypeID(wTypeID, 3, 8))
+                    pStream->WriteString(CreaterName.c_str());
+                else if (InstanceItem_IsTypeID(wTypeID, 3, 14, 2))
+                    WriteMagParams(pStream);
+                else if (InstanceItem_IsTypeID(wTypeID, 3, 11, 2) ||
+                         InstanceItem_IsTypeID(wTypeID, 3, 11, 1))
+                    pStream->Write<BYTE>(OptLevel);
+                return;
+            }
+            if (InstanceItem_IsTypeID(wTypeID, 2))
+            {
+                if (InstanceItem_IsTypeID(wTypeID, 2, 2))
+                    pStream->Write<DWORD>(Data);
+                return;
+            }
+        }
+        if (InstanceItem_IsTypeID(wTypeID, 3, 9))
+        {
+            pStream->WriteString(CreaterName.c_str());
+            return;
+        }
+        pStream->Write<BYTE>(OptLevel).Write<__int64>(Variance);
+        DWORD dwData;
+        if (InstanceItem_IsTypeID(wTypeID, 1, 14))
+        {
+            // Data is an expiry time: the remaining seconds, bit 31 set when there is one.
+            BOOL bExpiry = Data != 0;
+            CTimeSpan span(0);
+            CDateTime tExpiry;
+            tExpiry = (__time32_t)Data;
+            CDateTime tNow = CDateTime::GetCurrent();
+            if (tNow < tExpiry)
+                span = tExpiry - tNow;
+            dwData = (span.GetTotalSeconds() & 0x7FFFFFFF) | ((DWORD)bExpiry << 31);
+        }
+        else
+        {
+            dwData = Data;
+        }
+        pStream->Write<DWORD>(dwData);
+        WriteMagParams(pStream);
+        if (!bBionic && InstanceItem_IsTypeID(wTypeID, 1))
+            WriteBindingOptions(pStream, nMode);
+    }
+    else if (nMode == 2)
+    {
+        if (InstanceItem_IsTypeID(wTypeID, 1))
+        {
+            BYTE byValue = 0;
+            SumBindingOptionValues(byValue);
+            byValue = (BYTE)(byValue + OptLevel);
+            pStream->Write<BYTE>(byValue);
+        }
+        else if (InstanceItem_IsTypeID_3_3_5_Not1(wTypeID))
+        {
+            pStream->Write<DWORD>(Data);
+        }
+        else if (InstanceItem_IsTypeID(wTypeID, 3, 8) || InstanceItem_IsTypeID(wTypeID, 3, 9))
+        {
+            pStream->WriteString(CreaterName.c_str());
+        }
+    }
+    else if (nMode == 3)
+    {
+        const char* pszCreaterName = CreaterName.c_str();
+        pStream->Write<BYTE>(OptLevel).Write<__int64>(Variance).Write<DWORD>(Data)
+            .WriteString(pszCreaterName).Write<__int64>(Serial64);
+        WriteMagParams(pStream);
+    }
+}
+
+void CInstanceItem::Read(CByteStream* pStream, int nMode)
+{
+    if (nMode != 3)
+        return;
+    pStream->Read(RefItemID).Read(OptLevel).Read(Variance).Read(Data)
+        .ReadString16(CreaterName).Read(Serial64).Read(MagParamNum);
+    if (MagParamNum > 12)
+        BSAssertFail();
+    // BUG(SM-005): reads MagParamNum values whatever the count.
+    __int64* pParams = MagParam;
+    for (int i = 0; i < MagParamNum; ++i)
+        pStream->Read(pParams[i]);
+    ResolveRefObj();
+}
+
+void CInstanceItem::AddBindingOption(BYTE byType, CInstanceBindingOptionWithItem* pOption)
+{
+    BindingOptionMap::iterator it = m_mapBindingOptions.find(byType);
+    if (it == m_mapBindingOptions.end())
+    {
+        BindingOptionList options;
+        options.push_back(pOption);
+        m_mapBindingOptions.insert(BindingOptionMap::value_type(byType, options));
+    }
+    else
+    {
+        it->second.push_back(pOption);
+    }
+}
+
+void CInstanceItem::WriteRentItemInfo(CByteStream* pStream, int nMode)
+{
+    if (nMode == 1)
+    {
+        if (m_pRentItemInfo == NULL)
+            pStream->Write<DWORD>(0);
+        else
+            m_pRentItemInfo->Write(pStream, 1);
+    }
+    else if (nMode == 4)
+    {
+        // An item with rent info is not written in mode 4 (assert, nothing written).
+        if (m_pRentItemInfo != NULL)
+            BSAssertFail();
+        else
+            pStream->Write<DWORD>(0);
+    }
+}
+
+void CInstanceItem::SumBindingOptionValues(BYTE& bySum)
+{
+    BindingOptionMap::iterator it = m_mapBindingOptions.find(2);
+    if (it == m_mapBindingOptions.end() || it->second.size() == 0)
+    {
+        bySum = 0;
+        return;
+    }
+    BindingOptionList& options = it->second;
+    for (BindingOptionList::iterator itOption = options.begin(); itOption != options.end();
+         ++itOption)
+    {
+        bySum = (BYTE)(bySum + (BYTE)(*itOption)->nOptValue);
+    }
+}
+
+void CInstanceItem::WriteBindingOptions(CByteStream* pStream, int nMode)
+{
+    for (BYTE byType = 1; byType < 3; ++byType)
+    {
+        pStream->Write<BYTE>(byType);
+        BindingOptionMap::iterator it = m_mapBindingOptions.find(byType);
+        if (it == m_mapBindingOptions.end() || it->second.size() == 0)
+        {
+            pStream->Write<BYTE>(0);
+            continue;
+        }
+        BindingOptionList& options = it->second;
+        pStream->Write<BYTE>((BYTE)options.size());
+        for (BindingOptionList::iterator itOption = options.begin(); itOption != options.end();
+             ++itOption)
+        {
+            (*itOption)->Write(pStream, nMode);
+        }
+    }
+}
+
+void CInstanceItem::WriteMagParams(CByteStream* pStream)
+{
+    pStream->Write<BYTE>(MagParamNum);
+    if (MagParamNum > 12)
+        BSAssertFail();
+    // BUG(SM-005): writes MagParamNum values whatever the count.
+    __int64* pParams = MagParam;
+    for (int i = 0; i < MagParamNum; ++i)
+        pStream->Write<__int64>(pParams[i]);
+}
+
+// ---------------------------------------------------------------------------------------------
 // CInstanceTimedJob (_TIMEDJOB): ctor 0x530e80, dtor 0x530ee0, slots 2 / 3 0x5248f0 / 0x524910, table description 0x642160.
 
 static const DBRecordColumnDef s_aColumnsCInstanceTimedJob[] =

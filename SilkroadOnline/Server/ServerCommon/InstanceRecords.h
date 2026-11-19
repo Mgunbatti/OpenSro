@@ -953,6 +953,88 @@ C_ASSERT(FIELD_OFFSET(CInstanceRentItemInfo, nPackingState) == 0x58);
 C_ASSERT(FIELD_OFFSET(CInstanceRentItemInfo, nPackingTime) == 0x5C);
 C_ASSERT(sizeof(CInstanceRentItemInfo) == 0x60);
 
+// The item TypeID tests of the record code (0x61b770, 0x61b7a0, 0x61b7d0, 0x61b800, 0x4a1f50,
+// 0x51f2c0, 0x51f300 and inline copies): TypeID1 3 (item), not bionic, the given TypeID2 and,
+// when not -1, TypeID3 / TypeID4.
+inline BOOL InstanceItem_IsTypeID(WORD wTypeID, int nTypeID2, int nTypeID3 = -1,
+                                  int nTypeID4 = -1)
+{
+    return (wTypeID & 2) == 0 && (wTypeID & 0x1C) == 0xC && ((wTypeID >> 5) & 3) == nTypeID2 &&
+           (nTypeID3 < 0 || ((wTypeID >> 7) & 0xF) == nTypeID3) &&
+           (nTypeID4 < 0 || (wTypeID >> 11) == nTypeID4);
+}
+
+// 0x61b840: item 3-3-5 except TypeID4 1.
+inline BOOL InstanceItem_IsTypeID_3_3_5_Not1(WORD wTypeID)
+{
+    return InstanceItem_IsTypeID(wTypeID, 3, 5) && (wTypeID >> 11) != 1;
+}
+
+// _ITEMS
+struct InstanceItemData
+{
+    __int64          ID64;                  // +20
+    int              RefItemID;             // +28
+    BYTE             OptLevel;              // +2C
+    __int64          Variance;              // +30
+    int              Data;                  // +38
+    std::string      CreaterName;           // +3C
+    BYTE             MagParamNum;           // +58
+    __int64          MagParam[12];          // +60
+    __int64          Serial64;              // +C0
+};
+
+class CInstanceItem : public CDBRecordT<CInstanceItem, CInstanceObj, InstanceItemData>
+{
+    SR_RECORD_MEMBERS(CInstanceItem)
+
+public:
+    typedef std::list<CInstanceBindingOptionWithItem*> BindingOptionList;
+    typedef std::map<BYTE, BindingOptionList> BindingOptionMap;
+
+    // 0x521fa0: the columns except the magic parameters; the binding options are kept.
+    virtual void InitData();                                                // 5
+    // 0x5220c0: copies the columns through the setters of pDest (ID64 becomes 0) and gives
+    // pDest copies of the rent info and the binding options.
+    virtual void CopyTo(CDBRecord* pDest);                                  // 8
+    // 0x521320 (shared with CInstancePC / CInstanceCOS)
+    virtual void ResolveRefObj();                                           // 9
+    // 0x522490
+    virtual void Write(CByteStream* pStream, int nMode);                    // 10
+    // 0x522930: mode 3 reads what Write mode 3 wrote, then resolves the reference object.
+    virtual void Read(CByteStream* pStream, int nMode);                     // 11
+
+    // 0x6377b0: appends the option to the list of its type.
+    void AddBindingOption(BYTE byType, CInstanceBindingOptionWithItem* pOption);
+
+private:
+    // 0x637770 (WriteMagicParamByMode of the analysis): the rent info (modes 1 and 4).
+    void WriteRentItemInfo(CByteStream* pStream, int nMode);
+    // 0x637900: adds the option values of type 2 to bySum (sets it to 0 when there is none).
+    void SumBindingOptionValues(BYTE& bySum);
+    // 0x637980: count and options of the types 1 and 2.
+    void WriteBindingOptions(CByteStream* pStream, int nMode);
+    // MagParamNum and the magic parameters (inline in Write).
+    void WriteMagParams(CByteStream* pStream);
+
+public:
+    BindingOptionMap        m_mapBindingOptions;    // +C8
+    CInstanceRentItemInfo*  m_pRentItemInfo;        // +D4
+};
+
+C_ASSERT(FIELD_OFFSET(CInstanceItem, ID64) == 0x20);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, RefItemID) == 0x28);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, OptLevel) == 0x2C);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, Variance) == 0x30);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, Data) == 0x38);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, CreaterName) == 0x3C);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, MagParamNum) == 0x58);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, MagParam) == 0x60);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, Serial64) == 0xC0);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, m_mapBindingOptions) == 0xC8);
+C_ASSERT(FIELD_OFFSET(CInstanceItem, m_pRentItemInfo) == 0xD4);
+C_ASSERT(sizeof(CInstanceItem) == 0xD8);
+
 // _TIMEDJOB
 struct InstanceTimedJobData
 {
