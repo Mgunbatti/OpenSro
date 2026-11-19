@@ -338,13 +338,23 @@ int RefRec_Read(const CRefQuest& rec, RefQuest& r);
 // Opaque _RefObjCommon row (see InstanceRecords.h).
 struct RefObjCommonRow;
 
+// Rows of tables whose readers are not ported yet (opaque).
+struct RefRegionRow;            // _RefRegion: the region name is the string at +0x34
+struct RefSkillMasteryRow;      // _RefSkillMastery
+
 // ---------------------------------------------------------------------------------------------
 // CReferenceData
 
 class CReferenceData
 {
 public:
+    typedef std::map<DWORD, RefRegionRow*>                      RefRegionMap;
     typedef stdext::hash_map<int, RefObjCommonRow*>             RefObjHashMap;
+    typedef stdext::hash_map<std::string, RefObjCommonRow*>     RefObjByCodeNameHashMap;
+    typedef std::map<DWORD, RefSkillMasteryRow*>                RefSkillMasteryMap;
+    typedef std::map<DWORD, RefSkill*>                          RefSkillMap;
+    typedef std::map<DWORD, RefGameWorld*>                      RefGameWorldMap;
+    typedef stdext::hash_map<std::string, RefGameWorld*>        RefGameWorldByCodeNameHashMap;
     typedef std::map<std::string, RefShardContentConfig*>       RefShardContentConfigMap;
     typedef std::map<std::string, RefUIString*>                 RefUIStringMap;
     typedef std::multimap<int, RefTriggerBind*>                 RefTriggerBindMap;
@@ -399,6 +409,15 @@ public:
 
     // RefData_HashFindAt108 (0x42e280): the object row of an id, NULL when there is none.
     RefObjCommonRow* FindRefObj(int nRefObjID);
+    // The lookups below return NULL when there is no such row.
+    RefRegionRow* FindRegion(DWORD dwID);                               // 0x42db00
+    RefGameWorld* FindGameWorld(DWORD dwID);                            // 0x42dc30
+    // RefData_HashFindObjAt144 (0x42de30).
+    RefObjCommonRow* FindRefObjByCodeName(const std::string& strCodeName);
+    RefSkillMasteryRow* FindSkillMastery(DWORD dwID);                   // 0x46f7f0
+    RefSkill* FindSkill(DWORD dwID);                                    // 0x46f920
+    // CRefGameWorldMgr::FindByCodeName (0x41ae20).
+    RefGameWorld* FindGameWorldByCodeName(const std::string& strCodeName);
     // CRefInstanceGenerator::FindServerEvent: NULL when there is none.
     RefServerEvent* FindServerEvent(DWORD dwID);
     // RefData_FindServerEventReward (0x47d980): NULL when there is none.
@@ -406,11 +425,19 @@ public:
 
 public:
     RefTableVector*             m_pTables;                          // +000
-    BYTE                        m_ab004[0x64];                      // +004  (not ported yet)
+    RefRegionMap                m_mapRegion;                        // +004  by region ID
+    BYTE                        m_ab010[0x58];                      // +010  (not ported yet)
     RefObjHashMap               m_hashRefObj;                       // +068  _RefObjCommon by ID
-    BYTE                        m_ab090[0x810];                     // +090  (not ported yet)
+    RefObjByCodeNameHashMap     m_hashRefObjByCodeName;             // +090
+    BYTE                        m_ab0B8[0x7C4];                     // +0B8  (not ported yet)
+    RefSkillMasteryMap          m_mapSkillMastery;                  // +87C
+    RefSkillMap                 m_mapSkill;                         // +888
+    BYTE                        m_ab894[0xC];                       // +894  (not ported yet)
     RefQuestMap                 m_mapQuest;                         // +8A0  by ID
-    BYTE                        m_ab8AC[0x150];                     // +8AC  (not ported yet)
+    BYTE                        m_ab8AC[0x80];                      // +8AC  (not ported yet)
+    RefGameWorldMap             m_mapGameWorld;                     // +92C  by ID
+    RefGameWorldByCodeNameHashMap m_hashGameWorldByCodeName;        // +938
+    BYTE                        m_ab960[0x9C];                      // +960  (not ported yet)
     RefSiegeFortressVector      m_vecSiegeFortress;                 // +9FC
     RefSiegeFortressGuardMap    m_mmapSiegeFortressGuard;           // +A0C  by FortressID
     RefSiegeFortressItemForgeMap m_mmapSiegeFortressItemForge;      // +A18  by FortressID
@@ -455,7 +482,11 @@ public:
 };
 
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObj) == 0x68);
-C_ASSERT(FIELD_OFFSET(CReferenceData, m_ab090) == 0x90);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObjByCodeName) == 0x90);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkillMastery) == 0x87C);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkill) == 0x888);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorld) == 0x92C);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashGameWorldByCodeName) == 0x938);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapQuest) == 0x8A0);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortress) == 0x9FC);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortressBattleRank) == 0xA24);
@@ -489,3 +520,6 @@ void RefObj_PackTypeID(DWORD& dwPacked, const WORD* pawValue);
 // RefData_GetObjectCodeName (0x486550): CodeName128 of an object, "Unknown Object" for an
 // unknown id.
 const char* RefData_GetObjectCodeName(int nRefObjID);
+
+// RefData_GetRegionName (0x486590): name of a region, "Unknown Region" for an unknown id.
+const char* RefData_GetRegionName(WORD wRegionID);

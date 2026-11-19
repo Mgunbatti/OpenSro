@@ -1030,20 +1030,54 @@ RefObjCommonRow* CReferenceData::FindRefObj(int nRefObjID)
     return it->second;
 }
 
-RefServerEvent* CReferenceData::FindServerEvent(DWORD dwID)
+// The value of a key, NULL when the key is not there.
+template <class TMap, class TKey>
+static typename TMap::mapped_type RefData_FindValue(TMap& map, const TKey& key)
 {
-    RefServerEventMap::iterator it = m_mapServerEvent.find(dwID);
-    if (it == m_mapServerEvent.end())
+    typename TMap::iterator it = map.find(key);
+    if (it == map.end())
         return NULL;
     return it->second;
 }
 
+RefRegionRow* CReferenceData::FindRegion(DWORD dwID)
+{
+    return RefData_FindValue(m_mapRegion, dwID);
+}
+
+RefGameWorld* CReferenceData::FindGameWorld(DWORD dwID)
+{
+    return RefData_FindValue(m_mapGameWorld, dwID);
+}
+
+RefObjCommonRow* CReferenceData::FindRefObjByCodeName(const std::string& strCodeName)
+{
+    return RefData_FindValue(m_hashRefObjByCodeName, strCodeName);
+}
+
+RefSkillMasteryRow* CReferenceData::FindSkillMastery(DWORD dwID)
+{
+    return RefData_FindValue(m_mapSkillMastery, dwID);
+}
+
+RefSkill* CReferenceData::FindSkill(DWORD dwID)
+{
+    return RefData_FindValue(m_mapSkill, dwID);
+}
+
+RefGameWorld* CReferenceData::FindGameWorldByCodeName(const std::string& strCodeName)
+{
+    return RefData_FindValue(m_hashGameWorldByCodeName, strCodeName);
+}
+
+RefServerEvent* CReferenceData::FindServerEvent(DWORD dwID)
+{
+    return RefData_FindValue(m_mapServerEvent, dwID);
+}
+
 RefServerEventReward* CReferenceData::FindServerEventReward(DWORD dwID)
 {
-    RefServerEventRewardMap::iterator it = m_mapServerEventReward.find(dwID);
-    if (it == m_mapServerEventReward.end())
-        return NULL;
-    return it->second;
+    return RefData_FindValue(m_mapServerEventReward, dwID);
 }
 
 // The lookup the instance records use (InstanceRecords.h): the singleton check of the callers,
@@ -1104,4 +1138,13 @@ const char* RefData_GetObjectCodeName(int nRefObjID)
     if (!pObj)
         return "Unknown Object";
     return RefObj_GetCodeName(pObj).c_str();
+}
+
+const char* RefData_GetRegionName(WORD wRegionID)
+{
+    RefRegionRow* pRegion = CReferenceData::GetInstance()->FindRegion(wRegionID);
+    if (!pRegion)
+        return "Unknown Region";
+    return reinterpret_cast<const std::string*>(reinterpret_cast<const BYTE*>(pRegion) + 0x34)
+        ->c_str();
 }
