@@ -5,6 +5,7 @@
 #include "ServerFramework/ServerDataExtern.h"
 #include "ServerCommon/ReferenceData.h"
 #include "ShardManager/GameWorld.h"
+#include "ShardManager/TrainingCamp.h"
 
 // The code each begin and end handler repeats inline.
 void IShard_ScheduleJob::LogSchedule(const char* pszText)
@@ -250,6 +251,9 @@ void CShardSJ_UniqueSpawn::OnEnd(CDateTime& /*now*/)   // 0x65e180
 
 BOOL CShardSJ_MentorHonor::OnBegin()                    // 0x65e720
 {
+    // The training camp manager (dword_8A8930) is asserted, then not used.
+    if (!g_pTrainingCampManager)
+        BSAssertFail();
     TrainingCamp_DBUpdateHonorRank();
     LogSchedule("Scheduleing : Mentor Honor Record Update is Start & End ..... !");
     return TRUE;

@@ -33,9 +33,6 @@ void Schedule_InsertLogAsync(std::string strModule, int nServerID, std::string s
                              DWORD dwScheduleID, std::string strState);
 // UniqueSpawn_BroadcastL3Uniques_34BB (0x414450, SM_main).
 void UniqueSpawn_BroadcastL3Uniques_34BB(BYTE byFlag);
-// TrainingCamp_DBUpdateHonorRank (0x459a00) on the training camp manager (dword_8A8930, asserts
-// when there is none).
-void TrainingCamp_DBUpdateHonorRank();
 
 // The KEY=VALUE pairs of a _Schedule parameter string; ScheduleParamParser_Parse (0x666260)
 // returns 1 when the string could be parsed.
