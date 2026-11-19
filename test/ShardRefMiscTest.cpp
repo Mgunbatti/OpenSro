@@ -414,6 +414,57 @@ static void TestDataStreams()
     CHECK(!unlimit.Parse(strData, &nPos) && nPos == -1);
 }
 
+static void PutGachaRow(CDBRecStream* pRow, BYTE btService, DWORD dwItem, WORD wCount,
+                        const char* pszDesc)
+{
+    PutByte(pRow, btService);
+    PutDword(pRow, 1);
+    PutDword(pRow, dwItem);
+    PutWord(pRow, 0);
+    PutWord(pRow, wCount);
+    PutDword(pRow, 0);
+    PutByte(pRow, 0);
+    for (int i = 0; i < 4; ++i)
+    {
+        PutDword(pRow, i == 0 ? 1 : 0);
+        PutString(pRow, i == 0 ? pszDesc : "xxx");
+    }
+}
+
+static void TestGacha(CReferenceData& data)
+{
+    CHECK(Util_PackFourCC("intv") == 0x696E7476 && Util_PackFourCC("ab") == 0x6162);
+
+    CGachaFreeParam param;
+    param.Parse("<D:5>");                       // no [BIIV]: nothing
+    CHECK(param.m_vecEntry.empty());
+    param.Parse("[BIIV]<D:150><M:intv,2,-7><O:3>");
+    CHECK(param.m_vecEntry.size() == 3);
+    CHECK(param.m_vecEntry[0]->btType == 'D' && param.m_vecEntry[0]->nValue == 150);
+    CHECK(param.m_vecEntry[1]->btType == 'M' && param.m_vecEntry[1]->dwCode == 0x696E7476 &&
+          param.m_vecEntry[1]->btLevel == 2 && param.m_vecEntry[1]->nValue == -7);
+    CHECK(param.m_vecEntry[2]->btType == 'O' && param.m_vecEntry[2]->nValue == 3);
+
+    FakeObj item("ITEM_ETC_GACHA", ItemTID(3, 1, 1), 0, 0);
+    *(DWORD*)(item.ab + 0x198) = 10;
+    *(float*)(item.ab + 0x1B0) = 10.0f;
+    *(float*)(item.ab + 0x1B4) = 100.0f;
+    data.m_hashRefObj[500] = item.Row();
+    FakeTable<CRefGachaItemSet> table;
+    PutGachaRow(table.AddRow(), 1, 500, 5, "[BIIV]<D:150><O:20>");
+    PutGachaRow(table.AddRow(), 0, 500, 5, "");
+    CHECK(RefData_BuildGachaItemSet(&data, &table.entry, 0x47) == 1);
+    CHECK(data.m_vecGachaItemSet.size() == 1);
+    RefGachaItemSetRow* pRow = data.m_vecGachaItemSet[0];
+    CHECK(pRow->RefItemID == 500 && pRow->Count == 5 && pRow->Param[0].Param == 1);
+    CHECK(pRow->pFreeParam && pRow->pFreeParam->m_vecEntry.size() == 2);
+    CHECK(pRow->pFreeParam->m_vecEntry[0]->nValue == 100);  // durability clamped
+    CHECK(pRow->pFreeParam->m_vecEntry[1]->nValue == 12);   // option level clamped
+    delete pRow;
+    data.m_vecGachaItemSet.clear();
+    data.m_hashRefObj.clear();
+}
+
 int main()
 {
     CReferenceData* pData = CReferenceData::GetInstance();
@@ -427,6 +478,7 @@ int main()
     TestSpecialCodeLists(*pData);
     TestTypeIDs();
     TestDataStreams();
+    TestGacha(*pData);
 
     pData->m_pTables = NULL;
     return TEST_RESULT("ShardRefMiscTest");
