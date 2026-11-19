@@ -145,3 +145,4 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [AS-004](AS-004.md) | AgentServer | crash | XTrap_S_SetActiveCode is called without being checked after the DLL load |
 | [AS-005](AS-005.md) | AgentServer | minor | 0x6103 compares the token with an unset address when the peer address is unknown |
 | [AS-006](AS-006.md) | AgentServer | crash | A forwarded client packet is released twice |
+| [SM-001](SM-001.md) | SR_ShardManager DB records | crash | A full stream record buffer ends the process with an empty rethrow |
