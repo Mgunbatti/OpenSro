@@ -637,6 +637,7 @@ static void DBRecord_TrimTrailingSpaces(char* pszValue, int nSize)
     pszValue[nSize - 1] = 0;
     if (nSize == 1)
         return;
+    // BUG(SM-002): stops before the first character, so a blank value keeps one blank.
     for (char* p = &pszValue[nSize - 2]; p != pszValue; --p)
     {
         if (*p != ' ')
