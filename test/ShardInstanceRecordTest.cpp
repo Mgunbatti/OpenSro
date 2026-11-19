@@ -6,6 +6,7 @@
 #include "ServerCommon/InstanceRecords.h"
 
 #include <string.h>
+#include <time.h>
 
 #include <new>
 
@@ -232,6 +233,111 @@ static void TestCopyAndStreams()
     CHECK(strcmp(cos.GetName(), "COS_PET") == 0);
 }
 
+static void SetRefTypeID(int nTypeID2, int nTypeID3, int nTypeID4)
+{
+    *(WORD*)(s_abRefObj + 0x80) = (WORD)((3 << 2) | (nTypeID2 << 5) | (nTypeID3 << 7) |
+                                         (nTypeID4 << 11));
+}
+
+static void TestItem()
+{
+    CHECK(sizeof(CInstanceItem) == 0xD8);
+    const CDBTableInfo& info = CInstanceItem::s_TableInfo;
+    CHECK(info.m_strTable == "_ITEMS" && info.m_dwFlags == 5 && info.m_nDataOffset == 32);
+    CHECK(info.m_pRecordClass == &CInstanceItem::classCInstanceItem);
+    CHECK(CInstanceItem::classCInstanceItem.m_pBaseClass == &CInstanceObj::classCInstanceObj);
+    CHECK(CheckColumn(info, "ID64", 0x20, 0) && CheckColumn(info, "OptLevel", 0x2C, 3));
+    CHECK(CheckColumn(info, "MagParam1", 0x60, 5) && CheckColumn(info, "MagParam12", 0xB8, 5));
+    CHECK(CheckColumn(info, "Serial64", 0xC0, 1) && CheckColumn(info, "CreaterName", 0x3C, 1));
+
+    CInstanceItem item;
+    item.ID64 = 9;
+    item.OptLevel = 4;
+    item.CreaterName = "smith";
+    item.MagParamNum = 2;
+    item.MagParam[0] = 7;
+    item.MagParam[1] = 8;
+    item.Serial64 = 5;
+    item.InitData();                              // the magic parameters stay
+    CHECK(item.ID64 == 0 && item.OptLevel == 0 && item.CreaterName.empty());
+    CHECK(item.MagParamNum == 0 && item.MagParam[1] == 8 && item.Serial64 == 0);
+    CHECK(item.m_pRentItemInfo == NULL && item.m_pRefObj == NULL && item.m_qwDirty == 0);
+
+    // equipment 3-1-6: rent, id, plus, variance, durability, params, binding options
+    item.RefItemID = 100;
+    item.OptLevel = 4;
+    item.Variance = 0x55;
+    item.Data = 30;
+    item.MagParamNum = 2;
+    CInstanceBindingOptionWithItem option;
+    option.InitData();
+    option.bOptType = 2;
+    option.nSlot = 0;
+    option.nOptID = 0x10;
+    option.nOptValue = 5;
+    item.AddBindingOption(2, &option);
+    SetRefTypeID(1, 6, 1);
+    item.ResolveRefObj();
+    CHECK(s_nLastRefObjID == 100 && item.m_pRefObj == (RefObjCommonRow*)s_abRefObj);
+
+    BYTE abBuffer[128];
+    CByteStream stream;
+    memset(&stream, 0, sizeof(stream));
+    stream.m_pBuffer = abBuffer;
+    stream.m_nCapacity = sizeof(abBuffer);
+    item.Write(&stream, 1);
+    CHECK(stream.m_nWritePos == 51 && *(DWORD*)abBuffer == 0 && *(DWORD*)(abBuffer + 4) == 100);
+    CHECK(abBuffer[8] == 4 && *(__int64*)(abBuffer + 9) == 0x55 && *(DWORD*)(abBuffer + 17) == 30);
+    CHECK(abBuffer[21] == 2 && *(__int64*)(abBuffer + 22) == 7 && *(__int64*)(abBuffer + 30) == 8);
+    CHECK(abBuffer[38] == 1 && abBuffer[39] == 0 && abBuffer[40] == 2 && abBuffer[41] == 1);
+    CHECK(abBuffer[42] == 0 && *(DWORD*)(abBuffer + 47) == 5);
+
+    // mode 2: plus with the binding option values
+    stream.m_nWritePos = 0;
+    item.Write(&stream, 2);
+    CHECK(stream.m_nWritePos == 5 && abBuffer[4] == 9);
+
+    // mode 3 round trip
+    item.CreaterName = "smith";
+    item.Serial64 = 0x123456789i64;
+    stream.m_nWritePos = 0;
+    item.Write(&stream, 3);
+    CHECK(stream.m_nWritePos == 4 + 1 + 8 + 4 + 2 + 5 + 8 + 1 + 16);
+    CInstanceItem read;
+    s_nLastRefObjID = 0;
+    read.m_pRefObj = NULL;
+    read.Read(&stream, 3);
+    CHECK(read.RefItemID == 100 && read.Variance == 0x55 && read.CreaterName == "smith");
+    CHECK(read.Serial64 == 0x123456789i64 && read.MagParamNum == 2 && read.MagParam[1] == 8);
+    CHECK(s_nLastRefObjID == 100 && stream.m_nReadPos == stream.m_nWritePos);
+
+    // ETC 3-3-8: durability as WORD, then the creator name
+    SetRefTypeID(3, 8, 1);
+    stream.m_nWritePos = 0;
+    item.Write(&stream, 1);
+    CHECK(stream.m_nWritePos == 4 + 4 + 2 + 2 + 5 && *(WORD*)(abBuffer + 8) == 30);
+
+    // 3-1-14: Data is an expiry time
+    SetRefTypeID(1, 14, 1);
+    item.Data = (int)_time32(NULL) + 1000;
+    stream.m_nWritePos = 0;
+    item.Write(&stream, 1);
+    DWORD dwExpiry = *(DWORD*)(abBuffer + 17);
+    CHECK((dwExpiry & 0x80000000) != 0 && (dwExpiry & 0x7FFFFFFF) > 990 &&
+          (dwExpiry & 0x7FFFFFFF) <= 1000);
+
+    // CopyTo: ID64 becomes 0, the update groups are marked
+    CInstanceItem copy;
+    copy.InitData();
+    item.ID64 = 77;
+    item.m_mapBindingOptions.clear();
+    item.CopyTo(&copy);
+    CHECK(copy.ID64 == 0 && copy.RefItemID == 100 && copy.CreaterName == "smith");
+    CHECK(copy.MagParam[0] == 7 && copy.m_pRefObj == item.m_pRefObj);
+    CHECK(copy.m_pRentItemInfo == NULL && copy.m_mapBindingOptions.empty());
+    CHECK(copy.m_qwDirty == ((1 << 2) | (1 << 3) | (1 << 4) | (1 << 5)));
+}
+
 int main()
 {
     TestLayouts();
@@ -239,5 +345,6 @@ int main()
     TestSetters();
     TestInitData();
     TestCopyAndStreams();
+    TestItem();
     return TEST_RESULT("ShardInstanceRecordTest");
 }
