@@ -358,6 +358,8 @@ int RefRec_Read(const CRefGameWorld& rec, RefGameWorld& r);
 int RefRec_Read(const CRefClimate& rec, RefClimateData& r);
 // RefGachaNpcMap_CopyRow (0x497e80): NPC_ID; the Service column is copied, not checked.
 int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r);
+// RefData_CopyGachaCode (0x4978e0): CodeName128 and GachaSetID; the key is GachaSetID.
+int RefRec_Read(const CRefGachaCode& rec, RefGachaCode& r);
 
 // Opaque _RefObjCommon row (see InstanceRecords.h).
 struct RefObjCommonRow;
@@ -382,8 +384,68 @@ struct RefEventRow { BYTE ab[0x3C]; };                     // TODO(type)
 struct RefDefaultQuestRow { BYTE ab[0x24]; };              // TODO(type)
 // _RefGachaItemSet (RefGachaItemSet::dtor 0x497900: CGachaFreeParam +152, 4 param strings +24).
 struct RefGachaItemSetRow { BYTE ab[0x9C]; };              // TODO(type)
-// _RefAbility / _RefMagicOpt / _RefSkillByItemOptLevel (polymorphic, 0x18 / 0x14 bytes).
-struct RefItemOptLevelRow { BYTE ab[0x18]; };              // TODO(type)
+// _RefAbilityByItemOptLevel row (16 bytes, vftable of RefAbilityByItemOptLevel; ctor 0x498140).
+// The one virtual reads a row and returns its key in the maps of the item option levels:
+// RefItemID in the high DWORD, OptLevel in the low one (0 for a row that is dropped).
+class RefAbilityByItemOptLevel
+{
+public:
+    RefAbilityByItemOptLevel()
+        : ID(0), RefItemID(0), OptLevel(0)
+    {
+    }
+
+    // 0x498160: Service (BYTE), ID, RefItemID, OptLevel. 0 for a row out of service or of an
+    // unknown item (message box); else the ID is stored in the row (CRefAbilityByItemOptLevel
+    // +0x30, what FindRowInTable looks for). pAbility is not used.
+    virtual unsigned __int64 Read(CDBRecStream* pRow, CDBRecStream* pAbility);
+
+    DWORD            ID;                         // +4
+    DWORD            RefItemID;                  // +8
+    BYTE             OptLevel;                   // +C
+};
+
+C_ASSERT(sizeof(RefAbilityByItemOptLevel) == 0x10);
+
+// _RefSkillByItemOptLevel row (20 bytes, ctor 0x498260).
+class RefSkillByItemOptLevel : public RefAbilityByItemOptLevel
+{
+public:
+    RefSkillByItemOptLevel()
+        : SkillID(0)
+    {
+    }
+
+    // 0x498280: the ability columns from pAbility, then the skill; 0 for an unknown or a
+    // passive skill (message box).
+    virtual unsigned __int64 Read(CDBRecStream* pRow, CDBRecStream* pAbility);
+
+    WORD             SkillID;                    // +10
+};
+
+C_ASSERT(sizeof(RefSkillByItemOptLevel) == 0x14);
+
+// _RefMagicOptByItemOptLevel row (24 bytes, ctor 0x498350).
+class RefMagicOptByItemOptLevel : public RefAbilityByItemOptLevel
+{
+public:
+    RefMagicOptByItemOptLevel()
+        : MagicOptID(0), Value(0)
+    {
+    }
+
+    // 0x498370: the ability columns from pAbility, then the magic option and its value (two
+    // more columns are skipped); 0 for an unknown item or magic option or a value out of the
+    // range of the option's level (message box).
+    virtual unsigned __int64 Read(CDBRecStream* pRow, CDBRecStream* pAbility);
+
+    WORD             MagicOptID;                 // +10
+    DWORD            Value;                      // +14
+};
+
+C_ASSERT(sizeof(RefMagicOptByItemOptLevel) == 0x18);
+
+typedef RefAbilityByItemOptLevel RefItemOptLevelRow;
 // _RefShopTab, _RefShop, _RefPackageItem, _RefShopGroup, _RefShopTabGroup.
 struct RefShopTabRow { BYTE ab[0x58]; };                   // TODO(type)
 struct RefShopRow { BYTE ab[0xD4]; };                      // TODO(type)
@@ -415,7 +477,37 @@ struct RefHiveRow { BYTE ab[0x30]; };                      // TODO(type)
 // _RefMonster_AssignedItemRndDrop, _RefDropItemGroup, _RefMagicOptGroup (vftable).
 struct RefMonsterAssignedItemRndDropRow { BYTE ab[0x34]; }; // TODO(type)
 struct RefDropItemGroupRow { BYTE ab[0x2C]; };             // TODO(type)
-struct RefMagicOptGroupRow { BYTE ab[0x70]; };             // TODO(type)
+
+// _RefMagicOptGroup row (112 bytes, vftable of RefMagicOptGroup; ctor 0x514690, dtor 0x514740).
+// Column names are not known.
+class RefMagicOptGroupRow
+{
+public:
+    RefMagicOptGroupRow()
+        : Type(0), MagicOptID(0), MLevel(0), CustomValue(0), dw30(0), dw50(0)
+    {
+    }
+
+    virtual ~RefMagicOptGroupRow()
+    {
+    }
+
+    BYTE             Type;                       // +4   1, 2: magic option, 3: skill
+    std::string      CodeName;                   // +8
+    DWORD            MagicOptID;                 // +24  magic option (WORD) or skill
+    BYTE             MLevel;                     // +28
+    DWORD            CustomValue;                // +2C  0 or a value of the option's range
+    DWORD            dw30;                       // +30
+    std::string      str34;                      // +34
+    DWORD            dw50;                       // +50
+    std::string      str54;                      // +54
+};
+
+C_ASSERT(sizeof(RefMagicOptGroupRow) == 0x70);
+
+// RefMagicOptGroup::Read (0x492360): the group key (second column), 0 for a row that is
+// dropped.
+DWORD RefRow_Read(CRefRow& row, RefMagicOptGroupRow& r);
 // The 0xA0-byte position rows of CRefInstanceGenerator::LoadGameWorldPositions (0x4adb60,
 // RefData_ReadPosRecord 0x498a70; dtor 0x50a420: string +8, std::string[3] at +72).
 struct RefGameWorldPositionRow { BYTE ab[0xA0]; };         // TODO(type)
@@ -617,11 +709,225 @@ C_ASSERT(sizeof(RefRankingPackets) == 0x20);
 // _RefDropOptLevelSel / _RefDropClassSel rows.
 struct RefDropOptLevelSelRow { BYTE ab[0xC]; };            // TODO(type)
 struct RefDropClassSelRow { BYTE ab[0xC]; };               // TODO(type) RefDropClassSel::Read
-// The groups of magic options by code name (BuildMagicOptTable 0x51a780; dtor 0x4fa110:
-// string +4, vectors +44 / +60) and the level entries (dtor 0x4fa460: owned object +16,
-// vector +28).
-struct RefMagicOptGroupByName { BYTE ab[0x4C]; };          // TODO(type)
-struct RefMagicOptLevel { BYTE ab[0x28]; };                // TODO(type)
+// Magic option parameter descriptors (mfunc_*): built from Param1..Param5 of a _RefMagicOpt row
+// by the parameter code (Param1). Random() rolls a value, GetMin / GetMax give its range.
+class mfunc_desc
+{
+public:
+    mfunc_desc()
+        : m_dwCode(0), m_dw08(0)
+    {
+    }
+
+    virtual ~mfunc_desc()
+    {
+    }
+
+    // mfunc_desc::vf01 (0x42ff80): pParam = Param1..Param5.
+    virtual void Init(const int* pParam)
+    {
+        m_dwCode = pParam[0];
+    }
+    virtual DWORD Random() = 0;
+    virtual DWORD GetMin() = 0;
+    virtual DWORD GetMax() = 0;
+
+    DWORD            m_dwCode;                   // +4   Param1
+    DWORD            m_dw08;                     // +8
+};
+
+// One value (Param3), ctor 0x42e9b0.
+class mfunc_single_value : public mfunc_desc
+{
+public:
+    mfunc_single_value()
+        : m_dw0C(0), m_dwValue(0)
+    {
+    }
+
+    virtual void Init(const int* pParam);        // 0x430520
+    virtual DWORD Random();                      // 0x525690: always 0
+    virtual DWORD GetMin();                      // 0x430460
+    virtual DWORD GetMax();                      // 0x430460
+
+    DWORD            m_dw0C;                     // +C   Param2
+    DWORD            m_dwValue;                  // +10  Param3
+};
+
+C_ASSERT(sizeof(mfunc_single_value) == 0x14);
+
+// A range (Param3 .. Param4), ctor 0x42ea10.
+class mfunc_single_range : public mfunc_desc
+{
+public:
+    mfunc_single_range()
+        : m_dw0C(0), m_dwMin(0), m_dwMax(0)
+    {
+    }
+
+    virtual void Init(const int* pParam);        // 0x4304f0
+    virtual DWORD Random();                      // 0x430470
+    virtual DWORD GetMin();                      // 0x430460
+    virtual DWORD GetMax();                      // 0x430450
+
+    DWORD            m_dw0C;                     // +C   Param2
+    DWORD            m_dwMin;                    // +10  Param3
+    DWORD            m_dwMax;                    // +14  Param4
+};
+
+C_ASSERT(sizeof(mfunc_single_range) == 0x18);
+
+// Up to six values (the non-zero WORDs of Param2..Param4, high WORD first), ctor 0x42ea70,
+// dtor 0x42ebb0.
+class mfunc_6_values : public mfunc_desc
+{
+public:
+    mfunc_6_values()
+        : m_dw0C(0)
+    {
+    }
+
+    virtual void Init(const int* pParam);        // 0x42ff00
+    virtual DWORD Random();                      // 0x42fec0
+    virtual DWORD GetMin();                      // 0x42fe80: the first value
+    virtual DWORD GetMax();                      // 0x42fdb0: the last value
+
+    DWORD            m_dw0C;                     // +C   Param2
+    std::vector<DWORD> m_vecValue;               // +10
+};
+
+C_ASSERT(sizeof(mfunc_6_values) == 0x20);
+
+// An item a magic option applies to (12 bytes, RefMagicOpt_ParseAvailItemType 0x42ec20).
+struct RefMagicOptAvailItem
+{
+    enum
+    {
+        KIND_TYPE_ID = 0,                        // dwValue: TypeID (TID3 2 = any weapon)
+        KIND_OBJECT = 1,                         // dwValue: the RefObjCommonRow
+    };
+
+    DWORD            dwValue;                    // +0
+    int              nKind;                      // +4   KIND_*
+    int              nReqClass;                  // +8   minimum item class (always 0)
+};
+
+C_ASSERT(sizeof(RefMagicOptAvailItem) == 12);
+
+struct RefMagicOptGroupByName;
+
+// One _RefMagicOpt row (40 bytes, InitMembers 0x51d810; dtor 0x4fa460): the entry of
+// RefMagicOptTables::m_mapMagicOptLevel.
+struct RefMagicOptLevel
+{
+    RefMagicOptLevel()
+        : ID(0), MLevel(0), dwProb(0), Weight(0), pDesc(NULL), pGroup(NULL)
+    {
+    }
+
+    ~RefMagicOptLevel()
+    {
+        if (pDesc)
+        {
+            delete pDesc;
+            pDesc = NULL;
+        }
+    }
+
+    WORD             ID;                         // +0
+    DWORD            MLevel;                     // +4
+    DWORD            dwProb;                     // +8   Prob * 1000000
+    DWORD            Weight;                     // +C
+    mfunc_desc*      pDesc;                      // +10  owned
+    RefMagicOptGroupByName* pGroup;              // +14
+    std::vector<RefMagicOptAvailItem> vecAvailItem; // +18
+};
+
+C_ASSERT(sizeof(RefMagicOptLevel) == 0x28);
+
+// The rows of one MOptName128 (76 bytes, InitMembers 0x51dc20; dtor 0x4fa110).
+struct RefMagicOptGroupByName
+{
+    RefMagicOptGroupByName()
+        : dwParamCode(0), bNoPlus(FALSE), bHasAt(FALSE), dwParam10(0)
+    {
+    }
+
+    std::string      MOptName128;                // +0
+    DWORD            dwParamCode;                // +1C  Param1 ("ID" of FindMagicOptById)
+    BOOL             bNoPlus;                    // +20  AttrType has no '+': slot of the assign
+    BOOL             bHasAt;                     // +24  AttrType has an '@'
+    std::vector<RefMagicOptLevel*> vecLevel;     // +28  not owned
+    std::vector<DWORD> vecExcFunc;               // +38  ExcFunc1..6 up to the first 0
+    DWORD            dwParam10;                  // +48
+};
+
+C_ASSERT(sizeof(RefMagicOptGroupByName) == 0x4C);
+
+// The magic options an item type may get (value of MagOptEachLevelTable, 32 bytes, ctor
+// 0x51cab0 / dtor 0x51c670): by RefMagicOptGroupByName::bNoPlus.
+struct MagOptEachLevelSlots
+{
+    // MagOptEachLevelSlots::AddUnique (0x51c930): a group already there asserts.
+    void AddUnique(RefMagicOptGroupByName* pGroup);
+
+    std::vector<RefMagicOptGroupByName*> avecGroup[2]; // +0
+};
+
+C_ASSERT(sizeof(MagOptEachLevelSlots) == 0x20);
+
+// Key TID3 | TID4 << 16 (_RefMagicOptAssign); one table per Race (country), the static array
+// 0x89bc80 (ctor 0x519a40 / dtor 0x519a90).
+typedef std::map<DWORD, MagOptEachLevelSlots> MagOptEachLevelTable;
+
+enum
+{
+    MAGOPT_EACH_LEVEL_TABLE_COUNT = 4,
+};
+
+extern MagOptEachLevelTable g_aMagOptEachLevelTable[MAGOPT_EACH_LEVEL_TABLE_COUNT];
+
+// MagOptEachLevelTable::GetOrInsert (0x51c9a0): a key already there asserts.
+MagOptEachLevelSlots* MagOptEachLevelTable_GetOrInsert(MagOptEachLevelTable& table, DWORD dwKey);
+// MagOptEachLevelTable::Find (0x51dc90): NULL for an unknown key.
+MagOptEachLevelSlots* MagOptEachLevelTable_Find(MagOptEachLevelTable& table, DWORD dwKey);
+
+// RefMagicOpt_IsKnownParamCode (0x430670): 1 for a known parameter code; for any other code
+// the code itself (or its distance to 'vtni' between 'atni' and 'acul'), which may also be 1.
+DWORD RefMagicOpt_IsKnownParamCode(DWORD dwCode);
+// RefMagicOpt_LoadFromRow (0x42f620).
+void RefMagicOpt_LoadFromRow(RefMagicOptGroupByName& group, const RefMagicOpt& row);
+// RefMagicOpt_BuildParamDesc (0x42e590): an unknown parameter code asserts and leaves the
+// descriptor and the items empty.
+void RefMagicOpt_BuildParamDesc(const RefMagicOpt& row, RefMagicOptLevel& level);
+// RefMagicOpt_ParseAvailItemType (0x42ec20): an AvailItemGroup name to items; any other name
+// is an object code name (asserts when there is no such object, appended anyway).
+void RefMagicOpt_ParseAvailItemType(const char* pszName,
+                                    std::vector<RefMagicOptAvailItem>& vecItem);
+// RefMagicOpt_IsApplicableToItem (0x430890).
+BOOL RefMagicOpt_IsApplicableToItem(const RefMagicOptAvailItem& item,
+                                    const RefObjCommonRow* pObj);
+// RefMagicOpt_CountApplicableParams (0x42f590): TRUE when one item of the level applies.
+BOOL RefMagicOpt_CountApplicableParams(const RefMagicOptLevel& level,
+                                       const RefObjCommonRow* pObj);
+// MagOptEachLevel_FindByID (0x49e780): the level of a group with this MLevel.
+RefMagicOptLevel* MagOptEachLevel_FindByID(const RefMagicOptGroupByName* pGroup, DWORD dwMLevel);
+// MagOptEachLevel_IsValueInRange (0x4a0dc0).
+BOOL MagOptEachLevel_IsValueInRange(const RefMagicOptGroupByName* pGroup, DWORD dwValue,
+                                    DWORD dwMLevel);
+// RefMagicOpt::FindLevelEntryById (0x51c8f0): the level of a group with this ID.
+RefMagicOptLevel* RefMagicOpt_FindLevelEntryById(WORD wID, const RefMagicOptGroupByName* pGroup);
+// RefObj_IsEquipItem (0x51ac90).
+BOOL RefObj_IsEquipItem(const RefObjCommonRow* pObj);
+// RefData_GetMagicOptAssignForItem (0x51acc0): NULL for an item that is no equipment.
+MagOptEachLevelSlots* RefData_GetMagicOptAssignForItem(const RefObjCommonRow* pObj);
+// RefData_FindAssignedMagicOptEntry (0x51aba0): searches the first slot of the item's assign
+// entry for a group with a level of this ID.
+BOOL RefData_FindAssignedMagicOptEntry(WORD wID, const RefObjCommonRow* pObj,
+                                       RefMagicOptGroupByName*& pGroup,
+                                       RefMagicOptLevel*& pLevel, DWORD& dwIndex);
+// RefData_IsMagicOptEntryAllowed (0x51ad30): no equipment allows only 0.
+BOOL RefData_IsMagicOptEntryAllowed(const RefObjCommonRow* pObj, WORD wID);
 // The 20-byte value of DropClassEntry's first map.
 struct RefDropClassProb { BYTE ab[0x14]; };                // TODO(type)
 
@@ -666,6 +972,22 @@ public:
     // 0x4f87f0.
     ~RefMagicOptTables();
 
+    // CRefInstanceGenerator::BuildMagicOptTable (0x51a780, slot 7): the rows in service, one
+    // level per row, grouped by MOptName128.
+    void BuildMagicOptTable(CDBRecordList& listRows);
+    // CRefInstanceGenerator::BuildMagicOptAssignTables (0x51aa70, slot 8): fills
+    // g_aMagOptEachLevelTable.
+    void BuildMagicOptAssignTables(CDBRecordList& listRows);
+    // CRefInstanceGenerator::FindMagicOptByCodeName (0x51a930): case insensitive.
+    RefMagicOptGroupByName* FindMagicOptByCodeName(const std::string& strName);
+    // CRefInstanceGenerator::FindMagicOptById (0x51a9c0): by the parameter code.
+    RefMagicOptGroupByName* FindMagicOptById(DWORD dwParamCode);
+    // CRefInstanceGenerator::FindMagicOptLevelEntry (0x51aa10).
+    RefMagicOptLevel* FindMagicOptLevelEntry(WORD wID);
+    // RefData_FindMagicOption (0x46fa50): the descriptor of a magic option (NULL for an
+    // unknown one); its MLevel goes to *pdwMLevel when given.
+    mfunc_desc* FindMagicOption(WORD wID, DWORD* pdwMLevel);
+
     DWORD                   m_adw00[36];         // +0   the first 23 are 8
     std::map<DWORD, DWORD>  m_map090;            // +90  TODO(type)
     DropOptLevelSelMap      m_mapDropOptLevelSel; // +9C  slot 0x29
@@ -673,7 +995,7 @@ public:
     DropClassSelMap         m_amapDropClassSel[REF_DROP_CLASS_SEL_COUNT]; // +B4  slots 0x2A..0x33
     RefDropClassSlot        m_aDropClass[REF_DROP_CLASS_SLOT_COUNT]; // +138  slot 0x34
     std::vector<RefMagicOptGroupByName*> m_vecMagicOptGroup; // +5B0  slot 7
-    std::map<DWORD, RefMagicOptLevel*> m_mapMagicOptLevel; // +5C0  slot 7, by WORD id
+    std::map<WORD, RefMagicOptLevel*> m_mapMagicOptLevel; // +5C0  slot 7, by ID
 };
 
 C_ASSERT(FIELD_OFFSET(RefMagicOptTables, m_map090) == 0x90);
@@ -720,7 +1042,8 @@ public:
     typedef CRefOwnerMap<std::map<DWORD, RefGachaNpcMapData*> >  RefGachaNpcMapMap;
     typedef CRefOwnerMap<std::map<DWORD, RefGachaCode*> >        RefGachaCodeMap;
     typedef std::vector<RefItemOptLevelRow*>                    RefItemOptLevelVector;
-    typedef std::map<__int64, RefItemOptLevelVector>            RefItemOptLevelMap;
+    // Key: RefItemID << 32 | OptLevel (RefAbilityByItemOptLevel::Read).
+    typedef std::map<unsigned __int64, RefItemOptLevelVector>   RefItemOptLevelMap;
     typedef CRefOwnerMap<std::map<DWORD, RefSetItemGroup*> >     RefSetItemGroupMap;
     typedef CRefOwnerMap<std::map<DWORD, RefShopTabRow*> >       RefShopTabMap;
     typedef CRefOwnerMap<std::map<DWORD, RefShopRow*> >          RefShopMap;
@@ -745,7 +1068,8 @@ public:
     typedef std::multimap<DWORD, RefAISkill*>                   RefAISkillMap;
     typedef std::vector<RefMonsterAssignedItemRndDropRow*>      RefMonsterAssignedItemRndDropVector;
     typedef std::map<DWORD, RefDropItemGroupRow*>               RefDropItemGroupMap;
-    typedef std::map<DWORD, RefMagicOptGroupRow*>               RefMagicOptGroupMap;
+    typedef std::vector<RefMagicOptGroupRow*>                   RefMagicOptGroupVector;
+    typedef std::map<DWORD, RefMagicOptGroupVector>             RefMagicOptGroupMap;
     typedef CRefOwnerMap<std::map<DWORD, RefSkillMasteryRow*> >  RefSkillMasteryMap;
     typedef CRefOwnerMap<std::map<DWORD, RefSkill*> >            RefSkillMap;
     typedef std::map<std::string, RefSkill*>                    RefSkillByCodeNameMap;
@@ -853,6 +1177,18 @@ public:
     // themes and empties the three collection book maps.
     void ClearCollectionBook();
 
+    // CRefInstanceGenerator::GetMagicOptGroup (0x4ad9a0): copies the rows of a group; FALSE for
+    // an unknown key.
+    BOOL GetMagicOptGroup(DWORD dwKey, RefMagicOptGroupVector& vecRow);
+    // CRefInstanceGenerator::FindRowInTable (0x4a9830): the row of a registered table with this
+    // key (slots 3 and 0x11: the DWORD at +0x30 of the record, slots 0xC..0xE: the first
+    // column; any other slot asserts per row). NULL when there is none.
+    CDBRecStream* FindRowInTable(unsigned int nSlot, DWORD dwKey);
+    // CRefInstanceGenerator::LoadByItemOptLevelTables (0x4ad6b0, slot 0x11): the ability rows
+    // (into a map that is dropped afterwards), then the magic option (+0x134) and skill (+0x128)
+    // rows by item option level; keys 0 and ~0 are inserted first.
+    int LoadByItemOptLevelTables();
+
 public:
     RefTableVector*             m_pTables;                          // +000
     RefRegionMap                m_mapRegion;                        // +004  slot 3, by ID
@@ -870,8 +1206,8 @@ public:
     RefWinLoseRewardMap         m_mapWinLoseReward;                 // +104  slot 0x47
     RefGachaNpcMapMap           m_mapGachaNpcMap;                   // +110  slot 6, by NPC_ID
     RefGachaCodeMap             m_mapGachaCode;                     // +11C  slot 0x46
-    RefItemOptLevelMap          m_mapItemOptLevel128;               // +128  slots 0xF..0x11
-    RefItemOptLevelMap          m_mapItemOptLevel134;               // +134  slots 0xF..0x11
+    RefItemOptLevelMap          m_mapItemOptLevel128;               // +128  slot 0x11 (skills)
+    RefItemOptLevelMap          m_mapItemOptLevel134;               // +134  slot 0x11 (magic opts)
     RefSetItemGroupMap          m_mapSetItemGroup;                  // +140  slot 0xA
     RefShopTabMap               m_mapShopTab;                       // +14C  slot 0x27
     RefShopMap                  m_mapShop;                          // +158  slot 0x27
@@ -901,7 +1237,7 @@ public:
     std::vector<DWORD>          m_vec844;                           // +844  TODO(type)
     RefMonsterAssignedItemRndDropVector m_vecMonsterAssignedItemRndDrop; // +854  slot 0x36
     RefDropItemGroupMap         m_mapDropItemGroup;                 // +864  slot 0x35
-    RefMagicOptGroupMap         m_mapMagicOptGroup;                 // +870  slot 9
+    RefMagicOptGroupMap         m_mapMagicOptGroup;                 // +870  slot 9, by group key
     RefSkillMasteryMap          m_mapSkillMastery;                  // +87C  slot 4
     RefSkillMap                 m_mapSkill;                         // +888  slot 5
     RefSkillByCodeNameMap       m_mapSkillByCodeName;               // +894  slot 5

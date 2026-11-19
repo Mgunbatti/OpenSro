@@ -419,6 +419,13 @@ int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r)
     return r.NPC_ID;
 }
 
+int RefRec_Read(const CRefGachaCode& rec, RefGachaCode& r)
+{
+    r.CodeName128 = rec.m_Data.CodeName128;
+    r.GachaSetID = rec.m_Data.GachaSetID;
+    return rec.m_Data.GachaSetID;
+}
+
 int RefRec_Read(const CRefQuest& rec, RefQuest& r)
 {
     if (!rec.m_Data.Service)
@@ -931,16 +938,63 @@ static int RefData_BuildPending(CReferenceData*, RefTableEntry*, unsigned int)
     return 1;
 }
 
-// Slot 7 (_RefMagicOpt): the column check of the dispatcher; the magic option table itself
-// (CRefInstanceGenerator::BuildMagicOptTable 0x51a780) is not ported yet.
-static int RefData_BuildMagicOptPending(CReferenceData*, RefTableEntry* pTable, unsigned int)
+// Slot 7 (_RefMagicOpt): a table of fewer than 0x44 rows is an old one and fails the build.
+static int RefData_BuildMagicOpt(CReferenceData* pData, RefTableEntry* pTable, unsigned int)
 {
     if (pTable->m_listRows.size() < 0x44)
     {
         BSMessageBoxPrintf("ssiba crazy DOWOOL copy newest magic option table!!!!");
         LogPrintf(0x2000000, "ssiba crazy DOWOOL copy newest magic option table!!!!");
+        return 0;
+    }
+    pData->m_MagicOpt.BuildMagicOptTable(pTable->m_listRows);
+    return 1;
+}
+
+// Slot 8 (_RefMagicOptAssign).
+static int RefData_BuildMagicOptAssign(CReferenceData* pData, RefTableEntry* pTable,
+                                       unsigned int)
+{
+    pData->m_MagicOpt.BuildMagicOptAssignTables(pTable->m_listRows);
+    return 1;
+}
+
+// CRefInstanceGenerator::LoadMagicOptGroup (0x4a5c30): a row the reader rejects is freed; the
+// others are appended to the rows of their group key.
+int RefData_LoadMagicOptGroup(CReferenceData* pData, CDBRecord* pRecord)
+{
+    RefMagicOptGroupRow* pRow = new RefMagicOptGroupRow;
+    if (!pRow)
+    {
+        BSAssertFail();
+        return 0;
+    }
+    CRefRow row(static_cast<CDBRecStream*>(pRecord));
+    DWORD dwKey = RefRow_Read(row, *pRow);
+    if (!dwKey)
+    {
+        delete pRow;
+        return 1;
+    }
+    CReferenceData::RefMagicOptGroupMap::iterator it = pData->m_mapMagicOptGroup.find(dwKey);
+    if (it == pData->m_mapMagicOptGroup.end())
+    {
+        CReferenceData::RefMagicOptGroupVector vecRow;
+        vecRow.push_back(pRow);
+        pData->m_mapMagicOptGroup.insert(std::make_pair(dwKey, vecRow));
+    }
+    else
+    {
+        it->second.push_back(pRow);
     }
     return 1;
+}
+
+// Slot 0x11 (_RefAbilityByItemOptLevel): builds the three item option level tables; slots 0xF
+// and 0x10 build nothing themselves.
+static int RefData_BuildItemOptLevel(CReferenceData* pData, RefTableEntry*, unsigned int)
+{
+    return pData->LoadByItemOptLevelTables();
 }
 
 // Slot 95 (_RefAlchemyMerit): the empty-table warning of the dispatcher (typo kept); the
@@ -964,9 +1018,11 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     REF_LOADED((RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData,
                 CReferenceData::RefGachaNpcMapMap,
                 &CReferenceData::m_mapGachaNpcMap>)),                       // 0x06
-    RefData_BuildMagicOptPending,
-    P, P, P, P, P, P, P, P,                                                 // 0x08
-    P, P, P, P, P, P, P, P,                                                 // 0x10
+    RefData_BuildMagicOpt,                                                  // 0x07
+    RefData_BuildMagicOptAssign,
+    REF_LOADED(RefData_LoadMagicOptGroup),
+    P, P, P, P, P, P,                                                       // 0x0A
+    P, RefData_BuildItemOptLevel, P, P, P, P, P, P,                         // 0x10
     P, P, P, P, P, P, P, P,                                                 // 0x18
     P, P, P, P, P, P, P, P,                                                 // 0x20
     P, P, P, P, P, P, P, P,                                                 // 0x28
@@ -981,7 +1037,10 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
                              &CReferenceData::m_vecInstanceWorldRegion>,    // 0x3E
     &RefData_BuildCopyVector<CRefInstanceWorldStartPos, RefInstanceWorldStartPosData,
                              &CReferenceData::m_vecInstanceWorldStartPos>,
-    P, P, P, P, P, P, P, P,                                                 // 0x40
+    P, P, P, P, P, P,                                                       // 0x40
+    REF_LOADED((RefData_AddRowUnique<CRefGachaCode, RefGachaCode, CReferenceData::RefGachaCodeMap,
+                &CReferenceData::m_mapGachaCode>)),                         // 0x46
+    P,
     REF_LOADED((RefData_LoadSiegeVector<CRefSiegeFortress, RefSiegeFortress,
                 &CReferenceData::m_vecSiegeFortress>)),                     // 0x48
     REF_LOADED((RefData_LoadSiegeByFortress<CRefSiegeFortressGuard, RefSiegeFortressGuardData,
@@ -1150,6 +1209,886 @@ RefMagicOptTables::~RefMagicOptTables()
     }
     m_vecMagicOptGroup.clear();
     RefData_DeleteValues(m_mapMagicOptLevel);
+}
+
+// The source file the original's assert dialogs name.
+static const char s_szReferenceDataFile[] =
+    "D:\\WORK2005\\Source\\SilkroadOnline\\Server\\ServerCommon\\ReferenceData.cpp";
+
+// The "xxx" placeholder of the unused AvailItemGroupN / AvailMOptN columns (0x783f08).
+static const char s_szUnusedName[] = "xxx";
+
+// Util_StrCmpNoCase (0x41c0b0) as a test: CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE |
+// SORT_STRINGSORT) equal.
+static BOOL RefData_StrEqualNoCase(const char* psz1, const char* psz2)
+{
+    return CompareStringA(0x400, 0x10001, psz1, lstrlenA(psz1), psz2, lstrlenA(psz2)) == 2;
+}
+
+static BYTE RefObj_GetCountry(const RefObjCommonRow* pObj)                       // +0x88
+{
+    return *((const BYTE*)pObj + 0x88);
+}
+
+static BYTE RefObj_GetItemClass(const RefObjCommonRow* pObj)                     // +0x1A8
+{
+    return *((const BYTE*)pObj + 0x1A8);
+}
+
+// The key of an item in MagOptEachLevelTable: TID3 | TID4 << 16.
+static DWORD RefObj_GetMagOptAssignKey(const RefObjCommonRow* pObj)
+{
+    WORD wTypeID = RefObj_GetTypeID(pObj);
+    return ((wTypeID >> 7) & 0xF) | ((DWORD)(wTypeID & 0xF800) << 5);
+}
+
+// Parameter descriptors ------------------------------------------------------------------------
+
+void mfunc_single_value::Init(const int* pParam)
+{
+    m_dwCode = pParam[0];
+    m_dw0C = pParam[1];
+    m_dwValue = pParam[2];
+    m_dw08 = pParam[3];
+}
+
+DWORD mfunc_single_value::Random()
+{
+    return 0;
+}
+
+DWORD mfunc_single_value::GetMin()
+{
+    return m_dwValue;
+}
+
+DWORD mfunc_single_value::GetMax()
+{
+    return m_dwValue;
+}
+
+void mfunc_single_range::Init(const int* pParam)
+{
+    m_dwCode = pParam[0];
+    m_dw0C = pParam[1];
+    m_dwMin = pParam[2];
+    m_dwMax = pParam[3];
+    m_dw08 = pParam[4];
+    if (m_dwMax < m_dwMin)
+        BSAssertFail();
+}
+
+DWORD mfunc_single_range::Random()
+{
+    DWORD dwRange = m_dwMax - m_dwMin;
+    if (!dwRange)
+        return m_dwMin;
+    float fRate = (float)(rand() / 32767.0);
+    return (DWORD)(__int64)(fRate * (double)dwRange + (double)m_dwMin);
+}
+
+DWORD mfunc_single_range::GetMin()
+{
+    return m_dwMin;
+}
+
+DWORD mfunc_single_range::GetMax()
+{
+    return m_dwMax;
+}
+
+void mfunc_6_values::Init(const int* pParam)
+{
+    m_dwCode = pParam[0];
+    m_dw0C = pParam[1];
+    for (int i = 1; i <= 3; ++i)
+    {
+        WORD wHigh = HIWORD(pParam[i]);
+        if (wHigh)
+            m_vecValue.push_back(wHigh);
+        WORD wLow = LOWORD(pParam[i]);
+        if (wLow)
+            m_vecValue.push_back(wLow);
+    }
+    m_dw08 = pParam[4];
+}
+
+DWORD mfunc_6_values::Random()
+{
+    if (m_vecValue.empty())
+        return 0;
+    return m_vecValue.at(rand() % (int)m_vecValue.size());
+}
+
+DWORD mfunc_6_values::GetMin()
+{
+    if (m_vecValue.empty())
+        BSAssertFail();
+    return m_vecValue.at(0);
+}
+
+DWORD mfunc_6_values::GetMax()
+{
+    if (m_vecValue.empty())
+        BSAssertFail();
+    return m_vecValue.at(m_vecValue.size() - 1);
+}
+
+// Magic option rows ----------------------------------------------------------------------------
+
+// The parameter codes of the binary search in RefMagicOpt_IsKnownParamCode /
+// RefMagicOpt_BuildParamDesc, by the descriptor they get.
+static const DWORD s_adwSixValueCodes[] =
+{
+    0x6275, 0x6572, 0x6573, 0x667A, 0x6870, 0x6872, 0x6D70, 0x7073, 0x7A62, 0x617065, 0x627269,
+    0x637269, 0x696E74, 0x726570, 0x737472, 0x61737472, 0x61746861, 0x62726E61, 0x64757275,
+    0x6576626C, 0x65766372, 0x68706D70, 0x696E746A, 0x6C75636B, 0x72616C73, 0x72637369,
+    0x72646969, 0x72666569, 0x72736C69, 0x72737469, 0x736F6C69, 0x7374726A, 0x756D6475,
+};
+
+static const DWORD s_adwRangeCodes[] =
+{
+    0x657261, 0x687061, 0x687261, 0x6D7061, 0x64617261, 0x64727561, 0x64757261, 0x68706E61,
+    0x68707267, 0x696E7461, 0x696E7476, 0x6C756361, 0x6D646961, 0x6D706E61, 0x6D707267,
+    0x72656973, 0x73747261, 0x73747276,
+};
+
+static const DWORD s_adwSingleValueCodes[] = { 0x6E726570, 0x7265696E };
+
+static BOOL RefMagicOpt_IsCodeIn(DWORD dwCode, const DWORD* pdwCode, int nCount)
+{
+    for (int i = 0; i < nCount; ++i)
+    {
+        if (pdwCode[i] == dwCode)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+#define REF_COUNT_OF(a) (int)(sizeof(a) / sizeof((a)[0]))
+
+DWORD RefMagicOpt_IsKnownParamCode(DWORD dwCode)
+{
+    if (RefMagicOpt_IsCodeIn(dwCode, s_adwSixValueCodes, REF_COUNT_OF(s_adwSixValueCodes)) ||
+        RefMagicOpt_IsCodeIn(dwCode, s_adwRangeCodes, REF_COUNT_OF(s_adwRangeCodes)) ||
+        RefMagicOpt_IsCodeIn(dwCode, s_adwSingleValueCodes, REF_COUNT_OF(s_adwSingleValueCodes)))
+        return 1;
+    // The search leaves the code in EAX, except in the branch that subtracts its way through
+    // 'jtni' and 'vtni'.
+    if (dwCode > 0x696E7461 && dwCode < 0x6C756361)
+        return dwCode - 0x696E7476;
+    return dwCode;
+}
+
+void RefMagicOpt_LoadFromRow(RefMagicOptGroupByName& group, const RefMagicOpt& row)
+{
+    group.MOptName128.assign(row.MOptName128, 0, std::string::npos);
+    group.dwParamCode = row.Param[0];
+    group.bNoPlus = row.AttrType.find("+", 0, 1) == std::string::npos;
+    group.bHasAt = row.AttrType.find("@", 0, 1) != std::string::npos;
+    for (int i = 0; i < 6; ++i)
+    {
+        DWORD dwExcFunc = row.ExcFunc[i];
+        if (!dwExcFunc)
+            break;
+        if (RefMagicOpt_IsKnownParamCode(dwExcFunc) != 1)
+            BSAssertFail();
+        group.vecExcFunc.push_back(dwExcFunc);
+    }
+    group.dwParam10 = row.Param[9];
+}
+
+void RefMagicOpt_BuildParamDesc(const RefMagicOpt& row, RefMagicOptLevel& level)
+{
+    level.ID = row.ID;
+    level.MLevel = row.MLevel;
+    level.dwProb = (DWORD)(__int64)(row.Prob * 1000000.0);
+    level.Weight = row.Weight;
+    level.pDesc = NULL;
+    DWORD dwCode = row.Param[0];
+    mfunc_desc* pDesc;
+    if (RefMagicOpt_IsCodeIn(dwCode, s_adwSixValueCodes, REF_COUNT_OF(s_adwSixValueCodes)))
+    {
+        pDesc = new mfunc_6_values;
+    }
+    else if (RefMagicOpt_IsCodeIn(dwCode, s_adwRangeCodes, REF_COUNT_OF(s_adwRangeCodes)))
+    {
+        pDesc = new mfunc_single_range;
+    }
+    else if (RefMagicOpt_IsCodeIn(dwCode, s_adwSingleValueCodes,
+                                  REF_COUNT_OF(s_adwSingleValueCodes)))
+    {
+        pDesc = new mfunc_single_value;
+    }
+    else
+    {
+        BSAssertFail();
+        return;
+    }
+    level.pDesc = pDesc;
+    if (!pDesc)
+        BSAssertFail();
+    level.pDesc->Init(row.Param);
+    for (int i = 0; i < 10; ++i)
+    {
+        const std::string& strGroup = row.AvailItem[i].AvailItemGroup;
+        if (strGroup.empty())
+            break;
+        if (RefData_StrEqualNoCase(strGroup.c_str(), s_szUnusedName))
+            break;
+        RefMagicOpt_ParseAvailItemType(strGroup.c_str(), level.vecAvailItem);
+    }
+}
+
+// The AvailItemGroup names and the TypeIDs they stand for, in the order they are tested.
+struct RefMagicOptItemTypeName
+{
+    const char*      pszName;
+    WORD             awTypeID[6];
+};
+
+static const RefMagicOptItemTypeName s_aItemTypeName[] =
+{
+    { "weapon",            { 812 } },
+    { "armor",             { 172, 300, 428, 1196, 1324, 1452 } },
+    { "accessory",         { 684, 1580 } },
+    { "sword",             { 4908, 15148 } },
+    { "blade",             { 6956 } },
+    { "spear",             { 9004 } },
+    { "tblade",            { 11052 } },
+    { "bow",               { 13100 } },
+    { "helm",              { 2348, 3372 } },
+    { "shoulderguard",     { 4396, 5420 } },
+    { "mail",              { 6444, 7468 } },
+    { "pants",             { 8492, 9516 } },
+    { "gauntlet",          { 10540, 11564 } },
+    { "boots",             { 12588, 13612 } },
+    { "shield",            { 2604, 4652 } },
+    { "earring",           { 2732, 3628 } },
+    { "necklace",          { 4780, 5676 } },
+    { "ring",              { 6828, 7724 } },
+    { "trader",            { 2988 } },
+    { "hunter",            { 7084 } },
+    { "thief",             { 5036 } },
+    { "event",             { 9900 } },
+    { "avatar",            { 1708 } },
+    { "avatar_helm",       { 3756 } },
+    { "avatar_mail",       { 5804 } },
+    { "avatar_mail_addon", { 7852 } },
+    { "avatar_extra",      { 9900 } },
+    { "avatar_special_armlet", { 3884 } },
+};
+
+void RefMagicOpt_ParseAvailItemType(const char* pszName,
+                                    std::vector<RefMagicOptAvailItem>& vecItem)
+{
+    RefMagicOptAvailItem item;
+    item.nKind = RefMagicOptAvailItem::KIND_TYPE_ID;
+    item.nReqClass = 0;
+    for (int i = 0; i < REF_COUNT_OF(s_aItemTypeName); ++i)
+    {
+        if (!RefData_StrEqualNoCase(s_aItemTypeName[i].pszName, pszName))
+            continue;
+        for (int j = 0; j < 6 && s_aItemTypeName[i].awTypeID[j]; ++j)
+        {
+            item.dwValue = s_aItemTypeName[i].awTypeID[j];
+            vecItem.push_back(item);
+        }
+        return;
+    }
+    item.nKind = RefMagicOptAvailItem::KIND_OBJECT;
+    RefObjCommonRow* pObj =
+        CReferenceData::GetInstance()->FindRefObjByCodeName(std::string(pszName));
+    item.dwValue = (DWORD)(DWORD_PTR)pObj;
+    vecItem.push_back(item);
+    if (!pObj)
+        BSAssertFail();
+}
+
+BOOL RefMagicOpt_IsApplicableToItem(const RefMagicOptAvailItem& item,
+                                    const RefObjCommonRow* pObj)
+{
+    if (item.nKind == -1)
+        BSAssertFail();
+    if (!pObj)
+        BSAssertFail();
+    WORD wObjType = RefObj_GetTypeID(pObj);
+    if ((wObjType & 2) || (wObjType & 0x1C) != 0xC || (wObjType & 0x60) != 0x20)
+        BSAssertFail();
+    if (item.nKind == RefMagicOptAvailItem::KIND_OBJECT)
+        return item.dwValue == (DWORD)(DWORD_PTR)pObj;
+    if (item.nKind != RefMagicOptAvailItem::KIND_TYPE_ID)
+    {
+        BSAssertFail();
+        return FALSE;
+    }
+    WORD wType = (WORD)item.dwValue;
+    WORD wTID3 = (wType >> 7) & 0xF;
+    WORD wObjTID3 = wObjType & 0x780;
+    if (wTID3 == 2)
+    {
+        // Any weapon: TID3 1, 2, 3, 9, 10, 11 or 13.
+        if (wObjTID3 != 0x80 && wObjTID3 != 0x100 && wObjTID3 != 0x180 && wObjTID3 != 0x480 &&
+            wObjTID3 != 0x500 && wObjTID3 != 0x580 && wObjTID3 != 0x680)
+            return FALSE;
+    }
+    else if (wTID3 != (wObjTID3 >> 7))
+    {
+        return FALSE;
+    }
+    WORD wTID4 = wType >> 11;
+    if (wTID4 && wTID4 != (wObjType >> 11))
+        return FALSE;
+    return (int)RefObj_GetItemClass(pObj) >= item.nReqClass;
+}
+
+BOOL RefMagicOpt_CountApplicableParams(const RefMagicOptLevel& level,
+                                       const RefObjCommonRow* pObj)
+{
+    for (unsigned int i = 0; i < level.vecAvailItem.size(); ++i)
+    {
+        if (RefMagicOpt_IsApplicableToItem(level.vecAvailItem.at(i), pObj) == TRUE)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+RefMagicOptLevel* MagOptEachLevel_FindByID(const RefMagicOptGroupByName* pGroup, DWORD dwMLevel)
+{
+    for (unsigned int i = 0; i < pGroup->vecLevel.size(); ++i)
+    {
+        RefMagicOptLevel* pLevel = pGroup->vecLevel[i];
+        if (pLevel->MLevel == dwMLevel)
+            return pLevel;
+    }
+    return NULL;
+}
+
+BOOL MagOptEachLevel_IsValueInRange(const RefMagicOptGroupByName* pGroup, DWORD dwValue,
+                                    DWORD dwMLevel)
+{
+    RefMagicOptLevel* pLevel = MagOptEachLevel_FindByID(pGroup, dwMLevel);
+    return pLevel && pLevel->pDesc->GetMin() <= dwValue && pLevel->pDesc->GetMax() >= dwValue;
+}
+
+RefMagicOptLevel* RefMagicOpt_FindLevelEntryById(WORD wID, const RefMagicOptGroupByName* pGroup)
+{
+    for (unsigned int i = 0; i < pGroup->vecLevel.size(); ++i)
+    {
+        RefMagicOptLevel* pLevel = pGroup->vecLevel[i];
+        if (pLevel->ID == wID)
+            return pLevel;
+    }
+    return NULL;
+}
+
+// Magic option tables --------------------------------------------------------------------------
+
+void RefMagicOptTables::BuildMagicOptTable(CDBRecordList& listRows)
+{
+    for (CDBRecordList::iterator it = listRows.begin(); it != listRows.end(); ++it)
+    {
+        const RefMagicOpt& row = static_cast<CRefMagicOpt*>(*it)->m_Data;
+        if (!row.Service)
+            continue;
+        RefMagicOptGroupByName* pGroup = FindMagicOptByCodeName(row.MOptName128);
+        if (!pGroup)
+        {
+            pGroup = new RefMagicOptGroupByName;
+            RefMagicOpt_LoadFromRow(*pGroup, row);
+            m_vecMagicOptGroup.push_back(pGroup);
+        }
+        RefMagicOptLevel* pLevel = new RefMagicOptLevel;
+        RefMagicOpt_BuildParamDesc(row, *pLevel);
+        if (pLevel->pGroup)
+            BSAssertFail();
+        pLevel->pGroup = pGroup;
+        pGroup->vecLevel.push_back(pLevel);
+        // A second row of an ID asserts; it stays in its group but not in the map.
+        if (m_mapMagicOptLevel.find(pLevel->ID) != m_mapMagicOptLevel.end())
+            BSAssertFail();
+        m_mapMagicOptLevel.insert(std::make_pair(pLevel->ID, pLevel));
+        if (m_mapMagicOptLevel.size() >= 0xFFFF)
+            BSAssertFail();
+    }
+}
+
+RefMagicOptGroupByName* RefMagicOptTables::FindMagicOptByCodeName(const std::string& strName)
+{
+    if (strName.empty())
+        BSAssertFail();
+    for (unsigned int i = 0; i < m_vecMagicOptGroup.size(); ++i)
+    {
+        RefMagicOptGroupByName* pGroup = m_vecMagicOptGroup[i];
+        if (!_stricmp(pGroup->MOptName128.c_str(), strName.c_str()))
+            return pGroup;
+    }
+    return NULL;
+}
+
+RefMagicOptGroupByName* RefMagicOptTables::FindMagicOptById(DWORD dwParamCode)
+{
+    for (unsigned int i = 0; i < m_vecMagicOptGroup.size(); ++i)
+    {
+        RefMagicOptGroupByName* pGroup = m_vecMagicOptGroup[i];
+        if (pGroup->dwParamCode == dwParamCode)
+            return pGroup;
+    }
+    return NULL;
+}
+
+RefMagicOptLevel* RefMagicOptTables::FindMagicOptLevelEntry(WORD wID)
+{
+    std::map<WORD, RefMagicOptLevel*>::iterator it = m_mapMagicOptLevel.find(wID);
+    if (it == m_mapMagicOptLevel.end())
+        return NULL;
+    return it->second;
+}
+
+mfunc_desc* RefMagicOptTables::FindMagicOption(WORD wID, DWORD* pdwMLevel)
+{
+    std::map<WORD, RefMagicOptLevel*>::iterator it = m_mapMagicOptLevel.find(wID);
+    if (it == m_mapMagicOptLevel.end())
+        return NULL;
+    if (pdwMLevel)
+        *pdwMLevel = it->second->MLevel;
+    return it->second->pDesc;
+}
+
+MagOptEachLevelTable g_aMagOptEachLevelTable[MAGOPT_EACH_LEVEL_TABLE_COUNT];
+
+void MagOptEachLevelSlots::AddUnique(RefMagicOptGroupByName* pGroup)
+{
+    std::vector<RefMagicOptGroupByName*>& vecGroup = avecGroup[pGroup->bNoPlus];
+    for (unsigned int i = 0; i < vecGroup.size(); ++i)
+    {
+        if (vecGroup[i] == pGroup)
+        {
+            BSAssertFail();
+            return;
+        }
+    }
+    vecGroup.push_back(pGroup);
+}
+
+MagOptEachLevelSlots* MagOptEachLevelTable_GetOrInsert(MagOptEachLevelTable& table, DWORD dwKey)
+{
+    if (table.find(dwKey) != table.end())
+        BSAssertFail();
+    table.insert(std::make_pair(dwKey, MagOptEachLevelSlots()));
+    if (table.find(dwKey) == table.end())
+        BSAssertFail();
+    return &table[dwKey];
+}
+
+MagOptEachLevelSlots* MagOptEachLevelTable_Find(MagOptEachLevelTable& table, DWORD dwKey)
+{
+    MagOptEachLevelTable::iterator it = table.find(dwKey);
+    if (it == table.end())
+        return NULL;
+    return &it->second;
+}
+
+void RefMagicOptTables::BuildMagicOptAssignTables(CDBRecordList& listRows)
+{
+    for (CDBRecordList::iterator it = listRows.begin(); it != listRows.end(); ++it)
+    {
+        const RefMagicOptAssign& row = static_cast<CRefMagicOptAssign*>(*it)->m_Data;
+        if (!row.Service)
+            continue;
+        // BUG(SM-012): a Race of 4 or more only asserts and indexes past the four tables.
+        if (row.Race >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
+            BSAssertFail();
+        MagOptEachLevelTable& table = g_aMagOptEachLevelTable[row.Race];
+        if (!row.TID3 || row.TID3 >= 0x10)
+            BSAssertFail();
+        if (!row.TID4 || row.TID4 >= 0x20)
+            BSAssertFail();
+        MagOptEachLevelSlots* pSlots =
+            MagOptEachLevelTable_GetOrInsert(table, row.TID3 | (row.TID4 << 16));
+        for (int i = 0; i < 25; ++i)
+        {
+            const std::string& strName = row.AvailMOpt[i];
+            if (strName.empty())
+                break;
+            if (RefData_StrEqualNoCase(strName.c_str(), s_szUnusedName))
+                break;
+            RefMagicOptGroupByName* pGroup = FindMagicOptByCodeName(strName);
+            // An unknown name asserts and is then dereferenced.
+            if (!pGroup)
+                BSAssertFail();
+            pSlots->AddUnique(pGroup);
+        }
+    }
+}
+
+BOOL RefObj_IsEquipItem(const RefObjCommonRow* pObj)
+{
+    if (!pObj)
+    {
+        BSAssertFail();
+        return FALSE;
+    }
+    WORD wTypeID = RefObj_GetTypeID(pObj);
+    return !(wTypeID & 2) && (wTypeID & 0x1C) == 0xC && (wTypeID & 0x60) == 0x20;
+}
+
+MagOptEachLevelSlots* RefData_GetMagicOptAssignForItem(const RefObjCommonRow* pObj)
+{
+    if (!RefObj_IsEquipItem(pObj))
+        return NULL;
+    if (RefObj_GetCountry(pObj) >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
+        BSAssertFail();
+    return MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[RefObj_GetCountry(pObj)],
+                                     RefObj_GetMagOptAssignKey(pObj));
+}
+
+BOOL RefData_FindAssignedMagicOptEntry(WORD wID, const RefObjCommonRow* pObj,
+                                       RefMagicOptGroupByName*& pGroup,
+                                       RefMagicOptLevel*& pLevel, DWORD& dwIndex)
+{
+    if (!pObj)
+        BSAssertFail();
+    DWORD dwKey = RefObj_GetMagOptAssignKey(pObj);
+    if (RefObj_GetCountry(pObj) >= MAGOPT_EACH_LEVEL_TABLE_COUNT)
+        BSAssertFail();
+    MagOptEachLevelSlots* pSlots =
+        MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[RefObj_GetCountry(pObj)], dwKey);
+    if (!pSlots)
+        return FALSE;
+    RefMagicOptGroupByName* pFound = NULL;
+    RefMagicOptLevel* pFoundLevel = NULL;
+    DWORD dwFound = 0;
+    std::vector<RefMagicOptGroupByName*>& vecGroup = pSlots->avecGroup[0];
+    for (unsigned int i = 0; i < vecGroup.size(); ++i)
+    {
+        pFound = vecGroup[i];
+        pFoundLevel = RefMagicOpt_FindLevelEntryById(wID, pFound);
+        if (pFoundLevel)
+        {
+            dwFound = i;
+            break;
+        }
+        pFound = NULL;
+    }
+    pGroup = pFound;
+    pLevel = pFoundLevel;
+    dwIndex = dwFound;
+    return pFound && pFoundLevel;
+}
+
+BOOL RefData_IsMagicOptEntryAllowed(const RefObjCommonRow* pObj, WORD wID)
+{
+    if (!pObj)
+        BSAssertFail();
+    if (!RefObj_IsEquipItem(pObj))
+        return wID == 0;
+    if (!RefData_GetMagicOptAssignForItem(pObj))
+        return FALSE;
+    RefMagicOptGroupByName* pGroup = NULL;
+    RefMagicOptLevel* pLevel = NULL;
+    DWORD dwIndex = 0;
+    return RefData_FindAssignedMagicOptEntry(wID, pObj, pGroup, pLevel, dwIndex);
+}
+
+// Magic option groups and item option levels ---------------------------------------------------
+
+DWORD RefRow_Read(CRefRow& row, RefMagicOptGroupRow& r)
+{
+    BYTE bService;
+    DWORD dwKey;
+    row >> bService >> dwKey >> r.Type >> r.CodeName >> r.MagicOptID >> r.MLevel >>
+        r.CustomValue >> r.dw30 >> r.str34 >> r.dw50 >> r.str54;
+    if (!bService)
+        return 0;
+    if (r.Type == 3)
+    {
+        if (!CReferenceData::GetInstance()->FindSkill(r.MagicOptID))
+        {
+            BSMessageBoxPrintf("Ooops! Can't find bound skill [%d]", r.MagicOptID);
+            return 0;
+        }
+        return dwKey;
+    }
+    if (r.Type == 0 || r.Type > 3)
+    {
+        BSMessageBoxPrintf("can`t find MagicType[%d] extractor!!! [MagicOptID:%d]", r.Type,
+                           r.MagicOptID);
+        return 0;
+    }
+    if (!g_pReferenceData)
+        BSAssertFail();
+    RefMagicOptLevel* pLevel =
+        g_pReferenceData->m_MagicOpt.FindMagicOptLevelEntry((WORD)r.MagicOptID);
+    if (!pLevel)
+    {
+        // BUG(SM-013): the original passes the std::string object by value for %s (and the
+        // MLevel lands in no specifier); the rewrite passes its characters and the MLevel.
+        BSMessageBoxPrintf("can't find MagicOptGroup[%s]:MagicOptLevel[%d] from MagOptEachLevel "
+                           "at RefMagicOptByItemOptLevel", r.CodeName.c_str(), r.MLevel);
+        return 0;
+    }
+    if (r.CustomValue &&
+        !MagOptEachLevel_IsValueInRange(pLevel->pGroup, r.CustomValue, pLevel->MLevel))
+    {
+        BSMessageBoxPrintf("CustomValue(RefMagicOptID[%d]) is error data out of range to "
+                           "MagicoptionValue : value[%d]", r.MagicOptID, r.CustomValue);
+        if (!BSAssertDialog(1566, s_szReferenceDataFile, "FALSE"))
+            DebugBreak();
+        return 0;
+    }
+    return dwKey;
+}
+
+BOOL CReferenceData::GetMagicOptGroup(DWORD dwKey, RefMagicOptGroupVector& vecRow)
+{
+    RefMagicOptGroupMap::iterator it = m_mapMagicOptGroup.find(dwKey);
+    if (it == m_mapMagicOptGroup.end())
+        return FALSE;
+    vecRow = it->second;
+    return TRUE;
+}
+
+unsigned __int64 RefAbilityByItemOptLevel::Read(CDBRecStream* pRow, CDBRecStream*)
+{
+    CRefRow row(pRow);
+    BYTE bService;
+    row >> bService >> ID >> RefItemID >> OptLevel;
+    if (!bService)
+        return 0;
+    if (!g_pReferenceData)
+        BSAssertFail();
+    if (!g_pReferenceData->FindRefObj(RefItemID))
+    {
+        BSMessageBoxPrintf("Can't find Item(%d) within _RefObjCommon Table", RefItemID);
+        BSAssertFail();
+        return 0;
+    }
+    static_cast<CRefAbilityByItemOptLevel*>(pRow)->m_adw30[0] = ID;
+    return ((unsigned __int64)RefItemID << 32) | OptLevel;
+}
+
+unsigned __int64 RefSkillByItemOptLevel::Read(CDBRecStream* pRow, CDBRecStream* pAbility)
+{
+    if (!pAbility)
+    {
+        BSAssertFail();
+        return 0;
+    }
+    unsigned __int64 qwKey = RefAbilityByItemOptLevel::Read(pAbility, NULL);
+    CRefRow row(pRow);
+    row >> SkillID;
+    if (!g_pReferenceData)
+        BSAssertFail();
+    RefSkill* pSkill = g_pReferenceData->FindSkill(SkillID);
+    if (!pSkill)
+    {
+        BSMessageBoxPrintf("Can't find skill(%d) within _RefSkill Table", SkillID);
+        BSAssertFail();
+        return 0;
+    }
+    if (pSkill->Param[0] == 4)
+    {
+        BSMessageBoxPrintf("Can`t attach passive skill on _RefAbilityByItemOptLevel Table!");
+        BSAssertFail();
+        return 0;
+    }
+    return qwKey;
+}
+
+unsigned __int64 RefMagicOptByItemOptLevel::Read(CDBRecStream* pRow, CDBRecStream* pAbility)
+{
+    if (!pAbility)
+    {
+        BSAssertFail();
+        return 0;
+    }
+    unsigned __int64 qwKey = RefAbilityByItemOptLevel::Read(pAbility, NULL);
+    CRefRow row(pRow);
+    row >> MagicOptID >> Value;
+    row.Skip().Skip();
+    if (!g_pReferenceData)
+        BSAssertFail();
+    RefObjCommonRow* pObj = g_pReferenceData->FindRefObj(RefItemID);
+    if (!pObj)
+        return 0;
+    if (!g_pReferenceData)
+        BSAssertFail();
+    RefMagicOptLevel* pLevel = g_pReferenceData->m_MagicOpt.FindMagicOptLevelEntry(MagicOptID);
+    if (!pLevel)
+    {
+        BSMessageBoxPrintf("can't find %d from MagOptEachLevel at RefMagicOptByItemOptLevel",
+                           MagicOptID);
+        return 0;
+    }
+    if (!MagOptEachLevel_IsValueInRange(pLevel->pGroup, Value, pLevel->MLevel))
+    {
+        BSMessageBoxPrintf("(%s) error data out of range to MagicoptionValue",
+                           RefObj_GetCodeName(pObj).c_str());
+        if (!BSAssertDialog(4730, s_szReferenceDataFile, "FALSE"))
+            DebugBreak();
+        return 0;
+    }
+    return qwKey;
+}
+
+CDBRecStream* CReferenceData::FindRowInTable(unsigned int nSlot, DWORD dwKey)
+{
+    RefTableEntry* pTable = m_pTables->at(nSlot);
+    if (!pTable)
+        BSAssertFail();
+    for (CDBRecordList::iterator it = pTable->m_listRows.begin();
+         it != pTable->m_listRows.end(); ++it)
+    {
+        CDBRecStream* pRow = static_cast<CDBRecStream*>(*it);
+        switch (nSlot)
+        {
+        case 3:
+        case 17:
+            if (*(const DWORD*)((const BYTE*)pRow + 0x30) == dwKey)
+                return pRow;
+            break;
+        case 12:
+        case 13:
+        case 14:
+        {
+            // The first column, read past the reader's position (which is restored).
+            DWORD nReadPos = pRow->m_nReadPos;
+            DWORD nFieldCount = pRow->m_nFieldCount;
+            pRow->m_nFieldCount = 0;
+            pRow->m_nReadPos = 0;
+            if ((int)pRow->m_nWritePos < 4)
+                BSAssertFail();
+            DWORD dwFirst = *(const DWORD*)(pRow->m_pBuffer + pRow->m_nReadPos);
+            pRow->m_nReadPos = nReadPos;
+            pRow->m_nFieldCount = nFieldCount;
+            if (dwFirst == dwKey)
+                return pRow;
+            break;
+        }
+        default:
+            BSAssertFail();
+            break;
+        }
+    }
+    return NULL;
+}
+
+// CRefInstanceGenerator::CreateByItemOptLevelRecord (0x4a5e70): one row of slot 15 (magic
+// option), 16 (skill) or 17 (ability).
+static int RefData_CreateByItemOptLevelRecord(CDBRecStream* pRow,
+                                              CReferenceData::RefItemOptLevelMap& map,
+                                              unsigned int nSlot)
+{
+    RefAbilityByItemOptLevel* pObj;
+    switch (nSlot)
+    {
+    case 15:
+        pObj = new RefMagicOptByItemOptLevel;
+        break;
+    case 16:
+        pObj = new RefSkillByItemOptLevel;
+        break;
+    case 17:
+    {
+        // The ability rows only check their keys (the map is dropped by the caller).
+        RefAbilityByItemOptLevel ability;
+        unsigned __int64 qwKey = ability.Read(pRow, NULL);
+        if (!qwKey)
+            return 1;
+        if (map.find(qwKey) != map.end())
+        {
+            BSAssertFail();
+            return 0;
+        }
+        map.insert(std::make_pair(qwKey, CReferenceData::RefItemOptLevelVector()));
+        return 1;
+    }
+    default:
+        BSAssertFail();
+        BSAssertFail();
+        return 0;
+    }
+    if (!pObj)
+    {
+        BSAssertFail();
+        return 0;
+    }
+    DWORD dwAbilityID;
+    CRefRow row(pRow);
+    row >> dwAbilityID;
+    if (!g_pReferenceData)
+        BSAssertFail();
+    CDBRecStream* pAbility = g_pReferenceData->FindRowInTable(0x11, dwAbilityID);
+    if (!pAbility)
+    {
+        BSAssertFail();
+        delete pObj;
+        return 0;
+    }
+    pAbility->m_nFieldCount = 0;
+    pAbility->m_nReadPos = 0;
+    unsigned __int64 qwKey = pObj->Read(pRow, pAbility);
+    if (!qwKey)
+    {
+        BSAssertFail();
+        delete pObj;
+        return 1;
+    }
+    CReferenceData::RefItemOptLevelMap::iterator it = map.find(qwKey);
+    if (it == map.end())
+    {
+        CReferenceData::RefItemOptLevelVector vecRow;
+        vecRow.push_back(pObj);
+        map.insert(std::make_pair(qwKey, vecRow));
+    }
+    else
+    {
+        it->second.push_back(pObj);
+    }
+    return 1;
+}
+
+// RefData_BuildRefItemOptLevelTables (0x4d13c0): FALSE for an empty table or a row that fails.
+static int RefData_BuildRefItemOptLevelTables(RefTableEntry* pTable,
+                                              CReferenceData::RefItemOptLevelMap& map,
+                                              unsigned int nSlot)
+{
+    if (pTable->m_listRows.size() == 0)
+        return 0;
+    for (CDBRecordList::iterator it = pTable->m_listRows.begin();
+         it != pTable->m_listRows.end(); ++it)
+    {
+        if (!RefData_CreateByItemOptLevelRecord(static_cast<CDBRecStream*>(*it), map, nSlot))
+        {
+            BSAssertFail();
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void RefData_InsertItemOptLevelEnds(CReferenceData::RefItemOptLevelMap& map)
+{
+    map.insert(std::make_pair((unsigned __int64)0, CReferenceData::RefItemOptLevelVector()));
+    map.insert(std::make_pair((unsigned __int64)-1, CReferenceData::RefItemOptLevelVector()));
+}
+
+int CReferenceData::LoadByItemOptLevelTables()
+{
+    RefTableEntry* pAbility = m_pTables->at(0x11);
+    RefTableEntry* pMagicOpt = m_pTables->at(0xF);
+    RefTableEntry* pSkill = m_pTables->at(0x10);
+    RefItemOptLevelMap mapAbility;
+    if (!RefData_BuildRefItemOptLevelTables(pAbility, mapAbility, 17))
+        return 0;
+    RefData_InsertItemOptLevelEnds(m_mapItemOptLevel134);
+    if (!RefData_BuildRefItemOptLevelTables(pMagicOpt, m_mapItemOptLevel134, 15))
+        return 0;
+    RefData_InsertItemOptLevelEnds(m_mapItemOptLevel128);
+    if (!RefData_BuildRefItemOptLevelTables(pSkill, m_mapItemOptLevel128, 16))
+        return 0;
+    return 1;
 }
 
 // CReferenceData ------------------------------------------------------------------------------
