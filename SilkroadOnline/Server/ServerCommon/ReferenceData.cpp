@@ -871,6 +871,46 @@ static int RefData_BuildGameWorld(CReferenceData* pData, RefTableEntry* pTable, 
     return nResult;
 }
 
+// Builders that copy the data part of each CDBRecord row into a new row appended to a vector:
+// RefData_BuildRefLevel (0x4ceff0, RefRegion_CopyRow 0x48eb50: a row without Lvl asserts and is
+// kept), RefData_BuildRefInstanceWorldRegion (0x4cf8f0, RefInstanceWorldRegion_CopyKey 0x497750:
+// a row without WorldID is freed) and RefData_BuildRefInstanceWorldStartPos (0x4cf990,
+// RefData_CopyRowHeader_497760). FALSE for an empty table only.
+static BOOL RefData_KeepCopy(const RefLevelData& r)
+{
+    if (!r.Lvl)
+        BSAssertFail();
+    return TRUE;
+}
+
+static BOOL RefData_KeepCopy(const RefInstanceWorldRegionData& r)
+{
+    return r.WorldID != 0;
+}
+
+static BOOL RefData_KeepCopy(const RefInstanceWorldStartPosData&)
+{
+    return TRUE;
+}
+
+template <class TRec, class T, std::vector<T*> CReferenceData::*pVector>
+int RefData_BuildCopyVector(CReferenceData* pData, RefTableEntry* pTable, unsigned int)
+{
+    if (pTable->m_listRows.size() == 0)
+        return 0;
+    for (CDBRecordList::iterator it = pTable->m_listRows.begin(); it != pTable->m_listRows.end();
+         ++it)
+    {
+        T* pRow = new T;
+        *pRow = *static_cast<TRec*>(*it);
+        if (RefData_KeepCopy(*pRow))
+            (pData->*pVector).push_back(pRow);
+        else
+            delete pRow;
+    }
+    return 1;
+}
+
 // A table whose builder is not ported yet: nothing is built and the build goes on.
 static int RefData_BuildPending(CReferenceData*, RefTableEntry*, unsigned int)
 {
@@ -903,7 +943,8 @@ static int RefData_BuildAlchemyMeritPending(CReferenceData*, RefTableEntry* pTab
 // The switch of CRefInstanceGenerator::BuildFromTable (0x4ac550), one entry per slot.
 static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
 {
-    P, P, P, P, P, P,                                                       // 0x00
+    &RefData_BuildCopyVector<CRefLevel, RefLevelData, &CReferenceData::m_vecLevel>,  // 0x00
+    P, P, P, P, P,
     REF_LOADED((RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData,
                 CReferenceData::RefGachaNpcMapMap,
                 &CReferenceData::m_mapGachaNpcMap>)),                       // 0x06
@@ -918,7 +959,10 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     REF_LOADED((RefData_AddRowUnique<CRefQuest, RefQuest, CReferenceData::RefQuestMap,
                 &CReferenceData::m_mapQuest>)),                             // 0x3C
     RefData_BuildGameWorld,
-    P, P,
+    &RefData_BuildCopyVector<CRefInstanceWorldRegion, RefInstanceWorldRegionData,
+                             &CReferenceData::m_vecInstanceWorldRegion>,    // 0x3E
+    &RefData_BuildCopyVector<CRefInstanceWorldStartPos, RefInstanceWorldStartPosData,
+                             &CReferenceData::m_vecInstanceWorldStartPos>,
     P, P, P, P, P, P, P, P,                                                 // 0x40
     REF_LOADED((RefData_LoadSiegeVector<CRefSiegeFortress, RefSiegeFortress,
                 &CReferenceData::m_vecSiegeFortress>)),                     // 0x48
@@ -1028,6 +1072,9 @@ CReferenceData::~CReferenceData()
     RefData_DeleteValues(m_mapSiegeDungeon);
     RefData_DeleteValues(m_mmapSiegeQuest);
     RefData_DeleteValues(m_mmapSiegeQuestReward);
+    RefData_DeleteElements(m_vecLevel);
+    RefData_DeleteElements(m_vecInstanceWorldRegion);
+    RefData_DeleteElements(m_vecInstanceWorldStartPos);
     RefData_DeleteValues(m_mapQuest);
     m_hashGameWorldByCodeName.clear();
     RefData_DeleteValues(m_mapGameWorld);

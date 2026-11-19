@@ -355,6 +355,9 @@ class CReferenceData
 {
 public:
     typedef std::map<DWORD, RefRegionRow*>                      RefRegionMap;
+    typedef std::vector<RefLevelData*>                          RefLevelVector;
+    typedef std::vector<RefInstanceWorldRegionData*>            RefInstanceWorldRegionVector;
+    typedef std::vector<RefInstanceWorldStartPosData*>          RefInstanceWorldStartPosVector;
     typedef stdext::hash_map<int, RefObjCommonRow*>             RefObjHashMap;
     typedef stdext::hash_map<std::string, RefObjCommonRow*>     RefObjByCodeNameHashMap;
     typedef std::map<DWORD, RefSkillMasteryRow*>                RefSkillMasteryMap;
@@ -434,7 +437,8 @@ public:
 public:
     RefTableVector*             m_pTables;                          // +000
     RefRegionMap                m_mapRegion;                        // +004  by region ID
-    BYTE                        m_ab010[0x58];                      // +010  (not ported yet)
+    RefLevelVector              m_vecLevel;                         // +010
+    BYTE                        m_ab020[0x48];                      // +020  (not ported yet)
     RefObjHashMap               m_hashRefObj;                       // +068  _RefObjCommon by ID
     RefObjByCodeNameHashMap     m_hashRefObjByCodeName;             // +090
     BYTE                        m_ab0B8[0x58];                      // +0B8  (not ported yet)
@@ -447,7 +451,9 @@ public:
     BYTE                        m_ab8AC[0x80];                      // +8AC  (not ported yet)
     RefGameWorldMap             m_mapGameWorld;                     // +92C  by ID
     RefGameWorldByCodeNameHashMap m_hashGameWorldByCodeName;        // +938
-    BYTE                        m_ab960[0x9C];                      // +960  (not ported yet)
+    RefInstanceWorldRegionVector m_vecInstanceWorldRegion;          // +960
+    RefInstanceWorldStartPosVector m_vecInstanceWorldStartPos;      // +970
+    BYTE                        m_ab980[0x7C];                      // +980  (not ported yet)
     RefSiegeFortressVector      m_vecSiegeFortress;                 // +9FC
     RefSiegeFortressGuardMap    m_mmapSiegeFortressGuard;           // +A0C  by FortressID
     RefSiegeFortressItemForgeMap m_mmapSiegeFortressItemForge;      // +A18  by FortressID
@@ -493,7 +499,9 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObj) == 0x68);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObjByCodeName) == 0x90);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecLevel) == 0x10);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGachaNpcMap) == 0x110);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecInstanceWorldStartPos) == 0x970);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkillMastery) == 0x87C);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSkill) == 0x888);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorld) == 0x92C);
