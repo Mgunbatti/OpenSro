@@ -275,9 +275,8 @@ int RefObjItem::Read(CRefRow& row, int nReserved)
     {
         LogPrintf(0x2000000, "Can't find associated item data [RefObjCommon ID: %d, RefItem ID: %d]",
                   nID, Link);
-        BSAssertFail();
         // BUG(SM-041): the original goes on reading from the NULL row and crashes.
-        return nID;
+        BSAssertFail();
     }
 
     CRefRow item(pItemRow);

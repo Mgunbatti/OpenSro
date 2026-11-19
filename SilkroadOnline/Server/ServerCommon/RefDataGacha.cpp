@@ -88,12 +88,9 @@ int RefRow_Read(CRefRow& row, RefGachaItemSetRow& r)
         row >> r.Param[i].Param >> r.Param[i].Desc;
 
     RefObjCommonRow* pObj = CReferenceData::GetInstance()->FindRefObj(r.RefItemID);
+    // BUG(SM-072): the original goes on with the NULL object and crashes at its MaxStack.
     if (!pObj)
-    {
         BSAssertFail();
-        // BUG(SM-072): the original goes on with the NULL object and crashes.
-        return 0;
-    }
     if (!r.Count)
         BSAssertFail();
     const RefObjItem* pItem = static_cast<const RefObjItem*>(pObj);
