@@ -572,6 +572,66 @@ static void TestTypeHelpers()
     CHECK(dw == (1 | (2 << 6) | (3 << 10) | (4 << 15) | (5 << 20) | (6 << 26)));
 }
 
+// ---------------------------------------------------------------------------------------------
+// The object itself: the members the constructor fills, the owning containers and the collection
+// book clear.
+
+static int s_nOwnedRowsAlive = 0;
+
+struct OwnedRow
+{
+    OwnedRow()
+    {
+        ++s_nOwnedRowsAlive;
+    }
+
+    ~OwnedRow()
+    {
+        --s_nOwnedRowsAlive;
+    }
+};
+
+static void TestContainers(CReferenceData& data)
+{
+    CHECK(data.m_RefCharGen.m_vecRace.size() == 3);
+    CHECK(data.m_RefCharGen.m_vecRace[2].vecGender.size() == 2);
+    CHECK(data.m_RefCharGen.m_vecRace[0].vecGender[1].vecItemObjID.empty());
+
+    CHECK(data.m_RankingPackets.m_vecActivity.size() == 3);
+    CHECK(data.m_RankingPackets.m_vecContribution.size() == 3);
+    CStreamBuffer* pPacket = data.m_RankingPackets.m_vecContribution[2];
+    CHECK(pPacket->m_nCapacity == 1280 && pPacket->m_nWritePos == 1 && pPacket->m_nReadPos == 0);
+    CHECK(pPacket->m_pBuffer[0] == 0);
+
+    CHECK(data.m_MagicOpt.m_adw00[0] == 8 && data.m_MagicOpt.m_adw00[22] == 8);
+    CHECK(data.m_MagicOpt.m_adw00[23] == 0 && data.m_MagicOpt.m_adw00[35] == 0);
+    CHECK(data.m_MagicOpt.m_mapLevelBand.size() == 42);
+    CHECK(data.m_MagicOpt.m_mapLevelBand[1] == 1 && data.m_MagicOpt.m_mapLevelBand[42] == 16);
+    CHECK(data.m_MagicOpt.m_mapLevelBand[183] == 42);
+    CHECK(data.m_MagicOpt.m_aDropClass[21].aEntry[2].empty());
+
+    {
+        CRefOwnerMap<std::map<DWORD, OwnedRow*> > map;
+        map[1] = new OwnedRow;
+        map[2] = new OwnedRow;
+        map[3] = NULL;
+        CHECK(s_nOwnedRowsAlive == 2);
+    }
+    CHECK(s_nOwnedRowsAlive == 0);
+
+    RefCollectionBookTheme* pTheme = new RefCollectionBookTheme;
+    pTheme->ID = 7;
+    pTheme->CodeName = "THEME";
+    RefCollectionBookItem* pItem = new RefCollectionBookItem;
+    pItem->CodeName = "ITEM";
+    data.m_mapCollectionBookTheme[pTheme->CodeName] = pTheme;
+    data.m_mapCollectionBookThemeByID[pTheme->ID] = pTheme;
+    data.m_mapCollectionBookItem[pItem->CodeName] = pItem;
+    data.ClearCollectionBook();
+    CHECK(data.m_mapCollectionBookTheme.empty() && data.m_mapCollectionBookItem.empty());
+    CHECK(data.m_mapCollectionBookThemeByID.empty());
+}
+
 int main()
 {
     CReferenceData* pData = CReferenceData::GetInstance();
@@ -586,6 +646,7 @@ int main()
     TestEventAndRewardTables(*pData);
     TestFindRefObj(*pData);
     TestTypeHelpers();
+    TestContainers(*pData);
 
     pData->m_pTables = NULL;
     return TEST_RESULT("ShardReferenceDataTest");
