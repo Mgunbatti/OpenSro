@@ -843,6 +843,11 @@ public:
     RefServerEvent* FindServerEvent(DWORD dwID);
     // RefData_FindServerEventReward (0x47d980): NULL when there is none.
     RefServerEventReward* FindServerEventReward(DWORD dwID);
+    // CReferenceData::GetShardContentConfigInt32 (0x65b810): appends the value of every
+    // _RefShardContentConfig row of the code name whose CodeDesc128 equals strDesc and whose
+    // Type is INT32; TRUE when vecValue is not empty afterwards.
+    BOOL GetShardContentConfigInt32(const std::string& strCodeName, const std::string& strDesc,
+                                    std::vector<int>& vecValue);
 
     // CReferenceData::ClearCollectionBook (0x50a830): frees the collection book items and
     // themes and empties the three collection book maps.

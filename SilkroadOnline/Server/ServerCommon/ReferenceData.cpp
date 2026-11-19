@@ -1,5 +1,6 @@
 #include "ServerCommon/ReferenceData.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -1390,6 +1391,28 @@ RefServerEvent* CReferenceData::FindServerEvent(DWORD dwID)
 RefServerEventReward* CReferenceData::FindServerEventReward(DWORD dwID)
 {
     return RefData_FindValue(m_mapServerEventReward, dwID);
+}
+
+BOOL CReferenceData::GetShardContentConfigInt32(const std::string& strCodeName,
+                                                const std::string& strDesc,
+                                                std::vector<int>& vecValue)
+{
+    RefShardContentConfigMap::iterator itEnd = m_mapShardContentConfig.upper_bound(strCodeName);
+    for (RefShardContentConfigMap::iterator it = m_mapShardContentConfig.lower_bound(strCodeName);
+         it != itEnd; ++it)
+    {
+        RefShardContentConfig* pConfig = it->second;
+        const char* pszDesc = pConfig->CodeDesc128.c_str();
+        const char* pszWanted = strDesc.c_str();
+        if (CompareStringA(0x400, 0, pszDesc, lstrlenA(pszDesc), pszWanted, lstrlenA(pszWanted)) !=
+            CSTR_EQUAL)
+            continue;
+        const char* pszType = pConfig->Type.c_str();
+        if (CompareStringA(0x400, 0, pszType, lstrlenA(pszType), "INT32", lstrlenA("INT32")) ==
+            CSTR_EQUAL)
+            vecValue.push_back(atol(pConfig->Value.c_str()));
+    }
+    return !vecValue.empty();
 }
 
 // The lookup the instance records use (InstanceRecords.h): the singleton check of the callers,
