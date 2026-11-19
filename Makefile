@@ -238,6 +238,7 @@ SHARD_REC_OBJS = $(OBJ)\ServerCommon\RefRecords.obj
 # reference data).
 SHARD_INST_OBJS = $(OBJ)\ServerCommon\InstanceRecords.obj
 # SHARD_REFDATA_OBJS: the reference data (CReferenceData, the table builders and row readers).
+# Needs SHARD_REC_OBJS (the siege rows are the data parts of the record classes).
 SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
@@ -723,10 +724,10 @@ $(BIN)\ShardRefRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_REC_OBJS) \
 	    $(SHARD_LIBS) $(SYSLIBS)
 
 $(BIN)\ShardInstanceRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_INST_OBJS) \
-                                    $(SHARD_REFDATA_OBJS) \
+                                    $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
                                     $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_INST_OBJS) \
-	    $(SHARD_REFDATA_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+	    $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 $(BIN)\ShardReferenceDataTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
                                    $(OBJ)\test\ShardReferenceDataTest.obj $(SHARD_LIBS)
