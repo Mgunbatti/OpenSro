@@ -2725,7 +2725,7 @@ WORD CGuildManager::OnGuildWarHostileRequest(DWORD dwJID, WORD wOpcode, CMsg* pM
         dwTargetGuildID = pWar->Guild[1];
     else
         dwTargetGuildID = pWar->Guild[0];
-    pJob->Setup(dwJID, wOpcode, 0, 60.0f, dwWarID, dwTargetGuildID);
+    pJob->Init(dwJID, wOpcode, 0, 60.0f, dwWarID, dwTargetGuildID);
     SendHostileResult(dwWarID, dwGuildID);
     if (!GetSingleton_COverlappedJobMgr()->StartJob(pJob, pUser, pMsg))
     {

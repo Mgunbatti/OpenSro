@@ -1,5 +1,6 @@
 #pragma once
 
+#include <winsock2.h>
 #include <windows.h>
 #include <list>
 #include <string>
@@ -9,14 +10,17 @@
 #include "BSLib/DB/Database.h"
 #include "BSNet/Msg.h"
 #include "ServerCommon/PartyInfo.h"
+#include "ServerFramework/ServerProcessMain.h"
 
-// What the messenger and the party manager of SR_ShardManager use from other subsystems. Only the
-// members they call are declared; the owning groups define them (the tests link stand-ins).
+// What the social classes of SR_ShardManager (guilds, messenger, party manager, training camps,
+// votes) use from other subsystems. Only the members they call are declared; the owning groups
+// define them (the tests link stand-ins). The guild code adds its own in GuildExtern.h.
 
 class CUser;
 
 // ---------------------------------------------------------------------------------------------
-// Provided by SM_social1 (transaction, trs_messenger_job, trs_party_job, 0x41fcc0..0x425bf0)
+// Provided by the transaction group (transaction, trs_messenger_job, trs_party_job,
+// 0x41fcc0..0x425bf0)
 
 // Pending request that waits for the answer of another user (COverlappedJobMgr).
 class transaction
@@ -80,13 +84,17 @@ public:
 // GetSingleton_COverlappedJobMgr (0x40baf0, g_pOverlappedJobMgr 0x8a8910)
 COverlappedJobMgr* GetSingleton_COverlappedJobMgr();
 
-class CMainProcess
+class CMainProcess : public ServerFramework::CServerProcessMain
 {
 public:
-    // CMainProcess::BroadcastToGameServers (0x412120)
-    void BroadcastToGameServers(CMsg* pMsg, DWORD dwParam);
+    // CMainProcess::BroadcastToGameServers (0x412120): to every game server but the session
+    // nExcept.
+    int BroadcastToGameServers(CMsg* pMsg, int nExcept);
     // CMainProcess::BroadcastToAllGameServers (0x4121e0)
-    void BroadcastToAllGameServers(CMsg* pMsg);
+    int BroadcastToAllGameServers(CMsg* pMsg);
+    // The CREST_FTP address of the configuration: the std::string at +0x42318 (the original
+    // reads the member directly).
+    const std::string& GetCrestFtpAddress() const;
 };
 
 // g_pMainProcess (0x8a88f8)
@@ -99,8 +107,9 @@ public:
     CDBSessionMgr* GetSession();
     // +0x18: the instance tables (index = slot; _Friend 0x14, _Memo 0x15)
     std::vector<CDBTable*>& GetInstanceTables();
-    // CDBConnPool_GetConnAt: the table of a slot
-    CDBTable* GetTable(DWORD nSlot);
+    // CDBConnPool_GetConnAt (0x4013d0, also inlined): table nIndex of the table vector at
+    // +0x18; asserts and returns NULL when the vector is shorter.
+    CDBTable* GetTable(int nIndex);
 };
 
 // GetSingleton_CShardDB (0x401c10) asserts g_pShardDB (0x8a8948).
@@ -126,6 +135,8 @@ class CUser
 {
 public:
     sPartyMemberInfo& GetPartyMemberInfo();     // +0x08 (its m_dwPartyID is the user's party)
+    DWORD GetGuildID() const;                   // +0x6C (cleared when the member leaves)
+    void SetGuildID(DWORD dwGuildID);
     DWORD GetTrainingCampID() const;            // +0x70
     void SetTrainingCampID(DWORD dwCampID);
     DWORD GetCampRegID() const;                 // +0x74 training camp recruit entry
@@ -161,8 +172,11 @@ public:
 
 // GetSingleton_CClientManager (0x417c00, g_pClientManager 0x85884c, asserted)
 CClientManager* GetSingleton_CClientManager();
+extern CClientManager* g_pClientManager;            // 0x85884C
 
 // ---------------------------------------------------------------------------------------------
-// Provided by SM_social1 (PackedDateTime_GetLocal, 0x43f8c0): the local time packed into a DWORD.
+// Provided by the guild war group (PackedDateTime_GetLocal 0x43f8c0 / PackedDateTime_Compare
+// 0x43f830): the local time packed into a DWORD and the comparison of two of them.
 
 void PackedDateTime_GetLocal(DWORD* pdwOut);
+int PackedDateTime_Compare(const DWORD* pdwLeft, const DWORD* pdwRight);
