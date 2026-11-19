@@ -338,6 +338,8 @@ int RefRow_Read(CRefRow& row, RefOptionalTeleport& r);
 int RefRec_Read(const CRefQuest& rec, RefQuest& r);
 // RefGameWorld_CopyRow (0x4976d0, RefData_CopyRecord_4976E0 is the copy): the ID.
 int RefRec_Read(const CRefGameWorld& rec, RefGameWorld& r);
+// RefData_CopyRowHeader_497760: the ID.
+int RefRec_Read(const CRefClimate& rec, RefClimateData& r);
 // RefGachaNpcMap_CopyRow (0x497e80): NPC_ID; the Service column is copied, not checked.
 int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r);
 
@@ -356,6 +358,7 @@ class CReferenceData
 public:
     typedef std::map<DWORD, RefRegionRow*>                      RefRegionMap;
     typedef std::vector<RefLevelData*>                          RefLevelVector;
+    typedef std::map<DWORD, RefClimateData*>                    RefClimateMap;
     typedef std::vector<RefInstanceWorldRegionData*>            RefInstanceWorldRegionVector;
     typedef std::vector<RefInstanceWorldStartPosData*>          RefInstanceWorldStartPosVector;
     typedef stdext::hash_map<int, RefObjCommonRow*>             RefObjHashMap;
@@ -438,7 +441,8 @@ public:
     RefTableVector*             m_pTables;                          // +000
     RefRegionMap                m_mapRegion;                        // +004  by region ID
     RefLevelVector              m_vecLevel;                         // +010
-    BYTE                        m_ab020[0x48];                      // +020  (not ported yet)
+    RefClimateMap               m_mapClimate;                       // +020  by ID
+    BYTE                        m_ab02C[0x3C];                      // +02C  (not ported yet)
     RefObjHashMap               m_hashRefObj;                       // +068  _RefObjCommon by ID
     RefObjByCodeNameHashMap     m_hashRefObjByCodeName;             // +090
     BYTE                        m_ab0B8[0x58];                      // +0B8  (not ported yet)

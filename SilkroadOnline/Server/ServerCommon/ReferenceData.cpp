@@ -399,6 +399,12 @@ int RefRec_Read(const CRefGameWorld& rec, RefGameWorld& r)
     return r.ID;
 }
 
+int RefRec_Read(const CRefClimate& rec, RefClimateData& r)
+{
+    r = rec;
+    return r.ID;
+}
+
 int RefRec_Read(const CRefGachaNpcMap& rec, RefGachaNpcMapData& r)
 {
     r = rec;
@@ -944,7 +950,9 @@ static int RefData_BuildAlchemyMeritPending(CReferenceData*, RefTableEntry* pTab
 static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
 {
     &RefData_BuildCopyVector<CRefLevel, RefLevelData, &CReferenceData::m_vecLevel>,  // 0x00
-    P, P, P, P, P,
+    REF_LOADED((RefData_AddRowUnique<CRefClimate, RefClimateData, CReferenceData::RefClimateMap,
+                &CReferenceData::m_mapClimate>)),                           // 0x01
+    P, P, P, P,
     REF_LOADED((RefData_AddRowUnique<CRefGachaNpcMap, RefGachaNpcMapData,
                 CReferenceData::RefGachaNpcMapMap,
                 &CReferenceData::m_mapGachaNpcMap>)),                       // 0x06
@@ -1073,6 +1081,7 @@ CReferenceData::~CReferenceData()
     RefData_DeleteValues(m_mmapSiegeQuest);
     RefData_DeleteValues(m_mmapSiegeQuestReward);
     RefData_DeleteElements(m_vecLevel);
+    RefData_DeleteValues(m_mapClimate);
     RefData_DeleteElements(m_vecInstanceWorldRegion);
     RefData_DeleteElements(m_vecInstanceWorldStartPos);
     RefData_DeleteValues(m_mapQuest);
