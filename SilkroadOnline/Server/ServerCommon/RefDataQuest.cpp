@@ -4,6 +4,8 @@
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataMisc.h"
+#include "ServerCommon/RefDataObj.h"
 #include "ServerFramework/ServerDataExtern.h"
 
 // The code name of a reward that is no rent item (0x783f08).
@@ -18,17 +20,6 @@ static int RefQuest_GetObjID(const RefObjCommonRow* pObj)
     return *(const int*)((const BYTE*)pObj + 8);
 }
 
-// CRefInstanceGenerator::FindObjByCodeName (0x4a0980): despite its name, the rent item of a code
-// name (CReferenceData+0xB0C), NULL when there is none.
-static RefRentItem* RefQuest_FindRentItem(CReferenceData* pData, const char* pszCodeName)
-{
-    std::string strCodeName(pszCodeName, strlen(pszCodeName));
-    CReferenceData::RefRentItemHashMap::iterator it = pData->m_hashRentItem.find(strCodeName);
-    if (it == pData->m_hashRentItem.end())
-        return NULL;
-    return it->second;
-}
-
 // The reward check of the item readers: "xxx" (case sensitive) or a known rent item.
 static BOOL RefQuest_IsKnownRentCode(CReferenceData* pData, const std::string& strCodeName)
 {
@@ -36,7 +27,7 @@ static BOOL RefQuest_IsKnownRentCode(CReferenceData* pData, const std::string& s
     if (CompareStringA(0x400, 0, psz, lstrlenA(psz), s_szNoRentItem, lstrlenA(s_szNoRentItem)) ==
         CSTR_EQUAL)
         return TRUE;
-    return RefQuest_FindRentItem(pData, psz) != NULL;
+    return RefData_FindRentItem(pData, psz) != NULL;
 }
 
 // RefData_AddRow<Table> (0x4d1e40, 0x4d1f20, 0x4d2000, 0x4d2620, 0x4d2700): a row the reader
@@ -497,15 +488,6 @@ int RefData_BuildEventRewardItems(CReferenceData* pData, RefTableEntry* pTable, 
 // ---------------------------------------------------------------------------------------------
 // Event items
 
-// RefObj_IsEquipOfCountry (0x4eaa20): equipment (TID1 3, TID2 1) of the country byte at +0x89.
-static BOOL RefQuest_IsEquipOfCountry(const RefObjCommonRow* pObj, BYTE byCountry)
-{
-    WORD wTypeID = RefObj_GetTypeID(pObj);
-    if ((wTypeID & 2) || (wTypeID & 0x1C) != 0xC || (wTypeID & 0x60) != 0x20)
-        return FALSE;
-    return *((const BYTE*)pObj + 0x89) == byCountry;
-}
-
 static BOOL RefQuest_StrEqualNoCase(const char* psz1, const char* psz2)
 {
     return CompareStringA(0x400, NORM_IGNORECASE | SORT_STRINGSORT, psz1, lstrlenA(psz1), psz2,
@@ -543,11 +525,11 @@ void RefData_BuildEventItemList(CReferenceData* pData)
         if (bExcluded)
             continue;
         int nClass = *((const BYTE*)pObj + 0x1A8) - 1;
-        if (RefQuest_IsEquipOfCountry(pObj, 0))
+        if (RefObj_IsEquipOfCountry(pObj, 0))
         {
             pData->m_map9CC[(DWORD)(nClass / 3)].push_back(pObj);
         }
-        else if (RefQuest_IsEquipOfCountry(pObj, 2))
+        else if (RefObj_IsEquipOfCountry(pObj, 2))
         {
             CReferenceData::RefObjListByIDMap* pMap;
             switch (nClass % 3)

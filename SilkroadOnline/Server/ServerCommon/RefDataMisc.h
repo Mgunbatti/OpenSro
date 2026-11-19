@@ -19,9 +19,9 @@ int RefRow_Read(CRefRow& row, RefEventRow& r);
 // RefData_ReadIdTypeNameRow (0x493740, _RefDefaultQuest): Service (BYTE), ID, a BYTE, Name, a
 // BYTE. A Name of 256 characters or more asserts and drops the row.
 int RefRow_Read(CRefRow& row, RefDefaultQuestRow& r);
-// RefData_ReadIdStringRow (0x494730, the shop table of slot 36): a DWORD and a string; the
-// result is not used by the original.
-void RefRow_Read(CRefRow& row, RefShopSlot36Row& r);
+// RefData_ReadIdStringRow (0x494730, the shop table of slot 0x24): a DWORD and a string; the
+// DWORD is the result (the key of RefDataShop.cpp's slot 0x24 loader).
+DWORD RefRow_Read(CRefRow& row, RefShopSlot36Row& r);
 // RefSetItemGroup::Read (0x492b10): Service (BYTE), ID, four strings that are dropped, a BYTE that
 // is skipped, SetMagicMask; for a row in service the ten MagicOptGroupID columns. An unknown
 // group is reported and kept; a bit of the mask without a group fails the row.
@@ -106,20 +106,6 @@ void CGachaFreeParam_ParseToken(const std::string& strToken, CGachaFreeParamEntr
 // ("intv" = 0x696E7476); an empty or longer text asserts.
 DWORD Util_PackFourCC(const std::string& str);
 
-// One ParamN / DescN column pair (RefParam::ctor 0x515260, the RefParam of the object rows).
-struct RefGachaParam
-{
-    RefGachaParam()
-        : Param(0)
-    {
-    }
-
-    int              Param;                      // +0
-    std::string      Desc;                       // +4
-};
-
-C_ASSERT(sizeof(RefGachaParam) == 0x20);
-
 // _RefGachaItemSet row (0x9C bytes): RefGachaItemSet::InitMembers 0x5155f0 / dtor 0x497900.
 // Column names are not known except the object and its count.
 struct RefGachaItemSetRow
@@ -143,7 +129,7 @@ struct RefGachaItemSetRow
     WORD             Count;                      // +E
     DWORD            dw10;                       // +10
     BYTE             b14;                        // +14
-    RefGachaParam    Param[4];                   // +18
+    RefParam         Param[4];                   // +18
     CGachaFreeParam* pFreeParam;                 // +98  owned
 };
 

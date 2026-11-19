@@ -22,10 +22,11 @@ struct RefShop;
 struct RefShopTab;
 struct RefPackageItem;
 
-// Param / ParamDesc column pair (RefParam::ctor 0x515260: 0 and an empty string).
-struct RefShopParam
+// One ParamN / DescN column pair (RefParam::ctor 0x515260: 0 and an empty string), used by the
+// object, shop and gacha rows. Defined here because ReferenceData.h includes this header first.
+struct RefParam
 {
-    RefShopParam()
+    RefParam()
         : Param(0)
     {
     }
@@ -34,7 +35,7 @@ struct RefShopParam
     std::string      Desc;                       // +4
 };
 
-C_ASSERT(sizeof(RefShopParam) == 0x20);
+C_ASSERT(sizeof(RefParam) == 0x20);
 
 // ---------------------------------------------------------------------------------------------
 // Rows
@@ -73,7 +74,7 @@ struct RefShopGoods
     std::string         RefPackageItemCodeName;  // +10
     std::string         RefTabCodeName;          // +2C
     BYTE                m_btSlotIndex;           // +48
-    RefShopParam        aParam[4];               // +4C
+    RefParam        aParam[4];               // +4C
 };
 
 C_ASSERT(sizeof(RefShopGoods) == 0xCC);
@@ -141,7 +142,7 @@ struct RefScrapItemRule
 
     BYTE             b00;                        // +0   high part of the map key
     DWORD            dw04;                       // +4   low part of the map key
-    RefShopParam     aParam[4];                  // +8
+    RefParam     aParam[4];                  // +8
     RefShopItemTID   Item;                       // +88
     BYTE             Service;                    // +C8
     DWORD            Country;                    // +CC
@@ -174,7 +175,7 @@ struct RefShopLinkedRule
 
     BYTE             b00;                        // +0
     DWORD            dw04;                       // +4
-    RefShopParam     aParam[4];                  // +8
+    RefParam     aParam[4];                  // +8
     BYTE             Service;                    // +88
     DWORD            Country;                    // +8C
     DWORD            LinkID;                     // +90  ID of the shop / package item
@@ -204,7 +205,7 @@ struct RefScrapOfPackageItem
     unsigned __int64 MagParam[12];               // +28  low WORD: magic option, high DWORD: value
     RefObjCommonRow* m_pRefObjItem;              // +88
     DWORD            dw8C;                       // +8C
-    RefShopParam     aParam[4];                  // +90  default (-1, "xxx")
+    RefParam     aParam[4];                  // +90  default (-1, "xxx")
 };
 
 C_ASSERT(sizeof(RefScrapOfPackageItem) == 0x110);
@@ -223,7 +224,7 @@ struct RefPricePolicyOfItem
     DWORD            RefPackageItemID;           // +C
     DWORD            dw10;                       // +10
     DWORD            Cost;                       // +14
-    RefShopParam     aParam[4];                  // +18
+    RefParam     aParam[4];                  // +18
 };
 
 C_ASSERT(sizeof(RefPricePolicyOfItem) == 0x98);
@@ -277,7 +278,7 @@ struct RefPackageItem
     WORD                       w28;              // +28
     std::string                ExpandTerm;       // +2C  EXPAND_TERM_ALL / EXPAND_TERM_ONE
     RefPrice                   Price;            // +48
-    RefShopParam               aParam[4];        // +D0
+    RefParam               aParam[4];        // +D0
     std::vector<RefScrapOfPackageItem*> m_vecAssignedScrapOfPackageItems; // +150
     std::vector<RefRewardPolicyToSellPackageItem*> m_vecRewardPolicyToSell; // +160
     std::vector<RefConditionToSellPackageItem*> m_vecConditionToSell; // +170
@@ -311,7 +312,7 @@ struct RefShop
     DWORD                      Country;          // +4
     DWORD                      ID;               // +8   key of m_mapShop
     std::string                CodeName128;      // +C
-    RefShopParam               aParam[4];        // +28
+    RefParam               aParam[4];        // +28
     std::vector<RefShopTab*>   m_vecRefShopTabs; // +A8  not owned
     std::vector<RefAccessPermissionOfShop*> m_vecAccessPermission; // +B8
     std::multimap<DWORD, RefTreatItemOfShop*> m_mmapTreatItem; // +C8
@@ -332,7 +333,7 @@ struct RefShopGroup
     WORD                     ID;                 // +8   key of m_mapShopGroup
     std::string              CodeName128;        // +C
     DWORD                    RefNPCID;           // +28  0 for "xxx"
-    RefShopParam             aParam[4];          // +2C
+    RefParam             aParam[4];          // +2C
     std::vector<RefShop*>    m_vecRefShops;      // +AC  not owned
 };
 

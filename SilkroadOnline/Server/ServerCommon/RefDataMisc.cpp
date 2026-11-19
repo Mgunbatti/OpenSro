@@ -57,9 +57,10 @@ int RefRow_Read(CRefRow& row, RefDefaultQuestRow& r)
     return r.ID;
 }
 
-void RefRow_Read(CRefRow& row, RefShopSlot36Row& r)
+DWORD RefRow_Read(CRefRow& row, RefShopSlot36Row& r)
 {
     row >> r.dw00 >> r.str04;
+    return r.dw00;
 }
 
 int RefRow_Read(CRefRow& row, RefSetItemGroup& r)

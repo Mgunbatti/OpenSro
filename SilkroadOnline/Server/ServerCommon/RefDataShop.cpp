@@ -6,6 +6,7 @@
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataMisc.h"
 #include "ServerCommon/ReferenceData.h"
 
 // The source paths of the assert dialogs.
@@ -401,7 +402,7 @@ static void RefShop_ReadCondition4(CRefRow& row, T& r)
 }
 
 // The four Param / ParamDesc pairs at the end of most rows.
-static void RefShop_ReadParams(CRefRow& row, RefShopParam* pParam)
+static void RefShop_ReadParams(CRefRow& row, RefParam* pParam)
 {
     for (int i = 0; i < 4; ++i)
         row >> pParam[i].Param >> pParam[i].Desc;
@@ -850,13 +851,6 @@ static DWORD RefRow_Read(CRefRow& row, RefShopItemStockPeriod& r)
     if (r.b64 != 0 && r.b64 != 1)
         return 0;
     return r.ID;
-}
-
-// RefData_ReadIdStringRow_494730 (slot 0x24): the ID.
-static DWORD RefRow_Read(CRefRow& row, RefShopSlot36Row& r)
-{
-    row >> r.dw00 >> r.str04;
-    return r.dw00;
 }
 
 // ---------------------------------------------------------------------------------------------

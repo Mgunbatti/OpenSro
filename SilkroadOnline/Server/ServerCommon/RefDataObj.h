@@ -168,20 +168,6 @@ struct RefObjItemRange
     float            Inc;                        // +8
 };
 
-// One ParamN / DescN_128 column pair (RefParam::ctor, 0x20 bytes).
-struct RefParam
-{
-    RefParam()
-        : Param(0)
-    {
-    }
-
-    int              Param;                      // +0
-    std::string      Desc;                       // +4
-};
-
-C_ASSERT(sizeof(RefParam) == 0x20);
-
 // The sDataStream objects of an item, by tag name (RefObjItemLinkTables::ctor 0x48ea10 / dtor
 // 0x48ea80): target A, target P, and all of them (owned, RefObjItem_ClearDataStreams 0x655eb0).
 // The tag objects are sDataStream (RefDataMisc.h).
@@ -269,8 +255,9 @@ C_ASSERT(sizeof(RefObjItem) == 0x540);
 BOOL RefObjItem_IsWithinMaxStack(const RefObjItem* pItem, WORD wCount);
 // RefObj_IsEquipItem (0x51ac90): asserts a NULL object and returns FALSE.
 BOOL RefObj_IsEquipItem(const RefObjCommon* pObj);
-// RefObj_IsEquipOfCountry (0x4eaa20): equipment of the country (race).
-BOOL RefObj_IsEquipOfCountry(const RefObjCommon* pObj, BYTE btCountry);
+// RefObj_IsEquipOfCountry (0x4eaa20, the name of the analysis): equipment of this Rarity (+0x89,
+// not Country); RefData_BuildEventItemList asks for 0 and 2.
+BOOL RefObj_IsEquipOfCountry(const RefObjCommon* pObj, BYTE btRarity);
 // RefObj_IsValidSlotForItem (0x51ada0): equipment below slot 12, anything else slot 0.
 BOOL RefObj_IsValidSlotForItem(const RefObjCommon* pObj, BYTE btSlot);
 // RefObjItem_GetDurabilityRange (0x51ae20): accessories 1..1, TypeID 3/1/13/4 0..0, other

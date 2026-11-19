@@ -380,9 +380,9 @@ BOOL RefObj_IsEquipItem(const RefObjCommon* pObj)
     return RefTypeID_Is(pObj->TypeID, 0, 3, 1);
 }
 
-BOOL RefObj_IsEquipOfCountry(const RefObjCommon* pObj, BYTE btCountry)
+BOOL RefObj_IsEquipOfCountry(const RefObjCommon* pObj, BYTE btRarity)
 {
-    return RefTypeID_Is(pObj->TypeID, 0, 3, 1) && btCountry == pObj->Country;
+    return RefTypeID_Is(pObj->TypeID, 0, 3, 1) && btRarity == pObj->Rarity;
 }
 
 BOOL RefObj_IsValidSlotForItem(const RefObjCommon* pObj, BYTE btSlot)
