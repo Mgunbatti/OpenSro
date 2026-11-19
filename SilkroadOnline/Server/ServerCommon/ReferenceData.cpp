@@ -1026,7 +1026,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, RefData_BuildItemOptLevel,                                           // 0x10
     RefData_BuildTeleport,                                                  // 0x12
     RefData_BuildTeleLink,
-    P, S, S, S,
+    REF_LOADED((RefData_AddRowUniqueStream<RefEventZoneRow, CReferenceData::RefEventZoneMap,
+                &CReferenceData::m_mapEventZone>)),                         // 0x14
+    S, S, S,
     S, S, S, S, S, S, S, S,                                                 // 0x18
     S, S, S, S, S, S, S, RefData_BuildShopTables,                           // 0x20
     RefData_BuildDropGold,                                                  // 0x28

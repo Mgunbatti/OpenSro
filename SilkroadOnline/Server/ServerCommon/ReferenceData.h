@@ -448,8 +448,9 @@ struct RefTeleportRow
 C_ASSERT(FIELD_OFFSET(RefTeleportRow, pAssocRefObj) == 0x30);
 C_ASSERT(FIELD_OFFSET(RefTeleportRow, vecLink) == 0x38);
 C_ASSERT(sizeof(RefTeleportRow) == 0x4C);
-// _RefEventZone (2 strings + string[5]).
-struct RefEventZoneRow { BYTE ab[0xE0]; };                 // TODO(type)
+// _RefEventZone row (RefTeleportLinkedEvent, RefDataTeleport.h).
+struct RefTeleportLinkedEvent;
+typedef RefTeleportLinkedEvent RefEventZoneRow;
 // _RefEvent row (60 bytes, RecCtor 0x4d3040 / RecDtor 0x4dd200). Column names are not known.
 struct RefEventRow
 {
