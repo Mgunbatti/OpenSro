@@ -501,6 +501,25 @@ static void TestFindRefObj(CReferenceData& data)
     CHECK(data.FindGameWorldByCodeName("INS_TEMPLE_SETH") == &world);
     CHECK(data.FindGameWorldByCodeName("INS_NONE") == NULL && data.FindSkill(1) == NULL);
     data.m_hashGameWorldByCodeName.clear();
+
+    // game worlds by ID and by code name
+    FakeTable<CRefGameWorld> gameWorld;
+    CRefGameWorld* pWorld = gameWorld.AddRecord();
+    pWorld->m_Data.ID = 3;
+    pWorld->m_Data.WorldCodeName128 = "INS_TEMPLE_SETH";
+    gameWorld.AddRecord()->m_Data.ID = 0;       // ID 0: freed
+    CHECK(data.BuildFromTable(&gameWorld.entry, 0x3D) == 1);
+    CHECK(data.FindGameWorld(3) != NULL &&
+          data.FindGameWorldByCodeName("INS_TEMPLE_SETH") == data.FindGameWorld(3));
+    CHECK(data.BuildFromTable(&gameWorld.entry, 0x3D) == 0);
+
+    // gacha NPCs by NPC_ID
+    FakeTable<CRefGachaNpcMap> gachaNpc;
+    CRefGachaNpcMap* pNpc = gachaNpc.AddRecord();
+    pNpc->NPC_ID = 2000;
+    pNpc->WasteGachaID = 5;
+    CHECK(data.BuildFromTable(&gachaNpc.entry, 0x06) == 1);
+    CHECK(data.m_mapGachaNpcMap.size() == 1 && data.m_mapGachaNpcMap[2000]->WasteGachaID == 5);
 }
 
 static void TestTypeHelpers()
