@@ -176,6 +176,18 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-070](SM-070.md) | SR_ShardManager reference data | minor | The "already has this index" line of the collection book has three %s and two arguments |
 | [SM-071](SM-071.md) | SR_ShardManager reference data | major | A gacha free parameter with '<' but no '>' never finishes parsing |
 | [SM-072](SM-072.md) | SR_ShardManager reference data | minor | A gacha item set row with an unknown object crashes the reader |
+| [SM-100](SM-100.md) | SR_ShardManager climate | minor | A second climate row with the same ID leaks its CClimate |
+| [SM-101](SM-101.md) | SR_ShardManager climate | minor | Rain and snow amounts wrap instead of being held at 255 |
+| [SM-102](SM-102.md) | SR_ShardManager game worlds | minor | A reused game world layer keeps the old create parameter list |
+| [SM-103](SM-103.md) | SR_ShardManager game worlds | minor | Instance worlds with WorldMaxCount 0 cannot open a layer |
+| [SM-104](SM-104.md) | SR_ShardManager game worlds | minor | "Already Closed World" logs the packed world and layer as the world ID |
+| [SM-160](SM-160.md) | SR_ShardManager siege fortress | minor | Siege fortress relay broadcasts the received message and leaks the relay |
+| [SM-161](SM-161.md) | SR_ShardManager flag world | minor | Flag world level request keeps the JID of a participant who went offline |
+| [SM-162](SM-162.md) | SR_ShardManager battle arena | major | Battle arena check answer is not range checked |
+| [SM-163](SM-163.md) | SR_ShardManager battle arena | minor | Party arena layer opened before the party members are looked up |
+| [SM-164](SM-164.md) | SR_ShardManager battle arena | minor | Random arena team keeps the level of the removed member |
+| [SM-165](SM-165.md) | SR_ShardManager battle arena | minor | Party and guild level lists are not cleared before the team building |
+| [SM-166](SM-166.md) | SR_ShardManager battle arena | crash | Job arena team without members divides by zero |
 | [SM-200](SM-200.md) | SR_ShardManager guilds | minor | A guild level-up whose master is offline is answered as a failure |
 | [SM-201](SM-201.md) | SR_ShardManager guilds | minor | The failed hostile-guild withdrawal is logged with a missing argument |
 | [SM-202](SM-202.md) | SR_ShardManager guilds | minor | The GP history clean-up result of a guild load is never checked |
