@@ -286,7 +286,7 @@ BYTE CGameWorld::EnterLayer(WORD wLayerID, CUser* pUser)
         BSAssertFail();
         return 6;
     }
-    DWORD dwCharID = User_GetCharID(pUser);
+    DWORD dwCharID = pUser->GetCharID();
     UserGameWorldPos* pPos = User_GetGameWorldPos(pUser);
     if (pLayer->m_mapMember.find(dwCharID) != pLayer->m_mapMember.end() || !pPos)
     {
@@ -297,7 +297,7 @@ BYTE CGameWorld::EnterLayer(WORD wLayerID, CUser* pUser)
     pPos->wLayerID = pLayer->m_wLayerID;
     pPos->pGameWorld = this;
     pLayer->m_dwEmptySince = 0;
-    pLayer->m_mapMember.insert(std::make_pair(User_GetCharID(pUser), pUser));
+    pLayer->m_mapMember.insert(std::make_pair(pUser->GetCharID(), pUser));
     return 1;
 }
 
@@ -306,7 +306,7 @@ BYTE CGameWorld::LeaveLayer(CUser* pUser, WORD wLayerID)
     GameWorldLayer* pLayer = LayerAt(wLayerID);
     if (!pLayer)
         return 6;
-    GameWorldLayer::MemberMap::iterator it = pLayer->m_mapMember.find(User_GetCharID(pUser));
+    GameWorldLayer::MemberMap::iterator it = pLayer->m_mapMember.find(pUser->GetCharID());
     if (it == pLayer->m_mapMember.end())
         return 6;
     pLayer->m_mapMember.erase(it);
@@ -601,11 +601,11 @@ void CGameWorldMgr::ReserveEnter(const WORD* pwWorldLayer, CUser* pUser)
     CGameWorld* pWorld = FindWorld(pwWorldLayer[0]);
     if (!pWorld)
         return;
-    if (m_mapReservation.find(User_GetCharID(pUser)) != m_mapReservation.end())
+    if (m_mapReservation.find(pUser->GetCharID()) != m_mapReservation.end())
         CancelReservation(pUser);
 
     GameWorldReservation r;
-    r.dwCharID = User_GetCharID(pUser);
+    r.dwCharID = pUser->GetCharID();
     *(DWORD*)&r.wWorldID = *(const DWORD*)pwWorldLayer;
     r.dwTick = GetTickCount();
     m_mapReservation.insert(std::make_pair(r.dwCharID, r));
@@ -616,7 +616,7 @@ void CGameWorldMgr::CancelReservation(CUser* pUser)
 {
     if (!pUser)
         return;
-    ReservationMap::iterator it = m_mapReservation.find(User_GetCharID(pUser));
+    ReservationMap::iterator it = m_mapReservation.find(pUser->GetCharID());
     if (it == m_mapReservation.end())
         return;
     GameWorldReservation r = it->second;
@@ -675,7 +675,7 @@ void CGameWorldMgr::OnOpenWorldRequest(CMsg* pMsg)
     CMsg* pReply;
     GameWorldLayer* pLayer = NULL;
     bool bOpened = false;
-    if (ClientManager_FindUserByJID(dwJID) && wWorldID != 1)
+    if (GetSingleton_CClientManager()->FindUserByJID(dwJID) && wWorldID != 1)
     {
         pLayer = OpenLayer(&byResult, wWorldID, &param);
         if (byResult == 1)
@@ -792,7 +792,7 @@ void CGameWorldMgr::BroadcastOpened(WORD wWorldID, const GameWorldLayer* pLayer)
     pLayer->WriteToMsg(pMsg);
     if (!g_pMainProcess)
         BSAssertFail();
-    CMainProcess::BroadcastToGameServers(pMsg, NULL);
+    CMainProcess::BroadcastToGameServers(pMsg, 0);
 }
 
 void CGameWorldMgr::BroadcastBanned(WORD wWorldID, WORD wLayerID)
@@ -801,7 +801,7 @@ void CGameWorldMgr::BroadcastBanned(WORD wWorldID, WORD wLayerID)
     pMsg->WriteBytes(&wLayerID, 2);
     if (!g_pMainProcess)
         BSAssertFail();
-    CMainProcess::BroadcastToGameServers(pMsg, NULL);
+    CMainProcess::BroadcastToGameServers(pMsg, 0);
 }
 
 void CGameWorldMgr::BroadcastClosed(WORD wWorldID, WORD wLayerID)
@@ -810,7 +810,7 @@ void CGameWorldMgr::BroadcastClosed(WORD wWorldID, WORD wLayerID)
     pMsg->WriteBytes(&wLayerID, 2);
     if (!g_pMainProcess)
         BSAssertFail();
-    CMainProcess::BroadcastToGameServers(pMsg, NULL);
+    CMainProcess::BroadcastToGameServers(pMsg, 0);
 }
 
 CMsg* CGameWorldMgr::AllocReply_BC14(DWORD dwRequestID)

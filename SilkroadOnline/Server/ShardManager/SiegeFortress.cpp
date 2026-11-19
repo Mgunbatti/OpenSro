@@ -91,7 +91,7 @@ void CSiegeFortressMgr::OnMsg_385F(CMsg* pMsg)
             if (!g_pMainProcess)
                 BSAssertFail();
             // BUG(SM-160): the received message is broadcast; the relay built above leaks.
-            CMainProcess::BroadcastToGameServers(pMsg, NULL);
+            CMainProcess::BroadcastToGameServers(pMsg, 0);
         }
         break;
 
@@ -114,7 +114,7 @@ void CSiegeFortressMgr::OnMsg_385F(CMsg* pMsg)
             pRelay->WriteBytes(&dwOldGuildID, 4);
             if (!g_pMainProcess)
                 BSAssertFail();
-            CMainProcess::BroadcastToGameServers(pRelay, NULL);
+            CMainProcess::BroadcastToGameServers(pRelay, 0);
         }
         break;
 
@@ -136,7 +136,7 @@ void CSiegeFortressMgr::OnMsg_385F(CMsg* pMsg)
             if (!g_pMainProcess)
                 BSAssertFail();
             // BUG(SM-160): as above.
-            CMainProcess::BroadcastToGameServers(pMsg, NULL);
+            CMainProcess::BroadcastToGameServers(pMsg, 0);
         }
         break;
 
@@ -152,7 +152,7 @@ void CSiegeFortressMgr::OnMsg_385F(CMsg* pMsg)
                                    (WORD)(pMsg->m_wWritePos - pMsg->m_wReadPos));
                 if (!g_pMainProcess)
                     BSAssertFail();
-                CMainProcess::BroadcastToGameServers(pRelay, NULL);
+                CMainProcess::BroadcastToGameServers(pRelay, 0);
             }
             pMsg->SkipRemaining();
         }

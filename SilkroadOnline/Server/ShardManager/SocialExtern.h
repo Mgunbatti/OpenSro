@@ -10,11 +10,12 @@
 #include "BSLib/DB/Database.h"
 #include "BSNet/Msg.h"
 #include "ServerCommon/PartyInfo.h"
-#include "ServerFramework/ServerProcessMain.h"
+#include "ShardManager/ShardExtern.h"
 
 // What the social classes of SR_ShardManager (guilds, messenger, party manager, training camps,
 // votes) use from other subsystems. Only the members they call are declared; the owning groups
-// define them (the tests link stand-ins). The guild code adds its own in GuildExtern.h.
+// define them (the tests link stand-ins). The guild code adds its own in GuildExtern.h; the
+// declarations shared with the other groups are in ShardExtern.h.
 
 class CUser;
 
@@ -72,7 +73,7 @@ trs_messenger_job* trs_messenger_job_Alloc();
 trs_party_job* trs_party_job_Alloc();
 
 // ---------------------------------------------------------------------------------------------
-// Provided by SM_main (COverlappedJobMgr, CMainProcess, CShardDB)
+// Provided by SM_main (COverlappedJobMgr, CShardDB)
 
 class COverlappedJobMgr
 {
@@ -83,22 +84,6 @@ public:
 
 // GetSingleton_COverlappedJobMgr (0x40baf0, g_pOverlappedJobMgr 0x8a8910)
 COverlappedJobMgr* GetSingleton_COverlappedJobMgr();
-
-class CMainProcess : public ServerFramework::CServerProcessMain
-{
-public:
-    // CMainProcess::BroadcastToGameServers (0x412120): to every game server but the session
-    // nExcept.
-    int BroadcastToGameServers(CMsg* pMsg, int nExcept);
-    // CMainProcess::BroadcastToAllGameServers (0x4121e0)
-    int BroadcastToAllGameServers(CMsg* pMsg);
-    // The CREST_FTP address of the configuration: the std::string at +0x42318 (the original
-    // reads the member directly).
-    const std::string& GetCrestFtpAddress() const;
-};
-
-// g_pMainProcess (0x8a88f8)
-extern CMainProcess* g_pMainProcess;
 
 class CShardDB
 {
@@ -127,56 +112,3 @@ enum
     SHARD_TABLE_TRAINING_CAMP_MEMBER    = 0x17,
     SHARD_TABLE_TRAINING_CAMP_BUFF      = 0x19,
 };
-
-// ---------------------------------------------------------------------------------------------
-// Provided by SM_world (CUser, CClientManager)
-
-class CUser
-{
-public:
-    sPartyMemberInfo& GetPartyMemberInfo();     // +0x08 (its m_dwPartyID is the user's party)
-    DWORD GetGuildID() const;                   // +0x6C (cleared when the member leaves)
-    void SetGuildID(DWORD dwGuildID);
-    DWORD GetTrainingCampID() const;            // +0x70
-    void SetTrainingCampID(DWORD dwCampID);
-    DWORD GetCampRegID() const;                 // +0x74 training camp recruit entry
-    void SetCampRegID(DWORD dwRegID);
-    DWORD GetJID() const;                       // +0x78
-    DWORD GetCharID() const;                    // +0x7C
-    const std::string& GetCharNameStr() const;  // +0x1A4
-    DWORD GetSessionID() const;                 // +0x1C4
-    DWORD GetDw1C8() const;                     // +0x1C8
-    WORD GetState() const;                      // +0x234 (2: in game)
-    DWORD GetRefObjID() const;                  // +0x248
-    DWORD GetMatchEntryID() const;              // +0x24C
-    void SetMatchEntryID(DWORD dwID);
-    BYTE GetByte250() const;                    // +0x250
-    // +0x254: the name a user without party registers on the party matching board with.
-    const std::string& GetMatchName() const;
-    void SetMatchName(const std::string& strName);
-
-    // Character_GetNameCStr_404360
-    const char* GetCharName() const
-    {
-        return GetCharNameStr().c_str();
-    }
-};
-
-class CClientManager
-{
-public:
-    // 0x404380 / 0x4043f0
-    CUser* FindUserByJID(DWORD dwJID);
-    CUser* FindUserByCharName(const std::string& strName);
-};
-
-// GetSingleton_CClientManager (0x417c00, g_pClientManager 0x85884c, asserted)
-CClientManager* GetSingleton_CClientManager();
-extern CClientManager* g_pClientManager;            // 0x85884C
-
-// ---------------------------------------------------------------------------------------------
-// Provided by the guild war group (PackedDateTime_GetLocal 0x43f8c0 / PackedDateTime_Compare
-// 0x43f830): the local time packed into a DWORD and the comparison of two of them.
-
-void PackedDateTime_GetLocal(DWORD* pdwOut);
-int PackedDateTime_Compare(const DWORD* pdwLeft, const DWORD* pdwRight);

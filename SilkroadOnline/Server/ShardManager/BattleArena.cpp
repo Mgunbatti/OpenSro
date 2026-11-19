@@ -61,7 +61,7 @@ static void BroadcastToGameServers(CMsg* pMsg)
 {
     if (!g_pMainProcess)
         BSAssertFail();
-    CMainProcess::BroadcastToGameServers(pMsg, NULL);
+    CMainProcess::BroadcastToGameServers(pMsg, 0);
 }
 
 static void WriteTypeAndKind(CMsg* pMsg, BYTE byType, BYTE byKind)
@@ -1033,13 +1033,13 @@ void CheckSoloRegistrations(CArenaCheckBatch& batch, CBattleArenaMgr::ByteMap& m
     while (it != mapReg.end())
     {
         DWORD dwJID = it->first;
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (!pUser || !User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (!pUser || !pUser->GetCharID())
         {
             mapReg.erase(it++);
             continue;
         }
-        batch.Add(User_GetSessionID(pUser), dwJID);
+        batch.Add(pUser->GetSessionID(), dwJID);
         ++dwCount;
         ++it;
     }
@@ -1084,7 +1084,7 @@ void CBattleArenaMgr::CheckAndGoParty()
         DwordMap::iterator it = mapReg.begin();
         while (it != mapReg.end())
         {
-            CUser* pUser = ClientManager_FindUserByJID(it->first);
+            CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(it->first);
             void* pParty = NULL;
             if (pUser && it->second == User_GetPartyID(pUser))
                 pParty = PartyManager_FindParty(User_GetPartyID(pUser));
@@ -1100,8 +1100,8 @@ void CBattleArenaMgr::CheckAndGoParty()
             for (DWORD i = 0; i < dwMembers; ++i)
             {
                 CUser* pMember = Party_GetMember(pParty, i);
-                DWORD dwJID = User_GetJID(pMember);
-                batch.Add(User_GetSessionID(pMember), dwJID);
+                DWORD dwJID = pMember->GetJID();
+                batch.Add(pMember->GetSessionID(), dwJID);
                 m_amapPartyOfUser[byMatch].insert(DwordMap::value_type(dwJID, dwPartyID));
                 mapLevel.insert(ByteMap::value_type(dwJID, 0));
                 ++dwCount;
@@ -1135,15 +1135,15 @@ void CBattleArenaMgr::CheckAndGoGuild()
             std::list<DWORD>::iterator itChar = listChar.begin();
             while (itChar != listChar.end())
             {
-                CUser* pUser = ClientManager_FindUserByCharID(*itChar);
+                CUser* pUser = GetSingleton_CClientManager()->FindUserByCharID(*itChar);
                 if (!pUser)
                 {
                     itChar = listChar.erase(itChar);
                     continue;
                 }
-                DWORD dwJID = User_GetJID(pUser);
+                DWORD dwJID = pUser->GetJID();
                 mapLevel.insert(ByteMap::value_type(dwJID, 0));
-                batch.Add(User_GetSessionID(pUser), dwJID);
+                batch.Add(pUser->GetSessionID(), dwJID);
                 m_amapGuildOfUser[byMatch].insert(DwordMap::value_type(dwJID, dwGuildID));
                 ++dwCount;
                 ++itChar;
@@ -1219,8 +1219,8 @@ void CBattleArenaMgr::ConfirmSoloUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch,
         }
 
         --m_adwCheckCount[byKind][byMatch];
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (!pUser || !User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (!pUser || !pUser->GetCharID())
         {
             pMap->erase(it);
         }
@@ -1260,8 +1260,8 @@ void CBattleArenaMgr::ConfirmGroupUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch,
         }
 
         --m_adwCheckCount[byKind][byMatch];
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (!pUser || !User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (!pUser || !pUser->GetCharID())
         {
             mapKick.insert(ByteMap::value_type(dwJID, 3));
             continue;
@@ -1340,7 +1340,7 @@ void CollectLevelEntries(CBattleArenaMgr::ByteMap& mapReg, CBattleArenaMgr::Leve
     {
         DWORD dwJID = it->first;
         BYTE byLevel = it->second;
-        if (!ClientManager_FindUserByJID(dwJID))
+        if (!GetSingleton_CClientManager()->FindUserByJID(dwJID))
             continue;
         if (Arena_GetLevelBracket(byLevel))
         {
@@ -1412,8 +1412,8 @@ void SendTeamReady(const sBattleArenaTeam& team)
 void AddMemberIfOnline(sBattleArenaTeam& team, DWORD dwJID, BYTE byLevel, BYTE bySide,
                        BOOL bLeaveParty)
 {
-    CUser* pUser = ClientManager_FindUserByJID(dwJID);
-    if (!pUser || !User_GetCharID(pUser))
+    CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+    if (!pUser || !pUser->GetCharID())
         return;
     team.m_dwLevelSum += byLevel;
     team.AddMember(dwJID);
@@ -1462,8 +1462,8 @@ void CBattleArenaMgr::StartGameRandom(BYTE byMatch)
             team.m_byLevel = byLevel;
             SendLayerOpened(team, 0, byMatch);
         }
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (pUser && User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (pUser && pUser->GetCharID())
         {
             team.m_dwLevelSum += byLevel;
             team.AddMember(dwJID);
@@ -1502,7 +1502,7 @@ void CBattleArenaMgr::StartGameRandom(BYTE byMatch)
                 mapKick[dwJID] = BATTLEARENA_KICK_NO_PARTNER;
                 continue;
             }
-            CUser* pUser = ClientManager_FindUserByJID(dwJID);
+            CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
             if (!pUser)
                 continue;
             RemoveFromParty(pUser);
@@ -1677,16 +1677,16 @@ void CBattleArenaMgr::StartGameJob(BYTE byMatch)
                 }
                 if (i == 0)
                     team.m_byLevel = byLevelB > byLevelA ? byLevelB : byLevelA;
-                CUser* pUserB = ClientManager_FindUserByJID(dwJIDB);
-                CUser* pUserA = ClientManager_FindUserByJID(dwJIDA);
-                if (pUserB && User_GetCharID(pUserB))
+                CUser* pUserB = GetSingleton_CClientManager()->FindUserByJID(dwJIDB);
+                CUser* pUserA = GetSingleton_CClientManager()->FindUserByJID(dwJIDA);
+                if (pUserB && pUserB->GetCharID())
                 {
                     team.m_dwLevelSum += byLevelB;
                     team.AddMember(dwJIDB);
                     RemoveFromParty(pUserB);
                     SendMemberEntered(dwJIDB, team, bySide);
                 }
-                if (pUserA && User_GetCharID(pUserA))
+                if (pUserA && pUserA->GetCharID())
                 {
                     team.m_dwLevelSum += byLevelA;
                     team.AddMember(dwJIDA);

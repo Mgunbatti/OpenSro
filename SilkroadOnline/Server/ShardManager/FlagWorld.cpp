@@ -60,7 +60,7 @@ static void BroadcastToGameServers(CMsg* pMsg)
 {
     if (!g_pMainProcess)
         BSAssertFail();
-    CMainProcess::BroadcastToGameServers(pMsg, NULL);
+    CMainProcess::BroadcastToGameServers(pMsg, 0);
 }
 
 static void BroadcastNoticeByte(BYTE byType)
@@ -399,8 +399,8 @@ void CFlagWorldMgr::RequestParticipantLevels()
     for (ParticipantMap::iterator it = m_mapParticipant.begin(); it != m_mapParticipant.end(); ++it)
     {
         DWORD dwJID = it->first;
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (pUser && User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (pUser && pUser->GetCharID())
             dqJID.push_back(dwJID);
     }
 
@@ -419,12 +419,12 @@ void CFlagWorldMgr::RequestParticipantLevels()
         pMsg->WriteBytes(&dwJID, 4);
         dqJID.pop_front();
 
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (pUser && User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (pUser && pUser->GetCharID())
         {
-            DWORD dwSessionID = User_GetSessionID(pUser);
+            DWORD dwSessionID = pUser->GetSessionID();
             if (setSession.find(dwSessionID) == setSession.end())
-                setSession.insert(User_GetSessionID(pUser));
+                setSession.insert(pUser->GetSessionID());
             ++nInMsg;
             m_mapPending[dwJID] = 0;
             if (nInMsg == 100 || dqJID.empty())
@@ -470,8 +470,8 @@ void CFlagWorldMgr::OnParticipantLevels(CMsg* pMsg)
             continue;
         if (it->second != 0)
             --it->second;
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (pUser && User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (pUser && pUser->GetCharID())
         {
             if (byLevel != 0)
                 continue;
@@ -550,7 +550,7 @@ void CFlagWorldMgr::StartGame()
     {
         DWORD dwJID = it->first;
         BYTE byLevel = it->second;
-        if (!ClientManager_FindUserByJID(dwJID))
+        if (!GetSingleton_CClientManager()->FindUserByJID(dwJID))
             continue;
         if (Arena_GetLevelBracket(byLevel) && Arena_GetLevelBracket(byLevel) <= 6)
         {
@@ -599,8 +599,8 @@ void CFlagWorldMgr::StartGame()
         pMsg->WriteBytes(&team.m_wLayerID, 2);
         BroadcastToGameServers(pMsg);
 
-        CUser* pUser = ClientManager_FindUserByJID(dwJID);
-        if (pUser && User_GetCharID(pUser))
+        CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
+        if (pUser && pUser->GetCharID())
         {
             int nGrade = (int)Arena_GetLevelBracket(byLevel) - 1;
             if (nGrade > (int)team.m_byGrade)
@@ -656,7 +656,7 @@ void CFlagWorldMgr::StartGame()
                 continue;
             }
             DWORD dwJID = *it;
-            CUser* pUser = ClientManager_FindUserByJID(dwJID);
+            CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
             if (!pUser)
                 continue;
             if (User_GetParty(pUser))

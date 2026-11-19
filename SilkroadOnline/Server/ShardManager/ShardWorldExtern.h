@@ -1,34 +1,18 @@
 #pragma once
 
+#include <winsock2.h>
 #include <windows.h>
+
+#include "ShardManager/ShardExtern.h"
 
 // What the game world code needs from parts of SR_ShardManager that are ported elsewhere. Only
 // the calls and fields it uses are declared here; the owners replace these declarations.
+// CMainProcess, CUser, CClientManager and PackedDateTime_GetLocal are the shared ones of
+// ShardExtern.h.
 
 class CMsg;
 class CUser;
 class CGameWorld;
-
-// ---------------------------------------------------------------------------------------------
-// Provided by SM_main (CMainProcess, g_pMainProcess = dword_8A88F8)
-
-class CMainProcess
-{
-public:
-    // CMainProcess::CountReadyGameServers (0x4142c0): the SR_GameServer bodies of this shard
-    // with a bound session.
-    static int CountReadyGameServers();
-    // CMainProcess::BroadcastToGameServers (0x412120): to every SR_GameServer of this shard
-    // except pExcept.
-    static int BroadcastToGameServers(CMsg* pMsg, void* pExcept);
-    // CMainProcess::BroadcastToAllGameServers (0x4121e0).
-    static int BroadcastToAllGameServers(CMsg* pMsg);
-};
-
-extern CMainProcess* g_pMainProcess;
-
-// PackedDateTime_GetLocal (0x43f8c0): GetLocalTime packed like RefObj_PackTypeID.
-void PackedDateTime_GetLocal(DWORD* pdwPacked);
 
 // ---------------------------------------------------------------------------------------------
 // Provided by the CUser / CClientManager owner (SM_world1 / SM_main)
@@ -46,16 +30,11 @@ struct UserGameWorldPos
 
 C_ASSERT(FIELD_OFFSET(UserGameWorldPos, pGameWorld) == 0x24);
 
-// CUser + 0x7C.
-DWORD User_GetCharID(const CUser* pUser);
 // &CUser + 0x1F0.
 UserGameWorldPos* User_GetGameWorldPos(CUser* pUser);
 // ShardMgr8A894C_CheckByte141 (0x42ab90): the GM level check of the user's byte +141 on the GM
 // level manager (dword_8A894C, asserts when there is none).
 BOOL User_HasGMLevelForIP(CUser* pUser);
-// CClientManager::FindUserByJID (0x404380) on g_pClientManager (dword_85884C, asserts when there
-// is none).
-CUser* ClientManager_FindUserByJID(DWORD dwJID);
 
 // The character data CUser::SelectCharacter hands to CGameWorldMgr::IsCharInLayer.
 struct GameWorldCharPos
@@ -73,8 +52,6 @@ C_ASSERT(FIELD_OFFSET(GameWorldCharPos, awCreateTime) == 0x28);
 // ---------------------------------------------------------------------------------------------
 // Used by the flag world, the battle arena and the siege fortress (SM_world4)
 
-// CUser + 0x1C4: the session of the game server the user is on.
-DWORD User_GetSessionID(const CUser* pUser);
 // CUser + 0x68: the party of the user (NULL without one); CUser + 0x78: the key the party
 // manager removes the member by.
 void* User_GetParty(const CUser* pUser);
@@ -125,17 +102,9 @@ BYTE MainProcess_IsArenaMatchOpen(BYTE byMatch);
 // ---------------------------------------------------------------------------------------------
 // Used by the battle arena game flow (SM_world5)
 
-// CUser + 0x78: the JID (the field User_GetPartyMemberKey returns; CPartyManager::RemoveMember
-// takes it as the member key).
-DWORD User_GetJID(const CUser* pUser);
 // CUser + 0x68 as the party ID (the field User_GetParty returns; CPartyManager::FindParty and
 // RemoveMember take the ID, 0 without a party).
 DWORD User_GetPartyID(const CUser* pUser);
-
-// Provided by the CClientManager owner: the char ID -> user hash_map of g_pClientManager
-// (+0x10C, filled by CClientManager::RegisterCharacter); inlined in the original, asserts when
-// there is no client manager. NULL when not found.
-CUser* ClientManager_FindUserByCharID(DWORD dwCharID);
 
 // Provided by the party group: the party ID (party + 0) and the members (the CUser* vector at
 // party + 0x0C, Party_GetMemberCount entries).
