@@ -67,6 +67,14 @@ struct FakeTable
         entry.m_listRows.push_back(pRecord);
         return pRecord;
     }
+
+    // A CDBRecord row (columns in the members).
+    TRecord* AddRecord()
+    {
+        TRecord* pRecord = new TRecord;
+        entry.m_listRows.push_back(pRecord);
+        return pRecord;
+    }
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -190,6 +198,83 @@ static void TestTriggerTables(CReferenceData& data, RefTableVector& tables)
         tables[i] = NULL;
 }
 
+static void TestSiegeTables(CReferenceData& data)
+{
+    FakeTable<CRefSiegeFortress> fortress;
+    CRefSiegeFortress* pFortress = fortress.AddRecord();
+    pFortress->m_Data.Service = 1;
+    pFortress->m_Data.FortressID = 1;
+    pFortress->m_Data.CodeName128 = "FORTRESS_JANGAN";
+    pFortress->m_Data.RequestFee = 500;
+    fortress.AddRecord();                       // out of service: freed
+    CHECK(data.BuildFromTable(&fortress.entry, 0x48) == 1);
+    CHECK(data.m_vecSiegeFortress.size() == 1);
+    if (data.m_vecSiegeFortress.size() == 1)
+    {
+        CHECK(data.m_vecSiegeFortress[0]->CodeName128 == "FORTRESS_JANGAN");
+        CHECK(data.m_vecSiegeFortress[0]->RequestFee == 500);
+    }
+
+    // keyed by FortressID whatever the Service column says (SM-009); no fortress: freed
+    FakeTable<CRefSiegeFortressGuard> guard;
+    for (int i = 0; i < 3; ++i)
+    {
+        CRefSiegeFortressGuard* p = guard.AddRecord();
+        p->FortressID = i < 2 ? 1 : 0;
+        p->GuardRefObjID = 100 + i;
+    }
+    CHECK(data.BuildFromTable(&guard.entry, 0x49) == 1);
+    CHECK(data.m_mmapSiegeFortressGuard.size() == 2 &&
+          data.m_mmapSiegeFortressGuard.count(1) == 2);
+
+    // summoned monsters by original monster and level
+    static BYTE abObj[0x260];
+    abObj[0x198] = 3;
+    data.m_hashRefObj[1234] = (RefObjCommonRow*)abObj;
+    FakeTable<CRefSiegeLvlSummonMonster> summon;
+    CRefSiegeLvlSummonMonster* pSummon = summon.AddRecord();
+    pSummon->RefObjID = 1234;
+    pSummon->RefOrgObjID = 77;
+    CHECK(data.BuildFromTable(&summon.entry, 0x4D) == 1);
+    CHECK(data.m_mapSiegeLvlSummonMonster.size() == 1);
+    if (data.m_mapSiegeLvlSummonMonster.size() == 1)
+    {
+        CReferenceData::RefSiegeSummonByLevelVector* pLevels =
+            data.m_mapSiegeLvlSummonMonster[77];
+        CHECK(pLevels->size() == 140 && pLevels->at(2) != NULL && pLevels->at(1) == NULL);
+        CHECK(pLevels->at(2)->RefObjID == 1234);
+    }
+    // the same level again fails the build
+    CHECK(data.BuildFromTable(&summon.entry, 0x4D) == 0);
+    data.m_hashRefObj.erase(1234);
+
+    // unique key: a duplicate fails the build, a row out of service is skipped
+    FakeTable<CRefSiegeBlessBuff> bless;
+    CRefSiegeBlessBuff* pBless = bless.AddRecord();
+    pBless->Service = 1;
+    pBless->BlessID = 5;
+    pBless->NeedGold = 0x100000000LL;
+    pBless = bless.AddRecord();
+    pBless->BlessID = 6;
+    CHECK(data.BuildFromTable(&bless.entry, 0x4F) == 1);
+    CHECK(data.m_mapSiegeBlessBuff.size() == 1 &&
+          data.m_mapSiegeBlessBuff[5]->NeedGold == 0x100000000LL);
+    CHECK(data.BuildFromTable(&bless.entry, 0x4F) == 0);
+
+    FakeTable<CRefSiegeQuest> quest;
+    CRefSiegeQuest* pQuest = quest.AddRecord();
+    pQuest->m_Data.Service = 1;
+    pQuest->m_Data.QuestID = 9;
+    pQuest->m_Data.QuestType = 2;
+    pQuest->m_Data.QuestName = "SIEGE_QUEST";
+    CHECK(data.BuildFromTable(&quest.entry, 0x51) == 1);
+    CHECK(data.m_mmapSiegeQuest.count(2) == 1 &&
+          data.m_mmapSiegeQuest.find(2)->second->QuestName == "SIEGE_QUEST");
+
+    FakeTable<CRefSiegeQuestReward> reward;
+    CHECK(data.BuildFromTable(&reward.entry, 0x52) == 0);
+}
+
 static void TestFindRefObj(CReferenceData& data)
 {
     static BYTE abObj[0x260];
@@ -209,6 +294,7 @@ int main()
 
     TestRowReader();
     TestTriggerTables(*pData, tables);
+    TestSiegeTables(*pData);
     TestFindRefObj(*pData);
 
     pData->m_pTables = NULL;
