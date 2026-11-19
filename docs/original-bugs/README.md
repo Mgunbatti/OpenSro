@@ -149,3 +149,4 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-002](SM-002.md) | SR_ShardManager DB records | minor | A blank CHAR column is stored as one blank instead of an empty string |
 | [SM-003](SM-003.md) | SR_ShardManager DB records | minor | COS owner changes are never marked for the database update |
 | [SM-004](SM-004.md) | SR_ShardManager DB records | minor | Resetting a server event reward does not mark RewardID for the update |
+| [SM-005](SM-005.md) | SR_ShardManager DB records | crash | An item with more than 12 magic parameters overruns the parameter array |
