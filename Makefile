@@ -345,7 +345,27 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ShardRefShopTest.exe \
         $(BIN)\ShardRefMiscTest.exe
 
-all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
+# SR_ShardManager game worlds (SilkroadOnline\Server\ShardManager): the climate, the game worlds
+# and their layers. Compiled with SHARD_DEFS and SHARD_APP_INC.
+SHARD_WORLD_OBJS = $(OBJ)\ShardManager\Climate.obj
+TESTS = $(TESTS) $(BIN)\ShardClimateTest.exe
+
+$(OBJ)\ShardManager:
+	@if not exist $@ mkdir $@
+
+{SilkroadOnline\Server\ShardManager}.cpp{$(OBJ)\ShardManager}.obj:
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\ShardManager\ $<
+
+$(OBJ)\test\ShardClimateTest.obj: test\ShardClimateTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardClimateTest.cpp
+
+$(BIN)\ShardClimateTest.exe: $(OBJ)\ShardManager $(OBJ)\ServerCommon \
+                             $(OBJ)\ShardManager\Climate.obj $(SHARD_REC_OBJS) \
+                             $(OBJ)\test\ShardClimateTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardClimateTest.obj \
+	    $(OBJ)\ShardManager\Climate.obj $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+
+all:$(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
 $(OBJ)\BSLib $(OBJ)\BSNet $(OBJ)\ServerFramework $(OBJ)\GatewayServer $(OBJ)\test $(LIBDIR) $(BIN) \
 $(OBJ)\DownloadServer $(OBJ)\DownloadServer\fw $(OBJ)\MachineManager $(OBJ)\MachineManager\fw \
