@@ -998,3 +998,204 @@ CRefShopItemStockPeriod::CRefShopItemStockPeriod()
 CRefShopItemStockPeriod::~CRefShopItemStockPeriod()
 {
 }
+
+// ---------------------------------------------------------------------------------------------
+// Drop records
+
+// 0x52c6b0 ctor, 0x51f490 / 0x51f4b0 slots 2 / 3, 0x61dc50 table description.
+SR_IMPLEMENT_REF_RECORD(CRefMonster_AssignedItemDrop, CDBRecStream, CDBRecStream,
+                        "_REFMONSTER_ASSIGNEDITEMDROP")
+
+CRefMonster_AssignedItemDrop::CRefMonster_AssignedItemDrop()
+{
+}
+
+CRefMonster_AssignedItemDrop::~CRefMonster_AssignedItemDrop()
+{
+}
+
+// 0x52c760 ctor, 0x51f4c0 / 0x51f4e0 slots 2 / 3, 0x61dec0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefCustomizingReservedItemDropForMonster, CDBRecStream, CDBRecStream,
+                        "_REFCUSTOMIZINGRESERVEDITEMDROPFORMONSTER")
+
+CRefCustomizingReservedItemDropForMonster::CRefCustomizingReservedItemDropForMonster()
+{
+}
+
+CRefCustomizingReservedItemDropForMonster::~CRefCustomizingReservedItemDropForMonster()
+{
+}
+
+// 0x52c970 ctor, 0x51fc40 / 0x51fc60 slots 2 / 3, 0x61e130 table description.
+SR_IMPLEMENT_REF_RECORD(CRefMonster_AssignedItemRndDrop, CDBRecStream, CDBRecStream,
+                        "_REFMONSTER_ASSIGNEDITEMRNDDROP")
+
+CRefMonster_AssignedItemRndDrop::CRefMonster_AssignedItemRndDrop()
+{
+}
+
+CRefMonster_AssignedItemRndDrop::~CRefMonster_AssignedItemRndDrop()
+{
+}
+
+// 0x52c8c0 ctor, 0x51fc70 / 0x51fc90 slots 2 / 3, 0x61e3a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropItemGroup, CDBRecStream, CDBRecStream, "_REFDROPITEMGROUP")
+
+CRefDropItemGroup::CRefDropItemGroup()
+{
+}
+
+CRefDropItemGroup::~CRefDropItemGroup()
+{
+}
+
+// 0x52a710 ctor, 0x51f9d0 / 0x51f9f0 slots 2 / 3, 0x623080 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropGold, CDBRecStream, CDBRecStream, "_REFDROPGOLD")
+
+CRefDropGold::CRefDropGold()
+{
+}
+
+CRefDropGold::~CRefDropGold()
+{
+}
+
+// 0x52a7c0 ctor, 0x51fa00 / 0x51fa20 slots 2 / 3, 0x6232f0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropOptLevelSel, CDBRecStream, CDBRecStream, "_REFDROPOPTLVLSEL")
+
+CRefDropOptLevelSel::CRefDropOptLevelSel()
+{
+}
+
+CRefDropOptLevelSel::~CRefDropOptLevelSel()
+{
+}
+
+// 0x52a870 ctor, 0x52a8d0 dtor, 0x51fa30 / 0x51fa50 slots 2 / 3, 0x623560 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_Equip, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_EQUIP")
+
+CRefDropClassSel_Equip::CRefDropClassSel_Equip()
+{
+}
+
+CRefDropClassSel_Equip::~CRefDropClassSel_Equip()
+{
+}
+
+// 0x52a920 ctor, 0x51fa60 / 0x51fa80 slots 2 / 3, 0x6237d0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_RareEquip, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_RAREEQUIP")
+
+CRefDropClassSel_RareEquip::CRefDropClassSel_RareEquip()
+{
+}
+
+CRefDropClassSel_RareEquip::~CRefDropClassSel_RareEquip()
+{
+}
+
+// 0x52a9d0 ctor, 0x51fa90 / 0x51fab0 slots 2 / 3, 0x623a40 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_Recover, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_RECOVER")
+
+CRefDropClassSel_Recover::CRefDropClassSel_Recover()
+{
+}
+
+CRefDropClassSel_Recover::~CRefDropClassSel_Recover()
+{
+}
+
+// 0x52aa80 ctor, 0x51fac0 / 0x51fae0 slots 2 / 3, 0x623cb0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_Cure, CDBRecStream, CDBRecStream, "_REFDROPCLASSSEL_CURE")
+
+CRefDropClassSel_Cure::CRefDropClassSel_Cure()
+{
+}
+
+CRefDropClassSel_Cure::~CRefDropClassSel_Cure()
+{
+}
+
+// 0x52ab30 ctor, 0x51faf0 / 0x51fb10 slots 2 / 3, 0x623f20 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_Ammo, CDBRecStream, CDBRecStream, "_REFDROPCLASSSEL_AMMO")
+
+CRefDropClassSel_Ammo::CRefDropClassSel_Ammo()
+{
+}
+
+CRefDropClassSel_Ammo::~CRefDropClassSel_Ammo()
+{
+}
+
+// 0x52abe0 ctor, 0x51fb20 / - slots 2 / 3, 0x624190 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_Scroll, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_SCROLL")
+
+CRefDropClassSel_Scroll::CRefDropClassSel_Scroll()
+{
+}
+
+CRefDropClassSel_Scroll::~CRefDropClassSel_Scroll()
+{
+}
+
+// 0x52ac90 ctor, 0x51fb50 / 0x51fb70 slots 2 / 3, 0x624400 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_Reinforce, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_REINFORCE")
+
+CRefDropClassSel_Reinforce::CRefDropClassSel_Reinforce()
+{
+}
+
+CRefDropClassSel_Reinforce::~CRefDropClassSel_Reinforce()
+{
+}
+
+// 0x52ad40 ctor, 0x51fb80 / 0x51fba0 slots 2 / 3, 0x624670 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_AlchemyTablet, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_ALCHEMY_TABLET")
+
+CRefDropClassSel_AlchemyTablet::CRefDropClassSel_AlchemyTablet()
+{
+}
+
+CRefDropClassSel_AlchemyTablet::~CRefDropClassSel_AlchemyTablet()
+{
+}
+
+// 0x52adf0 ctor, 0x51fbb0 / 0x51fbd0 slots 2 / 3, 0x6248e0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_AlchemyMagicStone, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_ALCHEMY_MAGICSTONE")
+
+CRefDropClassSel_AlchemyMagicStone::CRefDropClassSel_AlchemyMagicStone()
+{
+}
+
+CRefDropClassSel_AlchemyMagicStone::~CRefDropClassSel_AlchemyMagicStone()
+{
+}
+
+// 0x52aea0 ctor, 0x51fbe0 / 0x51fc00 slots 2 / 3, 0x624b50 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropClassSel_AlchemyATTRStone, CDBRecStream, CDBRecStream,
+                        "_REFDROPCLASSSEL_ALCHEMY_ATTRSTONE")
+
+CRefDropClassSel_AlchemyATTRStone::CRefDropClassSel_AlchemyATTRStone()
+{
+}
+
+CRefDropClassSel_AlchemyATTRStone::~CRefDropClassSel_AlchemyATTRStone()
+{
+}
+
+// 0x52af50 ctor, 0x51fc10 / 0x51fc30 slots 2 / 3, 0x624dc0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefDropItemAssign, CDBRecStream, CDBRecStream, "_REFDROPITEMASSIGN")
+
+CRefDropItemAssign::CRefDropItemAssign()
+{
+}
+
+CRefDropItemAssign::~CRefDropItemAssign()
+{
+}

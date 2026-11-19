@@ -1313,3 +1313,210 @@ public:
 };
 
 C_ASSERT(sizeof(CRefShopItemStockPeriod) == 0x30);
+
+// ---------------------------------------------------------------------------------------------
+// Drop records
+
+// _REFMONSTER_ASSIGNEDITEMDROP
+class CRefMonster_AssignedItemDrop : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefMonster_AssignedItemDrop)
+
+public:
+    CRefMonster_AssignedItemDrop();
+    virtual ~CRefMonster_AssignedItemDrop();
+};
+
+C_ASSERT(sizeof(CRefMonster_AssignedItemDrop) == 0x30);
+
+// _REFCUSTOMIZINGRESERVEDITEMDROPFORMONSTER
+class CRefCustomizingReservedItemDropForMonster : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefCustomizingReservedItemDropForMonster)
+
+public:
+    CRefCustomizingReservedItemDropForMonster();
+    virtual ~CRefCustomizingReservedItemDropForMonster();
+};
+
+C_ASSERT(sizeof(CRefCustomizingReservedItemDropForMonster) == 0x30);
+
+// _REFMONSTER_ASSIGNEDITEMRNDDROP
+class CRefMonster_AssignedItemRndDrop : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefMonster_AssignedItemRndDrop)
+
+public:
+    CRefMonster_AssignedItemRndDrop();
+    virtual ~CRefMonster_AssignedItemRndDrop();
+};
+
+C_ASSERT(sizeof(CRefMonster_AssignedItemRndDrop) == 0x30);
+
+// _REFDROPITEMGROUP
+class CRefDropItemGroup : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropItemGroup)
+
+public:
+    CRefDropItemGroup();
+    virtual ~CRefDropItemGroup();
+};
+
+C_ASSERT(sizeof(CRefDropItemGroup) == 0x30);
+
+// _REFDROPGOLD
+class CRefDropGold : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropGold)
+
+public:
+    CRefDropGold();
+    virtual ~CRefDropGold();
+};
+
+C_ASSERT(sizeof(CRefDropGold) == 0x30);
+
+// _REFDROPOPTLVLSEL
+class CRefDropOptLevelSel : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropOptLevelSel)
+
+public:
+    CRefDropOptLevelSel();
+    virtual ~CRefDropOptLevelSel();
+};
+
+C_ASSERT(sizeof(CRefDropOptLevelSel) == 0x30);
+
+// _REFDROPCLASSSEL_EQUIP
+class CRefDropClassSel_Equip : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_Equip)
+
+public:
+    CRefDropClassSel_Equip();
+    virtual ~CRefDropClassSel_Equip();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_Equip) == 0x30);
+
+// _REFDROPCLASSSEL_RAREEQUIP
+class CRefDropClassSel_RareEquip : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_RareEquip)
+
+public:
+    CRefDropClassSel_RareEquip();
+    virtual ~CRefDropClassSel_RareEquip();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_RareEquip) == 0x30);
+
+// _REFDROPCLASSSEL_RECOVER
+class CRefDropClassSel_Recover : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_Recover)
+
+public:
+    CRefDropClassSel_Recover();
+    virtual ~CRefDropClassSel_Recover();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_Recover) == 0x30);
+
+// _REFDROPCLASSSEL_CURE
+class CRefDropClassSel_Cure : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_Cure)
+
+public:
+    CRefDropClassSel_Cure();
+    virtual ~CRefDropClassSel_Cure();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_Cure) == 0x30);
+
+// _REFDROPCLASSSEL_AMMO
+class CRefDropClassSel_Ammo : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_Ammo)
+
+public:
+    CRefDropClassSel_Ammo();
+    virtual ~CRefDropClassSel_Ammo();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_Ammo) == 0x30);
+
+// _REFDROPCLASSSEL_SCROLL
+class CRefDropClassSel_Scroll : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_Scroll)
+
+public:
+    CRefDropClassSel_Scroll();
+    virtual ~CRefDropClassSel_Scroll();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_Scroll) == 0x30);
+
+// _REFDROPCLASSSEL_REINFORCE
+class CRefDropClassSel_Reinforce : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_Reinforce)
+
+public:
+    CRefDropClassSel_Reinforce();
+    virtual ~CRefDropClassSel_Reinforce();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_Reinforce) == 0x30);
+
+// _REFDROPCLASSSEL_ALCHEMY_TABLET
+class CRefDropClassSel_AlchemyTablet : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_AlchemyTablet)
+
+public:
+    CRefDropClassSel_AlchemyTablet();
+    virtual ~CRefDropClassSel_AlchemyTablet();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_AlchemyTablet) == 0x30);
+
+// _REFDROPCLASSSEL_ALCHEMY_MAGICSTONE
+class CRefDropClassSel_AlchemyMagicStone : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_AlchemyMagicStone)
+
+public:
+    CRefDropClassSel_AlchemyMagicStone();
+    virtual ~CRefDropClassSel_AlchemyMagicStone();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_AlchemyMagicStone) == 0x30);
+
+// _REFDROPCLASSSEL_ALCHEMY_ATTRSTONE
+class CRefDropClassSel_AlchemyATTRStone : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropClassSel_AlchemyATTRStone)
+
+public:
+    CRefDropClassSel_AlchemyATTRStone();
+    virtual ~CRefDropClassSel_AlchemyATTRStone();
+};
+
+C_ASSERT(sizeof(CRefDropClassSel_AlchemyATTRStone) == 0x30);
+
+// _REFDROPITEMASSIGN
+class CRefDropItemAssign : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefDropItemAssign)
+
+public:
+    CRefDropItemAssign();
+    virtual ~CRefDropItemAssign();
+};
+
+C_ASSERT(sizeof(CRefDropItemAssign) == 0x30);
