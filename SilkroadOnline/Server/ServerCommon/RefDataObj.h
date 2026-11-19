@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "ServerCommon/RefDataMisc.h"
 #include "ServerCommon/ReferenceData.h"
 
 // The object rows of the reference data (ServerCommon\ReferenceData.cpp of the original):
@@ -183,15 +184,7 @@ C_ASSERT(sizeof(RefParam) == 0x20);
 
 // The sDataStream objects of an item, by tag name (RefObjItemLinkTables::ctor 0x48ea10 / dtor
 // 0x48ea80): target A, target P, and all of them (owned, RefObjItem_ClearDataStreams 0x655eb0).
-// The base of the tag objects (vftable 0x794550; the tag classes and their parsers are not
-// ported yet).
-class sDataStream
-{
-public:
-    virtual ~sDataStream()
-    {
-    }
-};
+// The tag objects are sDataStream (RefDataMisc.h).
 
 struct RefObjItemLinkTables
 {

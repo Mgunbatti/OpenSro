@@ -6,6 +6,7 @@
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataMisc.h"
 #include "ServerCommon/RefDataObj.h"
 #include "ServerCommon/RefDataQuest.h"
 #include "ServerCommon/RefDataTeleport.h"
@@ -1019,7 +1020,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     RefData_BuildMagicOpt,                                                  // 0x07
     RefData_BuildMagicOptAssign,
     REF_LOADED(RefData_LoadMagicOptGroup),
-    P, RefData_BuildRefObjCommon, P, P, P, P,                               // 0x0A
+    REF_LOADED((RefData_AddRowUniqueStream<RefSetItemGroup, CReferenceData::RefSetItemGroupMap,
+                &CReferenceData::m_mapSetItemGroup>)),                      // 0x0A
+    RefData_BuildRefObjCommon, P, P, P, P,
     P, RefData_BuildItemOptLevel,                                           // 0x10
     RefData_BuildTeleport,                                                  // 0x12
     RefData_BuildTeleLink,
@@ -1071,10 +1074,13 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
                 &RefSiegeDungeonData::FortressID, &CReferenceData::m_mapSiegeDungeon>)),
     REF_LOADED(RefData_LoadSiegeQuest),                                     // 0x51
     REF_LOADED(RefData_LoadSiegeQuestReward),
-    P, P,                                                                   // 0x53
+    REF_LOADED(RefData_LoadIdBytePairsTable),                               // 0x53
+    REF_LOADED((RefData_AddRowUniqueStream<RefEventRow, CReferenceData::RefEventMap,
+                &CReferenceData::m_mapEvent>)),
     REF_LOADED(RefData_LoadRentItem),                                       // 0x55
     P, RefData_BuildCustomizingReservedItemDrop,
-    P,                                                                      // 0x58
+    REF_LOADED((RefData_AddRowUniqueStream<RefDefaultQuestRow, CReferenceData::RefDefaultQuestMap,
+                &CReferenceData::m_mapDefaultQuest>)),                      // 0x58
     REF_LOADED((RefData_AddRowUniqueStream<RefOptionalTeleport,
                 CReferenceData::RefOptionalTeleportMap,
                 &CReferenceData::m_mapOptionalTeleport>)),                  // 0x59
@@ -1095,7 +1101,8 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     RefData_BuildQuestRewardItems,
     RefData_BuildEventReward,
     RefData_BuildEventRewardItems,
-    P, P,                                                                   // 0x68
+    REF_LOADED(RefData_LoadCollectionBookTheme),                            // 0x68
+    RefData_BuildCollectionBookItem,
     REF_KEYED(RefUIString, RefUIStringMap, m_mapUIString, std::string, GroupCodeName128),
     REF_KEYED(RefTriggerBind, RefTriggerBindMap, m_mmapGameWorldBindTriggerCategory, int, ID1),
     REF_KEYED(RefTriggerCategory, RefTriggerCategoryMap, m_mapTriggerCategory, int, ID),

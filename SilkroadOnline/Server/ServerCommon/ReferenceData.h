@@ -450,10 +450,36 @@ C_ASSERT(FIELD_OFFSET(RefTeleportRow, vecLink) == 0x38);
 C_ASSERT(sizeof(RefTeleportRow) == 0x4C);
 // _RefEventZone (2 strings + string[5]).
 struct RefEventZoneRow { BYTE ab[0xE0]; };                 // TODO(type)
-// _RefEvent (2 strings).
-struct RefEventRow { BYTE ab[0x3C]; };                     // TODO(type)
-// _RefDefaultQuest (1 string).
-struct RefDefaultQuestRow { BYTE ab[0x24]; };              // TODO(type)
+// _RefEvent row (60 bytes, RecCtor 0x4d3040 / RecDtor 0x4dd200). Column names are not known.
+struct RefEventRow
+{
+    RefEventRow()
+        : ID(0)
+    {
+    }
+
+    DWORD            ID;                         // +0   key of the map
+    std::string      Name;                       // +4   lower case
+    std::string      str20;                      // +20
+};
+
+C_ASSERT(sizeof(RefEventRow) == 0x3C);
+
+// _RefDefaultQuest row (36 bytes, RecCtor 0x4d30a0 / RecDtor 0x4dd140).
+struct RefDefaultQuestRow
+{
+    RefDefaultQuestRow()
+        : ID(0), b04(0), b05(0)
+    {
+    }
+
+    DWORD            ID;                         // +0   key of the map
+    BYTE             b04;                        // +4
+    BYTE             b05;                        // +5   the column after the name
+    std::string      Name;                       // +8
+};
+
+C_ASSERT(sizeof(RefDefaultQuestRow) == 0x24);
 // _RefGachaItemSet (RefGachaItemSet::dtor 0x497900: CGachaFreeParam +152, 4 param strings +24).
 struct RefGachaItemSetRow { BYTE ab[0x9C]; };              // TODO(type)
 // _RefAbilityByItemOptLevel row (16 bytes, vftable of RefAbilityByItemOptLevel; ctor 0x498140).
@@ -737,13 +763,13 @@ C_ASSERT(sizeof(RefEventRewardItemsRow) == 0x6C);
 struct RefSetItemGroup
 {
     RefSetItemGroup()
-        : dw00(0), dw04(0)
+        : ID(0), SetMagicMask(0)
     {
     }
 
-    DWORD                   dw00;                // +0
-    DWORD                   dw04;                // +4
-    std::map<DWORD, DWORD>  map08;               // +8  TODO(type)
+    DWORD                   ID;                  // +0   key of the map
+    DWORD                   SetMagicMask;        // +4   bit n: MagicOptGroupID n is set
+    std::map<DWORD, DWORD>  mapMagicOptGroup;    // +8   mask bit -> magic option group key
 };
 
 C_ASSERT(sizeof(RefSetItemGroup) == 0x14);
@@ -770,13 +796,13 @@ C_ASSERT(sizeof(RefIdBytePairs) == 0x64);
 struct RefCollectionBookItem
 {
     RefCollectionBookItem()
-        : dw00(0), SlotIndex(0), ThemeID(0)
+        : Service(0), SlotIndex(0), ThemeID(0)
     {
     }
 
-    DWORD            dw00;                       // +0
-    std::string      CodeName;                   // +4   key of the item map
-    std::string      ItemCodeName;               // +20
+    BYTE             Service;                    // +0
+    std::string      ItemCodeName;               // +4   key of the item map, an object
+    std::string      str20;                      // +20
     std::string      ThemeCodeName;              // +3C
     DWORD            SlotIndex;                  // +58
     std::string      str5C;                      // +5C
@@ -791,18 +817,18 @@ C_ASSERT(sizeof(RefCollectionBookItem) == 0x98);
 struct RefCollectionBookTheme
 {
     RefCollectionBookTheme()
-        : dw00(0), ID(0), MaxSlot(0)
+        : Service(0), ID(0), CompleteNum(0)
     {
     }
 
-    DWORD            dw00;                       // +0
+    BYTE             Service;                    // +0
     DWORD            ID;                         // +4   key of the ID map
     std::string      CodeName;                   // +8   key of the theme map
     std::string      str24;                      // +24
     std::string      str40;                      // +40
     std::string      str5C;                      // +5C
-    DWORD            MaxSlot;                    // +78
-    std::vector<RefCollectionBookItem*> vecItem; // +7C  by slot index
+    DWORD            CompleteNum;                // +78  the highest slot index
+    std::vector<RefCollectionBookItem*> vecItem; // +7C  by slot index (0 is not used)
 };
 
 C_ASSERT(sizeof(RefCollectionBookTheme) == 0x8C);
@@ -1272,8 +1298,10 @@ public:
     typedef std::map<std::string, RefSkill*>                    RefSkillByCodeNameMap;
     typedef CRefOwnerMap<std::map<DWORD, RefQuest*> >            RefQuestMap;
     typedef std::vector<RefObjCommonRow*>                       RefObjVector;
-    // Monsters by level band (3) or by level (140).
+    // Monsters by level (140).
     typedef std::vector<RefObjVector>                           RefObjListVector;
+    // Monsters by kind (3: Chinese, European, other) and level (140).
+    typedef std::vector<RefObjListVector>                       RefObjBandVector;
     typedef std::vector<RefIdBytePairs*>                        RefHWANLevelVector;
     // Siege guards / guild mercenaries by code name, 140 slots by level.
     typedef stdext::hash_map<std::string, RefObjVector*>        RefObjByLevelHashMap;
@@ -1439,8 +1467,8 @@ public:
     RefSkillMap                 m_mapSkill;                         // +888  slot 5
     RefSkillByCodeNameMap       m_mapSkillByCodeName;               // +894  slot 5
     RefQuestMap                 m_mapQuest;                         // +8A0  slot 0x3C, by ID
-    RefObjListVector            m_vecThiefMonster;                  // +8AC  3 level bands
-    RefObjListVector            m_vecHunterMonster;                 // +8BC  3 level bands
+    RefObjBandVector            m_vecThiefMonster;                  // +8AC  3 kinds x 140 levels
+    RefObjBandVector            m_vecHunterMonster;                 // +8BC  3 kinds x 140 levels
     RefHWANLevelVector          m_vecHWANLevel;                     // +8CC  slot 0x53
     RefObjByLevelHashMap        m_hashMercenary;                    // +8DC
     RefObjByLevelHashMap        m_hashSiegeGuarder;                 // +904

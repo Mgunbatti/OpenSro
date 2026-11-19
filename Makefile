@@ -244,7 +244,8 @@ SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj \
 	$(OBJ)\ServerCommon\RefDataObj.obj \
 	$(OBJ)\ServerCommon\RefDataDrop.obj \
 	$(OBJ)\ServerCommon\RefDataTeleport.obj \
-	$(OBJ)\ServerCommon\RefDataShop.obj $(OBJ)\ServerCommon\RefDataShopPending.obj
+	$(OBJ)\ServerCommon\RefDataShop.obj $(OBJ)\ServerCommon\RefDataShopPending.obj \
+	$(OBJ)\ServerCommon\RefDataMisc.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
@@ -340,7 +341,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\ShardRefObjTest.exe \
         $(BIN)\ShardRefDropTest.exe \
         $(BIN)\ShardRefTeleportTest.exe \
-        $(BIN)\ShardRefShopTest.exe
+        $(BIN)\ShardRefShopTest.exe \
+        $(BIN)\ShardRefMiscTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -624,6 +626,9 @@ $(OBJ)\test\ShardRefTeleportTest.obj: test\ShardRefTeleportTest.cpp
 $(OBJ)\test\ShardRefShopTest.obj: test\ShardRefShopTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefShopTest.cpp
 
+$(OBJ)\test\ShardRefMiscTest.obj: test\ShardRefMiscTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefMiscTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -782,6 +787,11 @@ $(BIN)\ShardRefTeleportTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHA
 $(BIN)\ShardRefShopTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
                              $(OBJ)\test\ShardRefShopTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefShopTest.obj $(SHARD_REFDATA_OBJS) \
+	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\ShardRefMiscTest.exe:       $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
+                                   $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefMiscTest.obj $(SHARD_REFDATA_OBJS) \
 	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
@@ -959,6 +969,7 @@ test: all
 	$(BIN)\ShardRefDropTest.exe
 	$(BIN)\ShardRefTeleportTest.exe
 	$(BIN)\ShardRefShopTest.exe
+	$(BIN)\ShardRefMiscTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
 
