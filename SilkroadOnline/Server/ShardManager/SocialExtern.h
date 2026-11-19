@@ -155,6 +155,8 @@ class CMainProcess
 public:
     // CMainProcess::BroadcastToGameServers (0x412120)
     void BroadcastToGameServers(CMsg* pMsg, DWORD dwParam);
+    // CMainProcess::BroadcastToAllGameServers (0x4121e0)
+    void BroadcastToAllGameServers(CMsg* pMsg);
 };
 
 // g_pMainProcess (0x8a88f8)
@@ -182,6 +184,9 @@ enum
 {
     SHARD_TABLE_FRIEND  = 0x14,
     SHARD_TABLE_MEMO    = 0x15,
+    SHARD_TABLE_TRAINING_CAMP           = 0x16,
+    SHARD_TABLE_TRAINING_CAMP_MEMBER    = 0x17,
+    SHARD_TABLE_TRAINING_CAMP_BUFF      = 0x19,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -191,6 +196,10 @@ class CUser
 {
 public:
     sPartyMemberInfo& GetPartyMemberInfo();     // +0x08 (its m_dwPartyID is the user's party)
+    DWORD GetTrainingCampID() const;            // +0x70
+    void SetTrainingCampID(DWORD dwCampID);
+    DWORD GetCampRegID() const;                 // +0x74 training camp recruit entry
+    void SetCampRegID(DWORD dwRegID);
     DWORD GetJID() const;                       // +0x78
     DWORD GetCharID() const;                    // +0x7C
     const std::string& GetCharNameStr() const;  // +0x1A4
