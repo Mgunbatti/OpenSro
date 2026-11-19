@@ -130,6 +130,23 @@ int RefRow_Read(CRefRow& row, RefTriggerConditionParam& r);
 int RefRow_Read(CRefRow& row, RefTriggerActionParam& r);
 int RefRow_Read(CRefRow& row, RefGameWorldGroupConfig& r);
 
+// Readers of the siege tables (CDBRecord records): copy the record columns into the row. The
+// return value is what the loader tests (Service, or the key column).
+int RefRec_Read(const CRefSiegeFortress& rec, RefSiegeFortress& r);                    // 0x497ea0
+int RefRec_Read(const CRefSiegeFortressGuard& rec, RefSiegeFortressGuardData& r);      // 0x497f70
+// 0x497f90
+int RefRec_Read(const CRefSiegeFortressItemForge& rec, RefSiegeFortressItemForgeData& r);
+// 0x497fc0
+int RefRec_Read(const CRefSiegeFortressBattleRank& rec, RefSiegeFortressBattleRank& r);
+int RefRec_Read(const CRefSiegeStructUpgrade& rec, RefSiegeStructUpgrade& r);          // 0x498000
+// 0x498070
+int RefRec_Read(const CRefSiegeLvlSummonMonster& rec, RefSiegeLvlSummonMonsterData& r);
+void RefRec_Read(const CRefSiegeFortressRewards& rec, RefSiegeFortressRewardsData& r); // 0x498090
+int RefRec_Read(const CRefSiegeBlessBuff& rec, RefSiegeBlessBuffData& r);              // 0x4980b0
+int RefRec_Read(const CRefSiegeDungeon& rec, RefSiegeDungeonData& r);                  // 0x4980b0
+int RefRec_Read(const CRefSiegeQuest& rec, RefSiegeQuest& r);                          // 0x4980d0
+int RefRec_Read(const CRefSiegeQuestReward& rec, RefSiegeQuestRewardData& r);          // 0x498110
+
 // Opaque _RefObjCommon row (see InstanceRecords.h).
 struct RefObjCommonRow;
 
@@ -154,6 +171,18 @@ public:
     typedef std::map<std::string, RefTriggerActionParam*>       RefTriggerActionParamMap;
     typedef std::map<int, RefGameWorldGroup*>                   RefGameWorldGroupMap;
     typedef std::map<std::string, RefGameWorldGroupConfig*>     RefGameWorldGroupConfigMap;
+    typedef std::vector<RefSiegeFortress*>                      RefSiegeFortressVector;
+    typedef std::multimap<int, RefSiegeFortressGuardData*>      RefSiegeFortressGuardMap;
+    typedef std::multimap<int, RefSiegeFortressItemForgeData*>  RefSiegeFortressItemForgeMap;
+    typedef std::vector<RefSiegeFortressBattleRank*>            RefSiegeFortressBattleRankVector;
+    typedef std::vector<RefSiegeStructUpgrade*>                 RefSiegeStructUpgradeVector;
+    typedef std::vector<RefSiegeLvlSummonMonsterData*>          RefSiegeSummonByLevelVector;
+    typedef std::map<DWORD, RefSiegeSummonByLevelVector*>       RefSiegeLvlSummonMonsterMap;
+    typedef std::multimap<int, RefSiegeFortressRewardsData*>    RefSiegeFortressRewardsMap;
+    typedef std::map<DWORD, RefSiegeBlessBuffData*>             RefSiegeBlessBuffMap;
+    typedef std::map<DWORD, RefSiegeDungeonData*>               RefSiegeDungeonMap;
+    typedef std::multimap<int, RefSiegeQuest*>                  RefSiegeQuestMap;
+    typedef std::multimap<int, RefSiegeQuestRewardData*>        RefSiegeQuestRewardMap;
 
     // Static object of the original (dynamic initializer 0x50a9b0): sets g_pReferenceData.
     CReferenceData();
@@ -177,7 +206,19 @@ public:
     RefTableVector*             m_pTables;                          // +000
     BYTE                        m_ab004[0x64];                      // +004  (not ported yet)
     RefObjHashMap               m_hashRefObj;                       // +068  _RefObjCommon by ID
-    BYTE                        m_ab090[0xA08];                     // +090  (not ported yet)
+    BYTE                        m_ab090[0x96C];                     // +090  (not ported yet)
+    RefSiegeFortressVector      m_vecSiegeFortress;                 // +9FC
+    RefSiegeFortressGuardMap    m_mmapSiegeFortressGuard;           // +A0C  by FortressID
+    RefSiegeFortressItemForgeMap m_mmapSiegeFortressItemForge;      // +A18  by FortressID
+    RefSiegeFortressBattleRankVector m_vecSiegeFortressBattleRank;  // +A24
+    RefSiegeStructUpgradeVector m_vecSiegeStructUpgrade;            // +A34
+    RefSiegeLvlSummonMonsterMap m_mapSiegeLvlSummonMonster;         // +A44  by RefOrgObjID
+    RefSiegeFortressRewardsMap  m_mmapSiegeFortressRewards;         // +A50  by FortressID
+    RefSiegeBlessBuffMap        m_mapSiegeBlessBuff;                // +A5C  by BlessID
+    RefSiegeDungeonMap          m_mapSiegeDungeon;                  // +A68  by FortressID
+    RefSiegeQuestMap            m_mmapSiegeQuest;                   // +A74  by QuestType
+    RefSiegeQuestRewardMap      m_mmapSiegeQuestReward;             // +A80  by QuestID
+    BYTE                        m_abA8C[0xC];                       // +A8C  (not ported yet)
     RefShardContentConfigMap    m_mapShardContentConfig;            // +A98  by CodeName128
     BYTE                        m_abAA4[0xE4];                      // +AA4  (not ported yet)
     RefUIStringMap              m_mapUIString;                      // +B88  by GroupCodeName128
@@ -202,6 +243,10 @@ public:
 
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_hashRefObj) == 0x68);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_ab090) == 0x90);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortress) == 0x9FC);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_vecSiegeFortressBattleRank) == 0xA24);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapSiegeLvlSummonMonster) == 0xA44);
+C_ASSERT(FIELD_OFFSET(CReferenceData, m_mmapSiegeQuestReward) == 0xA80);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapShardContentConfig) == 0xA98);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapUIString) == 0xB88);
 C_ASSERT(FIELD_OFFSET(CReferenceData, m_mapGameWorldGroupConfig) == 0xC54);
