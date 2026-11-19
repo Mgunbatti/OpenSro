@@ -1382,3 +1382,200 @@ CRefSiegeQuestReward::CRefSiegeQuestReward()
 CRefSiegeQuestReward::~CRefSiegeQuestReward()
 {
 }
+
+// ---------------------------------------------------------------------------------------------
+// Trigger and game world group records
+
+// 0x52dad0 ctor, 0x520720 / 0x520740 slots 2 / 3, 0x62d530 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorldBindTriggerCategory, CDBRecStream, CDBRecStream,
+                        "_RefGameWorldBindTriggerCategory")
+
+CRefGameWorldBindTriggerCategory::CRefGameWorldBindTriggerCategory()
+{
+}
+
+CRefGameWorldBindTriggerCategory::~CRefGameWorldBindTriggerCategory()
+{
+}
+
+// 0x52db80 ctor, 0x52dbe0 dtor, 0x520750 / 0x520770 slots 2 / 3, 0x62d7a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerCategory, CDBRecStream, CDBRecStream, "_RefTriggerCategory")
+
+CRefTriggerCategory::CRefTriggerCategory()
+{
+}
+
+CRefTriggerCategory::~CRefTriggerCategory()
+{
+}
+
+// 0x52dc40 ctor, 0x520780 / 0x5207a0 slots 2 / 3, 0x62da20 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerCategoryBindTrigger, CDBRecStream, CDBRecStream,
+                        "_RefTriggerCategoryBindTrigger")
+
+CRefTriggerCategoryBindTrigger::CRefTriggerCategoryBindTrigger()
+{
+}
+
+CRefTriggerCategoryBindTrigger::~CRefTriggerCategoryBindTrigger()
+{
+}
+
+// 0x52dcf0 ctor, 0x52dd50 dtor, 0x5207b0 / 0x5207d0 slots 2 / 3, 0x62dc90 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTrigger, CDBRecStream, CDBRecStream, "_RefTrigger")
+
+CRefTrigger::CRefTrigger()
+{
+}
+
+CRefTrigger::~CRefTrigger()
+{
+}
+
+// 0x52ddb0 ctor, 0x52de10 dtor, 0x5207e0 / 0x520800 slots 2 / 3, 0x62df20 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerVariable, CDBRecStream, CDBRecStream, "_RefTriggerVariable")
+
+CRefTriggerVariable::CRefTriggerVariable()
+{
+}
+
+CRefTriggerVariable::~CRefTriggerVariable()
+{
+}
+
+// 0x52de70 ctor, 0x520810 / 0x520830 slots 2 / 3, 0x62e1a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerBindEvent, CDBRecStream, CDBRecStream, "_RefTriggerBindEvent")
+
+CRefTriggerBindEvent::CRefTriggerBindEvent()
+{
+}
+
+CRefTriggerBindEvent::~CRefTriggerBindEvent()
+{
+}
+
+// 0x52df20 ctor, 0x52df80 dtor, 0x520840 / 0x520860 slots 2 / 3, 0x62e410 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerBindCondition, CDBRecStream, CDBRecStream,
+                        "_RefTriggerBindCondition")
+
+CRefTriggerBindCondition::CRefTriggerBindCondition()
+{
+}
+
+CRefTriggerBindCondition::~CRefTriggerBindCondition()
+{
+}
+
+// 0x52dfd0 ctor, 0x520870 / 0x520890 slots 2 / 3, 0x62e680 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerBindAction, CDBRecStream, CDBRecStream, "_RefTriggerBindAction")
+
+CRefTriggerBindAction::CRefTriggerBindAction()
+{
+}
+
+CRefTriggerBindAction::~CRefTriggerBindAction()
+{
+}
+
+// 0x52e080 ctor, 0x52e0e0 dtor, 0x5208a0 / 0x5208c0 slots 2 / 3, 0x62e8f0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerCommon, CDBRecStream, CDBRecStream, "_RefTriggerCommon")
+
+CRefTriggerCommon::CRefTriggerCommon()
+{
+}
+
+CRefTriggerCommon::~CRefTriggerCommon()
+{
+}
+
+// 0x52e140 ctor, 0x5208d0 / 0x5208f0 slots 2 / 3, 0x62eb70 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerEvent, CDBRecStream, CDBRecStream, "_RefTriggerEvent")
+
+CRefTriggerEvent::CRefTriggerEvent()
+{
+}
+
+CRefTriggerEvent::~CRefTriggerEvent()
+{
+}
+
+// 0x52e1f0 ctor, 0x52e250 dtor, 0x520900 / 0x520920 slots 2 / 3, 0x62edf0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerCondition, CDBRecStream, CDBRecStream, "_RefTriggerCondition")
+
+CRefTriggerCondition::CRefTriggerCondition()
+{
+}
+
+CRefTriggerCondition::~CRefTriggerCondition()
+{
+}
+
+// 0x52e2b0 ctor, 0x52e310 dtor, 0x520930 / 0x520950 slots 2 / 3, 0x62f070 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerAction, CDBRecStream, CDBRecStream, "_RefTriggerAction")
+
+CRefTriggerAction::CRefTriggerAction()
+{
+}
+
+CRefTriggerAction::~CRefTriggerAction()
+{
+}
+
+// 0x52e370 ctor, 0x52e3d0 dtor, 0x520960 / 0x520980 slots 2 / 3, 0x62f340 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerConditionParam, CDBRecStream, CDBRecStream,
+                        "_RefTriggerConditionParam")
+
+CRefTriggerConditionParam::CRefTriggerConditionParam()
+{
+}
+
+CRefTriggerConditionParam::~CRefTriggerConditionParam()
+{
+}
+
+// 0x52e430 ctor, 0x52e490 dtor, 0x520990 / 0x5209b0 slots 2 / 3, 0x62f5d0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefTriggerActionParam, CDBRecStream, CDBRecStream,
+                        "_RefTriggerActionParam")
+
+CRefTriggerActionParam::CRefTriggerActionParam()
+{
+}
+
+CRefTriggerActionParam::~CRefTriggerActionParam()
+{
+}
+
+// 0x52e4f0 ctor, 0x5209c0 / 0x5209e0 slots 2 / 3, 0x62f850 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorldBindGameWorldGroup, CDBRecStream, CDBRecStream,
+                        "_RefGameWorldBindGameWorldGroup")
+
+CRefGameWorldBindGameWorldGroup::CRefGameWorldBindGameWorldGroup()
+{
+}
+
+CRefGameWorldBindGameWorldGroup::~CRefGameWorldBindGameWorldGroup()
+{
+}
+
+// 0x52e5a0 ctor, 0x52e600 dtor, 0x5209f0 / 0x520a10 slots 2 / 3, 0x62fad0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorldGroup, CDBRecStream, CDBRecStream, "_RefGameWorldGroup")
+
+CRefGameWorldGroup::CRefGameWorldGroup()
+{
+}
+
+CRefGameWorldGroup::~CRefGameWorldGroup()
+{
+}
+
+// 0x52e660 ctor, 0x52e6c0 dtor, 0x520a20 / 0x520a40 slots 2 / 3, 0x62fd60 table description.
+SR_IMPLEMENT_REF_RECORD(CRefGameWorldGroup_Config, CDBRecStream, CDBRecStream,
+                        "_RefGameWorldGroup_Config")
+
+CRefGameWorldGroup_Config::CRefGameWorldGroup_Config()
+{
+}
+
+CRefGameWorldGroup_Config::~CRefGameWorldGroup_Config()
+{
+}

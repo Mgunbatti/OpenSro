@@ -309,6 +309,138 @@ struct RefSiegeQuest
 
 C_ASSERT(sizeof(RefSiegeQuest) == 40);
 
+// Parsed _RefTriggerCategory row (64 bytes, Read 0x499ff0): InitMembers 0x4a7bc0 /
+// DestroyMembers 0x4a7c20.
+struct RefTriggerCategory
+{
+    int              ID;                         // +0
+    std::string      CodeName128;                // +4
+    std::string      ObjName128;                 // +20
+    int              IndexNumber;                // +3C
+};
+
+C_ASSERT(sizeof(RefTriggerCategory) == 64);
+
+// Parsed _RefTrigger row (68 bytes, Read 0x49a0a0): InitMembers 0x4a7d60 / DestroyMembers
+// 0x4a7dc0.
+struct RefTrigger
+{
+    int              ID;                         // +0
+    std::string      CodeName128;                // +4
+    BYTE             IsActive;                   // +20
+    BYTE             IsRepeat;                   // +21
+    std::string      Comment512;                 // +24
+    int              IndexNumber;                // +40
+};
+
+C_ASSERT(sizeof(RefTrigger) == 68);
+
+// Parsed _RefTriggerVariable row (96 bytes, Read 0x49a550): InitMembers 0x4a7f00 /
+// DestroyMembers 0x4a7f70.
+struct RefTriggerVariable
+{
+    int              ID;                         // +0
+    int              BindTriggerID;              // +4
+    std::string      CodeName128;                // +8
+    std::string      Type;                       // +24
+    int              Value;                      // +40
+    std::string      Comment129;                 // +44
+};
+
+C_ASSERT(sizeof(RefTriggerVariable) == 96);
+
+// Parsed _RefTriggerCommon row (68 bytes, Read 0x49a230): InitMembers 0x4a80d0 / DestroyMembers
+// 0x4a8130.
+struct RefTriggerCommon
+{
+    int              ID;                         // +0
+    std::string      CodeName128;                // +4
+    std::string      ObjName128;                 // +20
+    short            TID1;                       // +3C
+    short            TID2;                       // +3E
+    short            TID3;                       // +40
+    short            TID4;                       // +42
+};
+
+C_ASSERT(sizeof(RefTriggerCommon) == 68);
+
+// Parsed _RefTriggerCondition row (96 bytes, Read 0x49a3c0): InitMembers 0x4a8270 /
+// DestroyMembers 0x4a82e0.
+struct RefTriggerCondition
+{
+    int              ID;                         // +0
+    int              RefTriggerCommonID;         // +4
+    std::string      OnTrue;                     // +8
+    std::string      OnFalse;                    // +24
+    short            Sequence;                   // +40
+    std::string      ParamGroupCodeName128;      // +44
+};
+
+C_ASSERT(sizeof(RefTriggerCondition) == 96);
+
+// Parsed _RefTriggerAction row (40 bytes, Read 0x49a490): InitMembers 0x4a8440 / DestroyMembers
+// 0x4a8490.
+struct RefTriggerAction
+{
+    int              ID;                         // +0
+    int              RefTriggerCommonID;         // +4
+    int              Delay;                      // +8
+    std::string      ParamGroupCodeName128;      // +C
+};
+
+C_ASSERT(sizeof(RefTriggerAction) == 40);
+
+// Parsed _RefTriggerConditionParam row (116 bytes, RefKeyValue4Str::Read 0x49a680): InitMembers
+// 0x4a8600 / DestroyMembers 0x4a86f0.
+struct RefTriggerConditionParam
+{
+    int              ID;                         // +0
+    std::string      GroupCodeName128;           // +4
+    std::string      ValueCodeName128;           // +20
+    std::string      Value;                      // +3C
+    std::string      Type;                       // +58
+};
+
+C_ASSERT(sizeof(RefTriggerConditionParam) == 116);
+
+// Parsed _RefTriggerActionParam row (116 bytes, RefKeyValue4Str::Read 0x49a680): InitMembers
+// 0x4a88c0 / DestroyMembers 0x4a89b0.
+struct RefTriggerActionParam
+{
+    int              ID;                         // +0
+    std::string      GroupCodeName128;           // +4
+    std::string      ValueCodeName128;           // +20
+    std::string      Value;                      // +3C
+    std::string      Type;                       // +58
+};
+
+C_ASSERT(sizeof(RefTriggerActionParam) == 116);
+
+// Parsed _RefGameWorldGroup row (88 bytes, Read 0x49a620): InitMembers 0x4a8df0 /
+// DestroyMembers 0x4a8e60.
+struct RefGameWorldGroup
+{
+    int              ID;                         // +0
+    std::string      CodeName128;                // +4
+    std::string      ObjName128;                 // +20
+    std::string      ConfigGroupCodeName128;     // +3C
+};
+
+C_ASSERT(sizeof(RefGameWorldGroup) == 88);
+
+// Parsed _RefGameWorldGroup_Config row (116 bytes, RefKeyValue4Str::Read 0x49a680): InitMembers
+// 0x4a8b80 / DestroyMembers 0x4a8c70.
+struct RefGameWorldGroupConfig
+{
+    int              ID;                         // +0
+    std::string      GroupCodeName128;           // +4
+    std::string      ValueCodeName128;           // +20
+    std::string      Value;                      // +3C
+    std::string      Type;                       // +58
+};
+
+C_ASSERT(sizeof(RefGameWorldGroupConfig) == 116);
+
 // ---------------------------------------------------------------------------------------------
 // Object, skill and magic option records
 
@@ -1792,3 +1924,271 @@ public:
 
 C_ASSERT(sizeof(CRefSiegeQuestReward) == 0x30);
 C_ASSERT(FIELD_OFFSET(CRefSiegeQuestReward, Service) == 24);
+
+// ---------------------------------------------------------------------------------------------
+// Trigger and game world group records
+
+// _RefGameWorldBindTriggerCategory
+class CRefGameWorldBindTriggerCategory : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefGameWorldBindTriggerCategory)
+
+public:
+    CRefGameWorldBindTriggerCategory();
+    virtual ~CRefGameWorldBindTriggerCategory();
+
+public:
+    DWORD            m_adw30[4];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefGameWorldBindTriggerCategory) == 0x40);
+
+// _RefTriggerCategory
+class CRefTriggerCategory : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerCategory)
+
+public:
+    CRefTriggerCategory();
+    virtual ~CRefTriggerCategory();
+
+public:
+    RefTriggerCategory m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerCategory) == 0x70);
+C_ASSERT(FIELD_OFFSET(CRefTriggerCategory, m_Row) == 48);
+
+// _RefTriggerCategoryBindTrigger
+class CRefTriggerCategoryBindTrigger : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerCategoryBindTrigger)
+
+public:
+    CRefTriggerCategoryBindTrigger();
+    virtual ~CRefTriggerCategoryBindTrigger();
+
+public:
+    DWORD            m_adw30[4];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefTriggerCategoryBindTrigger) == 0x40);
+
+// _RefTrigger
+class CRefTrigger : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTrigger)
+
+public:
+    CRefTrigger();
+    virtual ~CRefTrigger();
+
+public:
+    RefTrigger       m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTrigger) == 0x78);
+C_ASSERT(FIELD_OFFSET(CRefTrigger, m_Row) == 48);
+
+// _RefTriggerVariable
+class CRefTriggerVariable : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerVariable)
+
+public:
+    CRefTriggerVariable();
+    virtual ~CRefTriggerVariable();
+
+public:
+    RefTriggerVariable m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerVariable) == 0x90);
+C_ASSERT(FIELD_OFFSET(CRefTriggerVariable, m_Row) == 48);
+
+// _RefTriggerBindEvent
+class CRefTriggerBindEvent : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerBindEvent)
+
+public:
+    CRefTriggerBindEvent();
+    virtual ~CRefTriggerBindEvent();
+
+public:
+    DWORD            m_adw30[4];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefTriggerBindEvent) == 0x40);
+
+// _RefTriggerBindCondition
+class CRefTriggerBindCondition : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerBindCondition)
+
+public:
+    CRefTriggerBindCondition();
+    virtual ~CRefTriggerBindCondition();
+
+public:
+    DWORD            m_adw30[4];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefTriggerBindCondition) == 0x40);
+
+// _RefTriggerBindAction
+class CRefTriggerBindAction : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerBindAction)
+
+public:
+    CRefTriggerBindAction();
+    virtual ~CRefTriggerBindAction();
+
+public:
+    DWORD            m_adw30[4];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefTriggerBindAction) == 0x40);
+
+// _RefTriggerCommon
+class CRefTriggerCommon : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerCommon)
+
+public:
+    CRefTriggerCommon();
+    virtual ~CRefTriggerCommon();
+
+public:
+    RefTriggerCommon m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerCommon) == 0x78);
+C_ASSERT(FIELD_OFFSET(CRefTriggerCommon, m_Row) == 48);
+
+// _RefTriggerEvent
+class CRefTriggerEvent : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerEvent)
+
+public:
+    CRefTriggerEvent();
+    virtual ~CRefTriggerEvent();
+
+public:
+    DWORD            m_adw30[2];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefTriggerEvent) == 0x38);
+
+// _RefTriggerCondition
+class CRefTriggerCondition : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerCondition)
+
+public:
+    CRefTriggerCondition();
+    virtual ~CRefTriggerCondition();
+
+public:
+    RefTriggerCondition m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerCondition) == 0x90);
+C_ASSERT(FIELD_OFFSET(CRefTriggerCondition, m_Row) == 48);
+
+// _RefTriggerAction
+class CRefTriggerAction : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerAction)
+
+public:
+    CRefTriggerAction();
+    virtual ~CRefTriggerAction();
+
+public:
+    RefTriggerAction m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerAction) == 0x58);
+C_ASSERT(FIELD_OFFSET(CRefTriggerAction, m_Row) == 48);
+
+// _RefTriggerConditionParam
+class CRefTriggerConditionParam : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerConditionParam)
+
+public:
+    CRefTriggerConditionParam();
+    virtual ~CRefTriggerConditionParam();
+
+public:
+    RefTriggerConditionParam m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerConditionParam) == 0xA8);
+C_ASSERT(FIELD_OFFSET(CRefTriggerConditionParam, m_Row) == 48);
+
+// _RefTriggerActionParam
+class CRefTriggerActionParam : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefTriggerActionParam)
+
+public:
+    CRefTriggerActionParam();
+    virtual ~CRefTriggerActionParam();
+
+public:
+    RefTriggerActionParam m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefTriggerActionParam) == 0xA8);
+C_ASSERT(FIELD_OFFSET(CRefTriggerActionParam, m_Row) == 48);
+
+// _RefGameWorldBindGameWorldGroup
+class CRefGameWorldBindGameWorldGroup : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefGameWorldBindGameWorldGroup)
+
+public:
+    CRefGameWorldBindGameWorldGroup();
+    virtual ~CRefGameWorldBindGameWorldGroup();
+
+public:
+    DWORD            m_adw30[4];                 // +30  not initialised
+};
+
+C_ASSERT(sizeof(CRefGameWorldBindGameWorldGroup) == 0x40);
+
+// _RefGameWorldGroup
+class CRefGameWorldGroup : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefGameWorldGroup)
+
+public:
+    CRefGameWorldGroup();
+    virtual ~CRefGameWorldGroup();
+
+public:
+    RefGameWorldGroup m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefGameWorldGroup) == 0x88);
+C_ASSERT(FIELD_OFFSET(CRefGameWorldGroup, m_Row) == 48);
+
+// _RefGameWorldGroup_Config
+class CRefGameWorldGroup_Config : public CDBRecStream
+{
+    SR_DECLARE_REF_RECORD(CRefGameWorldGroup_Config)
+
+public:
+    CRefGameWorldGroup_Config();
+    virtual ~CRefGameWorldGroup_Config();
+
+public:
+    RefGameWorldGroupConfig m_Row;                      // +30  parsed row
+};
+
+C_ASSERT(sizeof(CRefGameWorldGroup_Config) == 0xA8);
+C_ASSERT(FIELD_OFFSET(CRefGameWorldGroup_Config, m_Row) == 48);
