@@ -9,6 +9,7 @@
 
 #include "BSLib/DB/Database.h"
 #include "ServerCommon/RefRecords.h"
+#include "ServerCommon/RefDataDrop.h"
 
 // The reference data of SR_ShardManager (ServerCommon\ReferenceData.cpp and
 // RefInstanceGenerator.cpp of the original; both names belong to the one static object 0x89b020,
@@ -560,9 +561,7 @@ struct RefHiveRow
 };
 
 C_ASSERT(sizeof(RefHiveRow) == 0x30);
-// _RefMonster_AssignedItemRndDrop, _RefDropItemGroup, _RefMagicOptGroup (vftable).
-struct RefMonsterAssignedItemRndDropRow { BYTE ab[0x34]; }; // TODO(type)
-struct RefDropItemGroupRow { BYTE ab[0x2C]; };             // TODO(type)
+// _RefMonster_AssignedItemRndDrop, _RefDropItemGroup: see RefDataDrop.h.
 
 // _RefMagicOptGroup row (112 bytes, vftable of RefMagicOptGroup; ctor 0x514690, dtor 0x514740).
 // Column names are not known.
@@ -843,9 +842,6 @@ C_ASSERT(sizeof(RefRankingPackets) == 0x20);
 // Magic option and drop class tables (the object at CReferenceData+0x268, RefMagicOptData of
 // the analysis; filled by slots 7, 8, 0x29..0x34)
 
-// _RefDropOptLevelSel / _RefDropClassSel rows.
-struct RefDropOptLevelSelRow { BYTE ab[0xC]; };            // TODO(type)
-struct RefDropClassSelRow { BYTE ab[0xC]; };               // TODO(type) RefDropClassSel::Read
 // Magic option parameter descriptors (mfunc_*): built from Param1..Param5 of a _RefMagicOpt row
 // by the parameter code (Param1). Random() rolls a value, GetMin / GetMax give its range.
 class mfunc_desc
@@ -1065,29 +1061,13 @@ BOOL RefData_FindAssignedMagicOptEntry(WORD wID, const RefObjCommonRow* pObj,
                                        RefMagicOptLevel*& pLevel, DWORD& dwIndex);
 // RefData_IsMagicOptEntryAllowed (0x51ad30): no equipment allows only 0.
 BOOL RefData_IsMagicOptEntryAllowed(const RefObjCommonRow* pObj, WORD wID);
-// The 20-byte value of DropClassEntry's first map.
-struct RefDropClassProb { BYTE ab[0x14]; };                // TODO(type)
 
-// DropClassEntry::ctor (0x51f0d0).
-struct RefDropClassEntry
-{
-    RefDropClassEntry()
-        : dwCount(0)
-    {
-    }
-
-    DWORD                               dwCount;  // +0
-    std::map<DWORD, RefDropClassProb>   mapProb;  // +4   TODO(type)
-    std::map<DWORD, std::vector<RefObjCommonRow*> > mapItem; // +10  TODO(type)
-};
-
-C_ASSERT(sizeof(RefDropClassEntry) == 0x1C);
-
-// RefMagicOptData::SlotGroup_ctor (0x50f0d0).
+// RefMagicOptData::SlotGroup_ctor (0x50f0d0): one drop class, per country (0..2) the entries
+// by class index.
 struct RefDropClassSlot
 {
     std::vector<RefDropClassEntry> aEntry[3];    // +0
-    DWORD                   dw30;                // +30  not initialised
+    BYTE                    b30;                 // +30  set by BuildDropClassTables only
 };
 
 C_ASSERT(sizeof(RefDropClassSlot) == 0x34);
@@ -1101,8 +1081,9 @@ enum
 class RefMagicOptTables
 {
 public:
-    typedef CRefOwnerMap<std::map<DWORD, RefDropOptLevelSelRow*> > DropOptLevelSelMap;
-    typedef CRefOwnerMap<std::map<DWORD, RefDropClassSelRow*> > DropClassSelMap;
+    typedef CRefOwnerMap<std::map<DWORD, RefDropGold*> > DropGoldMap;
+    typedef CRefOwnerMap<std::map<DWORD, RefDropOptLevelSel*> > DropOptLevelSelMap;
+    typedef CRefOwnerMap<std::map<DWORD, RefDropClassSel*> > DropClassSelMap;
 
     // 0x50eb40.
     RefMagicOptTables();
@@ -1126,7 +1107,7 @@ public:
     mfunc_desc* FindMagicOption(WORD wID, DWORD* pdwMLevel);
 
     DWORD                   m_adw00[36];         // +0   the first 23 are 8
-    std::map<DWORD, DWORD>  m_map090;            // +90  TODO(type)
+    DropGoldMap             m_mapDropGold;       // +90  slot 0x28, by level
     DropOptLevelSelMap      m_mapDropOptLevelSel; // +9C  slot 0x29
     std::map<int, int>      m_mapLevelBand;      // +A8  level -> band (42 entries)
     DropClassSelMap         m_amapDropClassSel[REF_DROP_CLASS_SEL_COUNT]; // +B4  slots 0x2A..0x33
@@ -1135,7 +1116,7 @@ public:
     std::map<WORD, RefMagicOptLevel*> m_mapMagicOptLevel; // +5C0  slot 7, by ID
 };
 
-C_ASSERT(FIELD_OFFSET(RefMagicOptTables, m_map090) == 0x90);
+C_ASSERT(FIELD_OFFSET(RefMagicOptTables, m_mapDropGold) == 0x90);
 C_ASSERT(FIELD_OFFSET(RefMagicOptTables, m_mapLevelBand) == 0xA8);
 C_ASSERT(FIELD_OFFSET(RefMagicOptTables, m_amapDropClassSel) == 0xB4);
 C_ASSERT(FIELD_OFFSET(RefMagicOptTables, m_aDropClass) == 0x138);
@@ -1204,7 +1185,7 @@ public:
     typedef CRefOwnerMap<std::map<DWORD, RefHiveRow*> >          RefHiveMap;
     typedef std::multimap<DWORD, RefAISkill*>                   RefAISkillMap;
     typedef std::vector<RefMonsterAssignedItemRndDropRow*>      RefMonsterAssignedItemRndDropVector;
-    typedef std::map<DWORD, RefDropItemGroupRow*>               RefDropItemGroupMap;
+    typedef std::map<DWORD, std::vector<RefDropItemGroupRow*> > RefDropItemGroupMap;
     typedef std::vector<RefMagicOptGroupRow*>                   RefMagicOptGroupVector;
     typedef std::map<DWORD, RefMagicOptGroupVector>             RefMagicOptGroupMap;
     typedef CRefOwnerMap<std::map<DWORD, RefSkillMasteryRow*> >  RefSkillMasteryMap;

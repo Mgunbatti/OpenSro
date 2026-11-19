@@ -1027,8 +1027,16 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, RefData_BuildItemOptLevel, P, P, P, P, P, P,                         // 0x10
     P, P, P, P, P, P, P, P,                                                 // 0x18
     P, P, P, P, P, P, P, P,                                                 // 0x20
-    P, P, P, P, P, P, P, P,                                                 // 0x28
-    P, P, P, P, P, P, P, RefData_BuildRefCharGenData,                       // 0x30
+    RefData_BuildDropGold,                                                  // 0x28
+    RefData_BuildDropOptLevelSel,
+    RefData_BuildDropClassSel, RefData_BuildDropClassSel, RefData_BuildDropClassSel,
+    RefData_BuildDropClassSel, RefData_BuildDropClassSel, RefData_BuildDropClassSel,
+    RefData_BuildDropClassSel, RefData_BuildDropClassSel, RefData_BuildDropClassSel,
+    RefData_BuildDropClassSel,                                              // 0x33
+    RefData_BuildDropClassTables,
+    RefData_BuildDropItemGroup,
+    RefData_BuildMonsterAssignedItemRndDrop,                                // 0x36
+    RefData_BuildRefCharGenData,
     RefData_BuildHive,                                                      // 0x38
     REF_KEYED(RefAISkill, RefAISkillMap, m_mmapAISkill, DWORD, TacticsID),  // 0x39
     RefData_BuildTactics,
@@ -1066,7 +1074,7 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     REF_LOADED(RefData_LoadSiegeQuestReward),
     P, P,                                                                   // 0x53
     REF_LOADED(RefData_LoadRentItem),                                       // 0x55
-    P, P,
+    P, RefData_BuildCustomizingReservedItemDrop,
     P,                                                                      // 0x58
     REF_LOADED((RefData_AddRowUniqueStream<RefOptionalTeleport,
                 CReferenceData::RefOptionalTeleportMap,
