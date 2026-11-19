@@ -470,10 +470,95 @@ struct RefScrapItemRuleRow { BYTE ab[0xD0]; };             // TODO(type)
 // _RefMappingShopGroup / _RefMappingShopWithTab (2 code name strings at +20 / +48).
 struct RefMappingShopGroupRow { BYTE ab[0x4C]; };          // TODO(type)
 struct RefMappingShopWithTabRow { BYTE ab[0x4C]; };        // TODO(type)
-// _RefTactics (string at +152, map at +176), _RefNest, _RefHive (vector at +36).
-struct RefTacticsRow { BYTE ab[0xBC]; };                   // TODO(type)
-struct RefNestRow { BYTE ab[0x3C]; };                      // TODO(type)
-struct RefHiveRow { BYTE ab[0x30]; };                      // TODO(type)
+// TAB_REFTACTICS row (188 bytes, RecCtor 0x4d30f0 / RecDtor 0x4dd0b0: only the string and the
+// map are initialised). Column names are not known; there is no Service column.
+struct RefTacticsRow
+{
+    DWORD            TacticsID;                  // +0   key of the map
+    DWORD            dw04;                       // +4
+    BYTE             b08;                        // +8
+    DWORD            dw0C;                       // +C
+    BYTE             b10;                        // +10
+    DWORD            dw14;                       // +14
+    BYTE             b18;                        // +18
+    DWORD            dw1C;                       // +1C
+    BYTE             ab20[4];                    // +20
+    DWORD            dw24;                       // +24
+    BYTE             b28;                        // +28
+    DWORD            adw2C[8];                   // +2C
+    BYTE             b4C;                        // +4C
+    DWORD            adw50[8];                   // +50
+    BYTE             b70;                        // +70
+    DWORD            dw74;                       // +74
+    BYTE             b78;                        // +78
+    BYTE             b79;                        // +79
+    DWORD            dw7C;                       // +7C
+    BYTE             b80;                        // +80
+    DWORD            dw84;                       // +84
+    BYTE             b88;                        // +88
+    BYTE             b89;                        // +89
+    DWORD            dw8C;                       // +8C
+    DWORD            dw90;                       // +90
+    std::string      str94;                      // +94
+    std::map<DWORD, RefAISkill*> mapAISkill;     // +B0  skill ID -> its _RefAISkill row
+};
+
+C_ASSERT(FIELD_OFFSET(RefTacticsRow, str94) == 0x94);
+C_ASSERT(sizeof(RefTacticsRow) == 0xBC);
+
+// TAB_REFNEST row (60 bytes, built in RefData_AddRowRefNest 0x4d1e40).
+struct RefNestRow
+{
+    RefNestRow()
+        : NestID(0), HiveID(0), TacticsID(0), RegionDBID(0), InitialDir(0), Radius(0),
+          GenerateRadius(0), ChampionGenPercentage(0), DelayTimeMin(0), DelayTimeMax(0),
+          MaxTotalCount(0), Flag(0), Respawn(1), Type(0)
+    {
+    }
+
+    DWORD            NestID;                     // +0   key of the map
+    DWORD            HiveID;                     // +4
+    DWORD            TacticsID;                  // +8
+    WORD             RegionDBID;                 // +C
+    float            LocalPosX;                  // +10  not initialised
+    float            LocalPosY;                  // +14
+    float            LocalPosZ;                  // +18
+    WORD             InitialDir;                 // +1C
+    DWORD            Radius;                     // +20
+    DWORD            GenerateRadius;             // +24
+    DWORD            ChampionGenPercentage;      // +28
+    DWORD            DelayTimeMin;               // +2C
+    DWORD            DelayTimeMax;               // +30
+    DWORD            MaxTotalCount;              // +34
+    BYTE             Flag;                       // +38
+    BYTE             Respawn;                    // +39
+    BYTE             Type;                       // +3A
+};
+
+C_ASSERT(sizeof(RefNestRow) == 0x3C);
+
+// TAB_REFHIVE row (48 bytes, RecCtor 0x4dcff0 / RecDtor 0x4dcf80).
+struct RefHiveRow
+{
+    RefHiveRow()
+        : HiveID(0), KeepMonsterCountType(0), OverwriteMaxTotalCount(0), MonsterCountPerPC(0.0f),
+          SpawnSpeed(0), MaxIncrease(0), GameWorldID(1), HatchObjType(0)
+    {
+    }
+
+    DWORD            HiveID;                     // +0   key of the map
+    BYTE             KeepMonsterCountType;       // +4
+    DWORD            OverwriteMaxTotalCount;     // +8
+    float            MonsterCountPerPC;          // +C
+    DWORD            SpawnSpeed;                 // +10
+    DWORD            MaxIncrease;                // +14
+    BYTE             Flag;                       // +18  not initialised
+    WORD             GameWorldID;                // +1A
+    WORD             HatchObjType;               // +1C
+    std::vector<RefNestRow*> vecNest;            // +20  not owned (LoadNest)
+};
+
+C_ASSERT(sizeof(RefHiveRow) == 0x30);
 // _RefMonster_AssignedItemRndDrop, _RefDropItemGroup, _RefMagicOptGroup (vftable).
 struct RefMonsterAssignedItemRndDropRow { BYTE ab[0x34]; }; // TODO(type)
 struct RefDropItemGroupRow { BYTE ab[0x2C]; };             // TODO(type)
@@ -511,11 +596,62 @@ DWORD RefRow_Read(CRefRow& row, RefMagicOptGroupRow& r);
 // The 0xA0-byte position rows of CRefInstanceGenerator::LoadGameWorldPositions (0x4adb60,
 // RefData_ReadPosRecord 0x498a70; dtor 0x50a420: string +8, std::string[3] at +72).
 struct RefGameWorldPositionRow { BYTE ab[0xA0]; };         // TODO(type)
-// _RefQuestRewardItems (4 strings), _RefEventReward (3 strings), _RefEventRewardItems (3
-// strings).
-struct RefQuestRewardItemsRow { BYTE ab[0x8C]; };          // TODO(type)
-struct RefEventRewardRow { BYTE ab[0x7C]; };               // TODO(type)
-struct RefEventRewardItemsRow { BYTE ab[0x6C]; };          // TODO(type)
+// Parsed _RefQuestRewardItems row (140 bytes): InitMembers 0x4a71b0 (only the strings) /
+// DestroyMembers 0x513c50. Column names are not known.
+struct RefQuestRewardItemsRow
+{
+    DWORD            QuestID;                    // +0   key of the quest map
+    BYTE             b04;                        // +4   key of the group map
+    DWORD            ItemObjID;                  // +8   object of the item code name column, or 0
+    std::string      str0C;                      // +C
+    DWORD            dw28;                       // +28
+    DWORD            dw2C;                       // +2C
+    std::string      str30;                      // +30  "xxx" or the code name of a rent item
+    DWORD            dw4C;                       // +4C
+    std::string      str50;                      // +50
+    DWORD            dw6C;                       // +6C
+    std::string      str70;                      // +70
+};
+
+C_ASSERT(sizeof(RefQuestRewardItemsRow) == 0x8C);
+
+// Parsed _RefEventReward row (124 bytes): InitMembers 0x4a72e0 / DestroyMembers 0x513ad0.
+struct RefEventRewardRow
+{
+    DWORD            ID;                         // +0   key of the map, 10000 and up
+    BYTE             b04;                        // +4
+    BYTE             b05;                        // +5
+    DWORD            dw08;                       // +8
+    DWORD            dw0C;                       // +C
+    DWORD            dw10;                       // +10
+    DWORD            dw14;                       // +14
+    BYTE             b18;                        // +18
+    BYTE             b19;                        // +19
+    DWORD            dw1C;                       // +1C
+    std::string      str20;                      // +20
+    DWORD            dw3C;                       // +3C
+    std::string      str40;                      // +40
+    DWORD            dw5C;                       // +5C
+    std::string      str60;                      // +60
+};
+
+C_ASSERT(sizeof(RefEventRewardRow) == 0x7C);
+
+// Parsed _RefEventRewardItems row (108 bytes): InitMembers 0x4a74b0 / DestroyMembers 0x513a20.
+struct RefEventRewardItemsRow
+{
+    DWORD            EventRewardID;              // +0   key of the reward map
+    DWORD            ItemObjID;                  // +4   key of the item map
+    DWORD            dw08;                       // +8
+    float            f0C;                        // +C
+    std::string      str10;                      // +10  "xxx" or the code name of a rent item
+    DWORD            dw2C;                       // +2C
+    std::string      str30;                      // +30
+    DWORD            dw4C;                       // +4C
+    std::string      str50;                      // +50
+};
+
+C_ASSERT(sizeof(RefEventRewardItemsRow) == 0x6C);
 
 // _RefSetItemGroup row (20 bytes): RefSetItemGroup::InitMembers 0x5145c0 / DestroyMembers
 // 0x514570.

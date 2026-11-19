@@ -6,6 +6,7 @@
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataQuest.h"
 #include "ServerFramework/ServerDataExtern.h"
 
 CReferenceData* g_pReferenceData = NULL;
@@ -1027,9 +1028,10 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     P, P, P, P, P, P, P, P,                                                 // 0x20
     P, P, P, P, P, P, P, P,                                                 // 0x28
     P, P, P, P, P, P, P, P,                                                 // 0x30
-    P,                                                                      // 0x38
+    RefData_BuildHive,                                                      // 0x38
     REF_KEYED(RefAISkill, RefAISkillMap, m_mmapAISkill, DWORD, TacticsID),  // 0x39
-    P, P,
+    RefData_BuildTactics,
+    RefData_LoadNest,
     REF_LOADED((RefData_AddRowUnique<CRefQuest, RefQuest, CReferenceData::RefQuestMap,
                 &CReferenceData::m_mapQuest>)),                             // 0x3C
     RefData_BuildGameWorld,
@@ -1037,7 +1039,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
                              &CReferenceData::m_vecInstanceWorldRegion>,    // 0x3E
     &RefData_BuildCopyVector<CRefInstanceWorldStartPos, RefInstanceWorldStartPosData,
                              &CReferenceData::m_vecInstanceWorldStartPos>,
-    P, P, P, P, P, P,                                                       // 0x40
+    RefData_LoadRankingActivity, RefData_LoadRankingContribution,           // 0x40
+    RefData_LoadRankingActivity, RefData_LoadRankingContribution,
+    RefData_LoadRankingActivity, RefData_LoadRankingContribution,
     REF_LOADED((RefData_AddRowUnique<CRefGachaCode, RefGachaCode, CReferenceData::RefGachaCodeMap,
                 &CReferenceData::m_mapGachaCode>)),                         // 0x46
     P,
@@ -1080,7 +1084,9 @@ static const PFN_REF_BUILD s_apfnBuild[REF_TABLE_SLOT_COUNT] =
     RefData_BuildServerEventReward,
     RefData_BuildServerEventReward,
     REF_LOADED(RefData_LoadQuestReward),                                    // 0x64
-    P, P, P,
+    RefData_BuildQuestRewardItems,
+    RefData_BuildEventReward,
+    RefData_BuildEventRewardItems,
     P, P,                                                                   // 0x68
     REF_KEYED(RefUIString, RefUIStringMap, m_mapUIString, std::string, GroupCodeName128),
     REF_KEYED(RefTriggerBind, RefTriggerBindMap, m_mmapGameWorldBindTriggerCategory, int, ID1),

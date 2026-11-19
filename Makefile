@@ -239,7 +239,8 @@ SHARD_REC_OBJS = $(OBJ)\ServerCommon\RefRecords.obj
 SHARD_INST_OBJS = $(OBJ)\ServerCommon\InstanceRecords.obj
 # SHARD_REFDATA_OBJS: the reference data (CReferenceData, the table builders and row readers).
 # Needs SHARD_REC_OBJS (the siege rows are the data parts of the record classes).
-SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj
+SHARD_REFDATA_OBJS = $(OBJ)\ServerCommon\ReferenceData.obj \
+	$(OBJ)\ServerCommon\RefDataQuest.obj
 
 # GlobalManager application (JMX_CommonServers\GlobalManager), compiled with GLOBAL_DEFS.
 # GlobalManager.exe ("nmake global") is GLOBAL_APP_OBJS + GLOBAL_MAIN_OBJS + WinMain +
@@ -330,7 +331,8 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
         $(BIN)\SimpleFTPTest.exe \
         $(BIN)\ShardRefRecordTest.exe \
         $(BIN)\ShardInstanceRecordTest.exe \
-        $(BIN)\ShardReferenceDataTest.exe
+        $(BIN)\ShardReferenceDataTest.exe \
+        $(BIN)\ShardRefQuestTest.exe
 
 all: $(LIBS) $(GLOBAL_LIBS) $(TESTS)
 
@@ -599,6 +601,9 @@ $(OBJ)\test\ShardInstanceRecordTest.obj: test\ShardInstanceRecordTest.cpp
 $(OBJ)\test\ShardReferenceDataTest.obj: test\ShardReferenceDataTest.cpp
 	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardReferenceDataTest.cpp
 
+$(OBJ)\test\ShardRefQuestTest.obj: test\ShardRefQuestTest.cpp
+	cl $(CFLAGS) $(SHARD_DEFS) $(SHARD_APP_INC) /Fo$@ /Fd$(OBJ)\test\ test\ShardRefQuestTest.cpp
+
 # GlobalManagerTest uses the GlobalManager classes and the January 2011 framework.
 $(OBJ)\test\GlobalManagerTest.obj: test\GlobalManagerTest.cpp
 	cl $(CFLAGS) $(GLOBAL_DEFS) /Fo$@ /Fd$(OBJ)\test\ test\GlobalManagerTest.cpp
@@ -732,6 +737,11 @@ $(BIN)\ShardInstanceRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_INST_OBJS) \
 $(BIN)\ShardReferenceDataTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
                                    $(OBJ)\test\ShardReferenceDataTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardReferenceDataTest.obj $(SHARD_REFDATA_OBJS) \
+	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
+
+$(BIN)\ShardRefQuestTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
+                              $(OBJ)\test\ShardRefQuestTest.obj $(SHARD_LIBS)
+	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardRefQuestTest.obj $(SHARD_REFDATA_OBJS) \
 	    $(SHARD_REC_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 # Linked with the January 2011 builds of the libraries.
@@ -904,6 +914,7 @@ test: all
 	$(BIN)\ShardRefRecordTest.exe
 	$(BIN)\ShardInstanceRecordTest.exe
 	$(BIN)\ShardReferenceDataTest.exe
+	$(BIN)\ShardRefQuestTest.exe
 	$(BIN)\StringCheckTest.exe
 	$(BIN)\SimpleFTPTest.exe
 
