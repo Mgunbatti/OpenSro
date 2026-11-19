@@ -12,6 +12,7 @@
 #include "ServerCommon/ReferenceData.h"
 #include "ShardManager/FlagWorld.h"
 #include "ShardManager/GameWorld.h"
+#include "ShardManager/PartyManager.h"
 #include "ShardManager/ShardScheduleJob.h"
 #include "ShardManager/ShardWorldExtern.h"
 
@@ -279,13 +280,13 @@ void CBattleArenaMgr::OnRegisterReq(CMsg* pMsg, BYTE byAction)
             DWORD dwPartyID = pMsg->ReadForwardOnly<DWORD>();
             if (IsUserRegistered(byMatch, byKind, dwJID))
                 break;
-            void* pParty = PartyManager_FindParty(dwPartyID);
+            Party* pParty = GetSingleton_CPartyManager()->FindParty(dwPartyID);
             if (!pParty)
             {
                 SendRegisterAck_Error(1, dwJID, BATTLEARENA_ERR_INVALID);
                 break;
             }
-            if (Party_GetMemberCount(pParty) < 5)
+            if (pParty->GetMemberCount() < 5)
             {
                 SendRegisterAck_Error(1, dwJID, BATTLEARENA_ERR_PARTY_SIZE);
                 break;
@@ -1085,21 +1086,22 @@ void CBattleArenaMgr::CheckAndGoParty()
         while (it != mapReg.end())
         {
             CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(it->first);
-            void* pParty = NULL;
-            if (pUser && it->second == User_GetPartyID(pUser))
-                pParty = PartyManager_FindParty(User_GetPartyID(pUser));
+            Party* pParty = NULL;
+            if (pUser && it->second == pUser->GetPartyMemberInfo().m_dwPartyID)
+                pParty = GetSingleton_CPartyManager()->FindParty(
+                    pUser->GetPartyMemberInfo().m_dwPartyID);
             if (!pParty)
             {
                 mapReg.erase(it++);
                 continue;
             }
 
-            DWORD dwPartyID = Party_GetID(pParty);
+            DWORD dwPartyID = pParty->m_dwID;
             ByteMap mapLevel;
-            DWORD dwMembers = Party_GetMemberCount(pParty);
+            DWORD dwMembers = pParty->GetMemberCount();
             for (DWORD i = 0; i < dwMembers; ++i)
             {
-                CUser* pMember = Party_GetMember(pParty, i);
+                CUser* pMember = pParty->m_vecMember[i];
                 DWORD dwJID = pMember->GetJID();
                 batch.Add(pMember->GetSessionID(), dwJID);
                 m_amapPartyOfUser[byMatch].insert(DwordMap::value_type(dwJID, dwPartyID));
@@ -1369,8 +1371,9 @@ BYTE GetTeamBracket(const sBattleArenaTeam& team)
 
 void RemoveFromParty(CUser* pUser)
 {
-    if (User_GetParty(pUser))
-        PartyManager_RemoveMember(User_GetParty(pUser), User_GetPartyMemberKey(pUser), 2);
+    if (pUser->GetPartyMemberInfo().m_dwPartyID)
+        GetSingleton_CPartyManager()->RemoveMember(pUser->GetPartyMemberInfo().m_dwPartyID,
+                                                   pUser->GetJID(), 2);
 }
 
 void SendLayerOpened(const sBattleArenaTeam& team, BYTE byKind, BYTE byMatch)

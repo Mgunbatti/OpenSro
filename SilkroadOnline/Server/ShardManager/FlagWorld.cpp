@@ -13,6 +13,7 @@
 #include "ServerFramework/ServerDataExtern.h"
 #include "ServerCommon/ReferenceData.h"
 #include "ShardManager/GameWorld.h"
+#include "ShardManager/PartyManager.h"
 #include "ShardManager/ShardScheduleJob.h"
 #include "ShardManager/ShardWorldExtern.h"
 
@@ -659,8 +660,9 @@ void CFlagWorldMgr::StartGame()
             CUser* pUser = GetSingleton_CClientManager()->FindUserByJID(dwJID);
             if (!pUser)
                 continue;
-            if (User_GetParty(pUser))
-                PartyManager_RemoveMember(User_GetParty(pUser), User_GetPartyMemberKey(pUser), 2);
+            if (pUser->GetPartyMemberInfo().m_dwPartyID)
+                GetSingleton_CPartyManager()->RemoveMember(pUser->GetPartyMemberInfo().m_dwPartyID,
+                                                           pUser->GetJID(), 2);
 
             CMsg* pMsg = AllocNotice();
             BYTE byGrade = (BYTE)(itTeam->m_byGrade + 1);

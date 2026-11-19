@@ -52,15 +52,6 @@ C_ASSERT(FIELD_OFFSET(GameWorldCharPos, awCreateTime) == 0x28);
 // ---------------------------------------------------------------------------------------------
 // Used by the flag world, the battle arena and the siege fortress (SM_world4)
 
-// CUser + 0x68: the party of the user (NULL without one); CUser + 0x78: the key the party
-// manager removes the member by.
-void* User_GetParty(const CUser* pUser);
-DWORD User_GetPartyMemberKey(const CUser* pUser);
-
-// Provided by the party group: CPartyManager::RemoveMember (0x44f580) on the party manager
-// (dword_8A892C, asserts when there is none).
-void PartyManager_RemoveMember(void* pParty, DWORD dwMemberKey, int nReason);
-
 // Provided by the guild group: CGuildManager::ResetSiegeAuthority (0x43c5a0) on
 // GetSingleton_CGuildManager (0x40bab0).
 void GuildManager_ResetSiegeAuthority(DWORD dwGuildID);
@@ -90,23 +81,6 @@ namespace NewSchedule { class CScheduleManager; }
 // Provided by SM_world3: the static CShard_ScheduleManager (0x8A7B24).
 NewSchedule::CScheduleManager* ShardScheduleManager_Get();
 
-// Provided by the party group: CPartyManager::FindParty (0x44ead0) on GetSingleton_CPartyManager
-// (0x418440); the member count of the party (its member vector +0x10 / +0x14, 0 when empty).
-void* PartyManager_FindParty(DWORD dwPartyID);
-DWORD Party_GetMemberCount(void* pParty);
-
 // Provided by SM_main: CMainProcess + 0x423B0: one BYTE per battle arena match type (occupy, score,
 // flag), 0 while the match type is switched off.
 BYTE MainProcess_IsArenaMatchOpen(BYTE byMatch);
-
-// ---------------------------------------------------------------------------------------------
-// Used by the battle arena game flow (SM_world5)
-
-// CUser + 0x68 as the party ID (the field User_GetParty returns; CPartyManager::FindParty and
-// RemoveMember take the ID, 0 without a party).
-DWORD User_GetPartyID(const CUser* pUser);
-
-// Provided by the party group: the party ID (party + 0) and the members (the CUser* vector at
-// party + 0x0C, Party_GetMemberCount entries).
-DWORD Party_GetID(void* pParty);
-CUser* Party_GetMember(void* pParty, DWORD dwIndex);
