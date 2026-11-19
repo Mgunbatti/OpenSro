@@ -352,7 +352,8 @@ SHARD_WORLD_OBJS = $(OBJ)\ShardManager\Climate.obj \
 	$(OBJ)\ShardManager\ShardScheduleJob.obj \
 	$(OBJ)\ShardManager\ShardScheduleParam.obj \
 	$(OBJ)\ShardManager\FlagWorld.obj \
-	$(OBJ)\ShardManager\SiegeFortress.obj
+	$(OBJ)\ShardManager\SiegeFortress.obj \
+	$(OBJ)\ShardManager\BattleArena.obj
 TESTS = $(TESTS) $(BIN)\ShardClimateTest.exe
 
 $(OBJ)\ShardManager:

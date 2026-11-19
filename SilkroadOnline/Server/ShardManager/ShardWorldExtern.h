@@ -112,3 +112,12 @@ namespace NewSchedule { class CScheduleManager; }
 
 // Provided by SM_world3: the static CShard_ScheduleManager (0x8A7B24).
 NewSchedule::CScheduleManager* ShardScheduleManager_Get();
+
+// Provided by the party group: CPartyManager::FindParty (0x44ead0) on GetSingleton_CPartyManager
+// (0x418440); the member count of the party (its member vector +0x10 / +0x14, 0 when empty).
+void* PartyManager_FindParty(DWORD dwPartyID);
+DWORD Party_GetMemberCount(void* pParty);
+
+// Provided by SM_main: CMainProcess + 0x423B0: one BYTE per battle arena size (8, 16, 32), 0 while
+// the size is switched off.
+BYTE MainProcess_IsArenaSizeOpen(BYTE bySize);
