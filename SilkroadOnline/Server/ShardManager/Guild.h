@@ -167,10 +167,17 @@ public:
     virtual void Reset();                                                   // 3
     // CGuildManager::vf04 (0x4380c0)
     virtual CGuildCommon* CreateGuild(CInstanceGuild* pRecord);             // 4
-    virtual BOOL AddHostileGuilds(CInstanceGuildWar* pWar);                 // 5 (0x43c260)
-    virtual BOOL RemoveHostileGuilds(CInstanceGuildWar* pWar);              // 6 (0x43c2c0)
+    // CGuildManager::vf05 / vf06 (0x43c260 / 0x43c2c0): the hostile entries of both guilds;
+    // FALSE at the first guild that is missing or fails.
+    virtual BOOL AddHostileGuilds(CInstanceGuildWar* pWar);                 // 5
+    virtual BOOL RemoveHostileGuilds(CInstanceGuildWar* pWar);              // 6
+    // CGuildManager::vf07 (0x43c320): _GuildWar_AccountCombatResult, the points and kill
+    // counters, 0x38F5 subtype 29, and the end of the war when the end time has passed (more
+    // points win) or the killer's side reached the victory points.
     virtual WORD OnCombatResult(CInstanceGuildWar* pWar, CGuildMember* pKiller,
-                                CGuildMember* pVictim, int nPoint, int n5, int n6);  // 7
+                                CGuildMember* pVictim, int nPoint,
+                                const std::string& strKillerName,
+                                const std::string& strVictimName);         // 7
 
     CGuild* FindGuildT(DWORD dwGuildID)
     {
@@ -205,54 +212,116 @@ public:
     void OnUnionKick(CMsg* pMsg);               // 17 0x439350
     void OnDelegateMaster(CMsg* pMsg);          // 19 0x439550
 
-    // Second guild group: the other handlers.
-    void OnCreateGuild(CMsg* pMsg);             // 0
-    void OnJoinGuild(CMsg* pMsg);               // 2
-    void OnUpdatePermissions(CMsg* pMsg);       // 20
-    void OnMasterVoteStart(CMsg* pMsg);         // 21
-    void OnGuildWarRecordUpdate(CMsg* pMsg);    // 30
-    void OnMemberOnlineState(CMsg* pMsg);       // 36
-    void OnMemberInfoUpdate(CMsg* pMsg);        // 37
-    void OnGuildCrestRequest38(CMsg* pMsg);     // 38
-    void OnGuildCrestUpdate(CMsg* pMsg);        // 39
-    void OnUnionCrestRequest40(CMsg* pMsg);     // 40
-    void OnUnionCrestUpdate(CMsg* pMsg);        // 41
-    void OnDonateSP42(CMsg* pMsg);              // 42
-    void OnGiveMercenaryAbility(CMsg* pMsg);    // 43
-    void OnUpdateGuildSP(CMsg* pMsg);           // 44
-    void OnOffsetGP(CMsg* pMsg);                // 45
-    void OnSetSiegeAuthority(CMsg* pMsg);       // 46
-    void OnGuildWarBegin(CMsg* pMsg);           // 50
-    void OnOffsetGPAndLevel(CMsg* pMsg);        // 53
-    void OnGuildWarCombatResult(CMsg* pMsg);    // notify 29
+    // Request handlers of SM_social2. Every handler with a request ID answers 0xB8F7 {1} (some
+    // with data) or {2, WORD error}; OnOffsetGP and OnOffsetGPAndLevel do not answer.
+    void OnCreateGuild(CMsg* pMsg);             // 0  0x43b530
+    void OnJoinGuild(CMsg* pMsg);               // 2  0x43b320
+    void OnUpdatePermissions(CMsg* pMsg);       // 20 0x4396f0
+    void OnMasterVoteStart(CMsg* pMsg);         // 21 0x4399b0
+    void OnGuildWarRecordUpdate(CMsg* pMsg);    // 30 0x439e70
+    void OnMemberOnlineState(CMsg* pMsg);       // 36 0x439ff0
+    void OnMemberInfoUpdate(CMsg* pMsg);        // 37 0x43a160
+    void OnGuildCrestRequest38(CMsg* pMsg);     // 38 0x43a330
+    void OnGuildCrestUpdate(CMsg* pMsg);        // 39 0x43a4e0
+    void OnUnionCrestRequest40(CMsg* pMsg);     // 40 0x43a630
+    void OnUnionCrestUpdate(CMsg* pMsg);        // 41 0x43a7e0
+    void OnDonateSP42(CMsg* pMsg);              // 42 0x43a930
+    void OnGiveMercenaryAbility(CMsg* pMsg);    // 43 0x43aac0
+    void OnUpdateGuildSP(CMsg* pMsg);           // 44 0x43ac80
+    void OnOffsetGP(CMsg* pMsg);                // 45 0x43adc0
+    void OnSetSiegeAuthority(CMsg* pMsg);       // 46 0x43afc0 (SM_world_1)
+    void OnGuildWarBegin(CMsg* pMsg);           // 50 0x439b00
+    void OnOffsetGPAndLevel(CMsg* pMsg);        // 53 0x43b160
+    void OnGuildWarCombatResult(CMsg* pMsg);    // notify 29 0x439c00
 
-    // Second guild group: DB helpers and notifications used here.
+    // CGuildManager::OnGuildWarHostileRequest (0x43cb50, CMainProcess::OnMsg_7C00 0x7112): the
+    // guild master's request to end a war; a trs_guild_job carries it. 1, or the error.
+    WORD OnGuildWarHostileRequest(DWORD dwJID, WORD wOpcode, CMsg* pMsg);
+    // CGuildManager::OnUnjoinHostileGuild (0x43ccf0, trs_guild_job::vf04): ends the war with
+    // dwGuildID as the winner.
+    void OnUnjoinHostileGuild(DWORD dwWarID, DWORD dwGuildID);
+    // CGuildManager::SendCrestError (0x43ae80) / OnCrestRevUpdate (0x43aef0): the crest
+    // uploader's answer (CMainProcess::OnMsg_380E); bGuild 1 guild, else alliance.
+    static void SendCrestError(DWORD dwRequestID, DWORD dwSessionID);
+    static void OnCrestRevUpdate(BYTE bGuild, DWORD dwRequestID, DWORD dwSessionID, DWORD dwID,
+                                 int nCrestRev);
+    // CGuildManager::BroadcastToGuild (0x43de80): CCallUserMgr's call to the online members.
+    void BroadcastToGuild(DWORD dwGuildID, transaction* pTransaction);
+
+    // DB helpers.
+    // CGuildManager::RemoveMember (0x43b2d0): CGuild::DBDeleteMember, then 0x38F5 subtype 3.
     WORD RemoveMember(DWORD dwGuildID, DWORD dwCharID, BYTE bReason);
+    // CGuildManager::IsValidGuildName (0x43b810, also CMainProcess::OnMsg_7450): 2..12
+    // characters, the name filter, not in use.
+    static WORD IsValidGuildName(const char* pszName);
+    // CGuildManager::DBIsExistingGuildName (0x43b900): FALSE when the query fails.
+    static BOOL DBIsExistingGuildName(const char* pszName);
+    // CGuildManager::DBCreateGuild (0x43b9d0)
+    static WORD DBCreateGuild(DWORD dwCharID, DWORD* pdwGuildID, const char* pszName);
+    // CGuildManager::DBAddMember (0x43ca00): member class 10.
+    static WORD DBAddMember(DWORD dwGuildID, DWORD dwCharID);
+    // CGuildManager::DBCreateUnion (0x43bb60)
     WORD DBCreateUnion(CGuild* pMaster, CGuild* pMember, DWORD* pdwAllianceID);
-    void DisbandUnion(DWORD dwAllianceID);
+    // CGuildManager::DisbandUnion (0x43be50): _AllianceRemove (result ignored) and removal.
+    WORD DisbandUnion(DWORD dwAllianceID);
+    // CGuildManager::DBBeginGuildWar (0x43be90): *ppWar receives the new war.
+    WORD DBBeginGuildWar(DWORD dwGuildID1, DWORD dwGuildID2, const GUILD_WAR_REQUEST& request,
+                         CInstanceGuildWar** ppWar);
+    // CGuildManager::DBEndGuildWar (0x43c130): the stake goes to the winner's booty.
     WORD DBEndGuildWar(DWORD dwWinnerGuildID, DWORD dwWarID);
+    // CGuildManager::DBAddGPHistory (0x43c5d0): _AddGPHistory, the new row to the front.
     WORD DBAddGPHistory(DWORD dwGuildID, DWORD dwJID, int nGP, BYTE bReason);
-    BYTE DBDeleteGPHistory(CGuild* pGuild);
-    void SendGuildInfo53(DWORD dwGuildID);
-    void SendGPHistory54(DWORD dwGuildID, BYTE bCount);
-    static void SendDisbandResult(DWORD dwGuildID);
-    static void SendDonateSPResult(DWORD dwGuildID, DWORD dwCharID, int nAmount);
-    static void SendLevelUpResult(DWORD dwGuildID, BYTE bLevel, int nGatheredSP);
+    // CGuildManager::DBDeleteGPHistory (0x43c910): the number of rows deleted (and popped).
+    static BYTE DBDeleteGPHistory(CGuild* pGuild);
+
+    // Notifications 0x38F5 to the game servers (subtype in brackets).
+    static void SendCreateResult(DWORD dwGuildID);                                      // 0
+    static void SendDisbandResult(DWORD dwGuildID);                                     // 1
+    static void SendJoinResult(DWORD dwGuildID, const CInstanceGuildMember* pRecord);   // 2
+    static void SendLeaveResult(DWORD dwGuildID, DWORD dwCharID, BYTE bReason);        // 3
+    static void SendDonateSPResult(DWORD dwGuildID, DWORD dwCharID, int nAmount);      // 8
+    static void SendLevelUpResult(DWORD dwGuildID, BYTE bLevel, int nGatheredSP);      // 9
     static void SendNoticeUpdated(DWORD dwGuildID, const std::string& strTitle,
-                                  const std::string& strNotice);
+                                  const std::string& strNotice);                       // 10
     static void SendUnionCreated(DWORD dwAllianceID, DWORD dwMasterGuildID,
-                                 DWORD dwMemberGuildID);
-    static void SendUnionGuildAdded(DWORD dwAllianceID, DWORD dwGuildID, BYTE bSlot);
-    static void SendUnionGuildRemoved(DWORD dwAllianceID, DWORD dwGuildID, BYTE bReason);
-    static void SendUnionDisbanded(DWORD dwAllianceID);
+                                 DWORD dwMemberGuildID);                               // 11
+    static void SendUnionGuildAdded(DWORD dwAllianceID, DWORD dwGuildID, BYTE bSlot);  // 13
+    static void SendUnionGuildRemoved(DWORD dwAllianceID, DWORD dwGuildID, BYTE bReason);  // 18
+    static void SendUnionDisbanded(DWORD dwAllianceID);                                 // 18
     static void SendMasterDelegated(DWORD dwGuildID, DWORD dwNewMasterCharID,
-                                    DWORD dwOldMasterCharID);
-    static void SendGuildWarEnded(DWORD dwWarID, DWORD dwWinnerGuildID);
-    static void SendGuildRenamed(const std::string& strName, DWORD dwGuildID);
+                                    DWORD dwOldMasterCharID);                          // 19
+    static void SendPermissionsUpdated(const GuildPermissionVector& vecPermission,
+                                       DWORD dwGuildID);                               // 20
+    static void SendGuildWarBegun(const CInstanceGuildWar* pWar);                       // 25
+    static void SendHostileResult(DWORD dwWarID, DWORD dwGuildID);                      // 26
+    static void SendGuildWarEnded(DWORD dwWarID, DWORD dwWinnerGuildID);                // 28
+    static void SendGuildWarCombatResult(const std::string& strVictimName,
+                                         CGuildMember* pKiller, DWORD dwWarID, int nPoint,
+                                         CGuildMember* pVictim,
+                                         const std::string& strKillerName);            // 29
+    static void SendGuildWarRecordUpdated(DWORD dwGuildID, int nBooty);                 // 30
+    static void SendGuildRenamed(const std::string& strName, DWORD dwGuildID);          // 33
     static void SendMemberRenamed(const std::string& strName, DWORD dwGuildID,
-                                  DWORD dwCharID);
-    static void SendMemberOnlineState(DWORD dwGuildID, DWORD dwCharID, BYTE bState);
+                                  DWORD dwCharID);                                     // 34
+    static void SendMemberOnlineState(DWORD dwGuildID, DWORD dwCharID, BYTE bState);   // 36
+    static void SendMemberInfoUpdated(const std::string& strNickname, DWORD dwGuildID,
+                                      DWORD dwCharID);                                 // 37
+    static void SendGuildCrestResult(DWORD dwGuildID, int nCrestRev);                   // 38/39
+    static void SendUnionCrestResult(DWORD dwAllianceID, int nCrestRev);                // 40/41
+    static void SendMercenaryAbilityResult(DWORD dwGuildID, BYTE bAttr, int nGatheredSP);  // 43
+    static void SendGPUpdated(DWORD dwGuildID, int nGatheredSP);                        // 44
+    void SendGuildInfo53(DWORD dwGuildID);                                               // 53
+    void SendGPHistory54(DWORD dwGuildID, BYTE bCount);                                 // 54
+    // CVoteManager::SendVoteStarted (0x43d4a0, misnamed): 0x3908 {1, vote}.
+    static void SendVoteStarted(CVote* pVote);
 };
+
+// GuildWarRequest_ReadFromMsg (0x43f5a0): BYTE, DWORD duration, BYTE victory point index,
+// DWORD gold.
+void GuildWarRequest_ReadFromMsg(GUILD_WAR_REQUEST& request, CMsg* pMsg);
+
+// dword_781AB0: the points that win a guild war, by victory point index (0: none).
+extern const DWORD g_adwGuildWarVictoryPoint[8];
 
 C_ASSERT(sizeof(CGuildManager) == 0x28);
 

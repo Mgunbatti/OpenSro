@@ -1281,3 +1281,316 @@ void CGuildManager::OnDelegateMaster(CMsg* pMsg)
     }
     SendAckResult(dwSessionID, dwRequestID, wResult);
 }
+
+// ---------------------------------------------------------------------------------------------
+// CGuildManager: notifications 0x38F5 (SM_social2)
+
+void CGuildManager::SendCreateResult(DWORD dwGuildID)
+{
+    CMsg* pMsg = AllocNotify(0);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendDisbandResult(DWORD dwGuildID)
+{
+    CMsg* pMsg = AllocNotify(1);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendJoinResult(DWORD dwGuildID, const CInstanceGuildMember* pRecord)
+{
+    CMsg* pMsg = AllocNotify(2);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    GuildMemberRecord_WriteToMsg(pMsg, pRecord);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendLeaveResult(DWORD dwGuildID, DWORD dwCharID, BYTE bReason)
+{
+    CMsg* pMsg = AllocNotify(3);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&dwCharID, 4);
+    pMsg->WriteBytes(&bReason, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendDonateSPResult(DWORD dwGuildID, DWORD dwCharID, int nAmount)
+{
+    CMsg* pMsg = AllocNotify(8);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&dwCharID, 4);
+    pMsg->WriteBytes(&nAmount, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendLevelUpResult(DWORD dwGuildID, BYTE bLevel, int nGatheredSP)
+{
+    CMsg* pMsg = AllocNotify(9);
+    BYTE bKind = 0x0C;
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&bKind, 1);
+    pMsg->WriteBytes(&bLevel, 1);
+    pMsg->WriteBytes(&nGatheredSP, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendNoticeUpdated(DWORD dwGuildID, const std::string& strTitle,
+                                      const std::string& strNotice)
+{
+    CMsg* pMsg = AllocNotify(10);
+    BYTE bKind = 0x10;
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&bKind, 1);
+    *pMsg << strTitle.c_str();
+    *pMsg << strNotice.c_str();
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendUnionCreated(DWORD dwAllianceID, DWORD dwMasterGuildID,
+                                     DWORD dwMemberGuildID)
+{
+    CMsg* pMsg = AllocNotify(11);
+    pMsg->WriteBytes(&dwAllianceID, 4);
+    pMsg->WriteBytes(&dwMasterGuildID, 4);
+    pMsg->WriteBytes(&dwMemberGuildID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendUnionGuildAdded(DWORD dwAllianceID, DWORD dwGuildID, BYTE bSlot)
+{
+    CMsg* pMsg = AllocNotify(13);
+    pMsg->WriteBytes(&dwAllianceID, 4);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&bSlot, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+// Reason 3 is the disbanding (SendUnionDisbanded).
+void CGuildManager::SendUnionGuildRemoved(DWORD dwAllianceID, DWORD dwGuildID, BYTE bReason)
+{
+    if (bReason == 3)
+        BSAssertFail();
+    CMsg* pMsg = AllocNotify(18);
+    pMsg->WriteBytes(&bReason, 1);
+    pMsg->WriteBytes(&dwAllianceID, 4);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendUnionDisbanded(DWORD dwAllianceID)
+{
+    CMsg* pMsg = AllocNotify(18);
+    BYTE bReason = 3;
+    pMsg->WriteBytes(&bReason, 1);
+    pMsg->WriteBytes(&dwAllianceID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendMasterDelegated(DWORD dwGuildID, DWORD dwNewMasterCharID,
+                                        DWORD dwOldMasterCharID)
+{
+    CMsg* pMsg = AllocNotify(19);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&dwNewMasterCharID, 4);
+    pMsg->WriteBytes(&dwOldMasterCharID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendPermissionsUpdated(const GuildPermissionVector& vecPermission,
+                                           DWORD dwGuildID)
+{
+    CMsg* pMsg = AllocNotify(20);
+    BYTE bCount = (BYTE)vecPermission.size();
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&bCount, 1);
+    // Guild_PermVector_Size_43E620: the loop runs over the whole vector.
+    for (DWORD i = 0; i < vecPermission.size(); ++i)
+    {
+        pMsg->WriteBytes(&vecPermission.at(i).first, 4);
+        pMsg->WriteBytes(&vecPermission.at(i).second, 4);
+    }
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGuildWarBegun(const CInstanceGuildWar* pWar)
+{
+    if (!pWar)
+    {
+        BSAssertFail();
+        return;
+    }
+    DWORD dwNow = 0;
+    PackedDateTime_GetLocal(&dwNow);
+    CMsg* pMsg = AllocNotify(25);
+    GuildWarRecord_WriteToMsg(pWar, pMsg);
+    pMsg->WriteBytes(&dwNow, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendHostileResult(DWORD dwWarID, DWORD dwGuildID)
+{
+    CMsg* pMsg = AllocNotify(26);
+    pMsg->WriteBytes(&dwWarID, 4);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGuildWarEnded(DWORD dwWarID, DWORD dwWinnerGuildID)
+{
+    CMsg* pMsg = AllocNotify(28);
+    pMsg->WriteBytes(&dwWarID, 4);
+    pMsg->WriteBytes(&dwWinnerGuildID, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+// War, points, then guild, CharID and name of the killer and of the victim.
+void CGuildManager::SendGuildWarCombatResult(const std::string& strVictimName,
+                                             CGuildMember* pKiller, DWORD dwWarID, int nPoint,
+                                             CGuildMember* pVictim,
+                                             const std::string& strKillerName)
+{
+    CMsg* pMsg = AllocNotify(29);
+    DWORD dwVictimCharID = pVictim->GetCharID();
+    DWORD dwKillerCharID = pKiller->GetCharID();
+    pMsg->WriteBytes(&dwWarID, 4);
+    pMsg->WriteBytes(&nPoint, 4);
+    pMsg->WriteBytes(&pKiller->m_pRecord->GuildID, 4);
+    pMsg->WriteBytes(&dwKillerCharID, 4);
+    *pMsg << strKillerName.c_str();
+    pMsg->WriteBytes(&pVictim->m_pRecord->GuildID, 4);
+    pMsg->WriteBytes(&dwVictimCharID, 4);
+    *pMsg << strVictimName.c_str();
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGuildWarRecordUpdated(DWORD dwGuildID, int nBooty)
+{
+    CMsg* pMsg = AllocNotify(30);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&nBooty, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGuildRenamed(const std::string& strName, DWORD dwGuildID)
+{
+    CMsg* pMsg = AllocNotify(33);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    *pMsg << strName.c_str();
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendMemberRenamed(const std::string& strName, DWORD dwGuildID,
+                                      DWORD dwCharID)
+{
+    CMsg* pMsg = AllocNotify(34);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&dwCharID, 4);
+    *pMsg << strName.c_str();
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendMemberOnlineState(DWORD dwGuildID, DWORD dwCharID, BYTE bState)
+{
+    CMsg* pMsg = AllocNotify(36);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&dwCharID, 4);
+    pMsg->WriteBytes(&bState, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendMemberInfoUpdated(const std::string& strNickname, DWORD dwGuildID,
+                                          DWORD dwCharID)
+{
+    CMsg* pMsg = AllocNotify(37);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&dwCharID, 4);
+    *pMsg << strNickname.c_str();
+    BroadcastToGameServers(pMsg);
+}
+
+// Subtype 38 for a new crest, 39 when it was removed (revision 0).
+void CGuildManager::SendGuildCrestResult(DWORD dwGuildID, int nCrestRev)
+{
+    CMsg* pMsg = AllocNotify((BYTE)((nCrestRev == 0) + 38));
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&nCrestRev, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendUnionCrestResult(DWORD dwAllianceID, int nCrestRev)
+{
+    CMsg* pMsg = AllocNotify((BYTE)((nCrestRev == 0) + 40));
+    pMsg->WriteBytes(&dwAllianceID, 4);
+    pMsg->WriteBytes(&nCrestRev, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendMercenaryAbilityResult(DWORD dwGuildID, BYTE bAttr, int nGatheredSP)
+{
+    CMsg* pMsg = AllocNotify(43);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&bAttr, 1);
+    pMsg->WriteBytes(&nGatheredSP, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGPUpdated(DWORD dwGuildID, int nGatheredSP)
+{
+    CMsg* pMsg = AllocNotify(44);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&nGatheredSP, 4);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGuildInfo53(DWORD dwGuildID)
+{
+    CGuild* pGuild = FindGuildT(dwGuildID);
+    if (!pGuild)
+        return;
+    CMsg* pMsg = g_pNetEngine->AllocMsg(FALSE);
+    if (!pMsg)
+    {
+        BSAssertFail();
+        return;
+    }
+    pMsg->SetOpcode(GUILD_MSG_NOTIFY);
+    BYTE bSubType = 53;
+    pMsg->WriteBytes(&bSubType, 1);
+    pGuild->WriteLastGPHistory(pMsg);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendGPHistory54(DWORD dwGuildID, BYTE bCount)
+{
+    if (!FindGuild(dwGuildID))
+    {
+        BSAssertFail();
+        return;
+    }
+    if (!bCount)
+        return;
+    CMsg* pMsg = g_pNetEngine->AllocMsg(FALSE);
+    if (!pMsg)
+    {
+        BSAssertFail();
+        return;
+    }
+    pMsg->SetOpcode(GUILD_MSG_NOTIFY);
+    BYTE bSubType = 54;
+    pMsg->WriteBytes(&bSubType, 1);
+    pMsg->WriteBytes(&dwGuildID, 4);
+    pMsg->WriteBytes(&bCount, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+void CGuildManager::SendVoteStarted(CVote* pVote)
+{
+    CMsg* pMsg = g_pNetEngine->AllocMsg(FALSE);
+    pMsg->SetOpcode(0x3908);
+    BYTE bSubType = 1;
+    pMsg->WriteBytes(&bSubType, 1);
+    pVote->WriteToMsg(pMsg);
+    BroadcastToGameServers(pMsg);
+}
