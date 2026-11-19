@@ -155,3 +155,4 @@ down), **wrong** (wrong result or lost data), **minor** (cosmetic, leak, dead co
 | [SM-008](SM-008.md) | SR_ShardManager reference data | minor | A reference row out of service leaks |
 | [SM-009](SM-009.md) | SR_ShardManager reference data | minor | Siege rows out of service are loaded |
 | [SM-010](SM-010.md) | SR_ShardManager reference data | minor | Every _RefGameWorldNPC row leaks |
+| [SM-011](SM-011.md) | SR_ShardManager reference data | major | A _RefRentItem row out of service stops the build |
