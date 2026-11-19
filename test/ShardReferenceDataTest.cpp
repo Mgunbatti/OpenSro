@@ -275,6 +275,54 @@ static void TestSiegeTables(CReferenceData& data)
     CHECK(data.BuildFromTable(&reward.entry, 0x52) == 0);
 }
 
+static void TestGameWorldTables(CReferenceData& data)
+{
+    FakeTable<CRefGameWorldNPC> npc;
+    for (int i = 0; i < 3; ++i)
+    {
+        CDBRecStream* pRow = npc.AddRow();
+        PutDword(pRow, i < 2 ? 10 + i : 0);     // ID 0: dropped
+        PutString(pRow, "WORLD_A", 12);
+        PutString(pRow, i ? "NPC_B" : "NPC_A", 12);
+        for (int w = 0; w < 4; ++w)
+            PutWord(pRow, (WORD)(w + 1));
+        for (int d = 0; d < 10; ++d)
+            PutDword(pRow, 100 + d);
+    }
+    CHECK(data.BuildFromTable(&npc.entry, 0x5C) == 1);
+    CHECK(data.m_mapGameWorldNPC.size() == 1 && data.m_mapGameWorldNPC["WORLD_A"].size() == 2);
+    if (data.m_mapGameWorldNPC["WORLD_A"].size() == 2)
+    {
+        const RefGameWorldNPCEntry& e = data.m_mapGameWorldNPC["WORLD_A"][1];
+        CHECK(e.str00 == "NPC_B" && e.aw1C[3] == 4 && e.adw24[9] == 109);
+    }
+
+    FakeTable<CRefObjCharExtraSkill> extra;
+    for (int i = 0; i < 2; ++i)
+    {
+        CDBRecStream* pRow = extra.AddRow();
+        PutDword(pRow, i == 0);                 // second row out of service
+        PutDword(pRow, 500 + i);
+        for (int s = 0; s < 20; ++s)
+            PutDword(pRow, s);
+    }
+    CHECK(data.BuildFromTable(&extra.entry, 0x5D) == 1);
+    CHECK(data.m_mapObjCharExtraSkill.size() == 1 &&
+          data.m_mapObjCharExtraSkill[500]->aSkillID[19] == 19);
+
+    FakeTable<CRefGameWorldConfig> config;
+    CDBRecStream* pRow = config.AddRow();
+    PutDword(pRow, 1);
+    PutDword(pRow, 3);
+    PutString(pRow, "CONFIG_A", 12);
+    PutString(pRow, "MAX_USER", 12);
+    PutString(pRow, "64", 8);
+    PutString(pRow, "int", 8);
+    CHECK(data.BuildFromTable(&config.entry, 0x5E) == 1);
+    CHECK(data.m_mapGameWorldConfig.size() == 1 &&
+          data.m_mapGameWorldConfig["CONFIG_A"]->Value == "64");
+}
+
 static void TestFindRefObj(CReferenceData& data)
 {
     static BYTE abObj[0x260];
@@ -295,6 +343,7 @@ int main()
     TestRowReader();
     TestTriggerTables(*pData, tables);
     TestSiegeTables(*pData);
+    TestGameWorldTables(*pData);
     TestFindRefObj(*pData);
 
     pData->m_pTables = NULL;
