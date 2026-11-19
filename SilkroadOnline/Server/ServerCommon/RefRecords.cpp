@@ -67,6 +67,28 @@ RefGachaCode::RefGachaCode()
     GachaSetID = 0;
 }
 
+RefSiegeFortress::RefSiegeFortress()
+    : Service(0), FortressID(0), Scale(0), MaxAdmission(0), MaxGuard(0), MaxBarricade(0),
+      TaxTargets(0), RequestFee(0)
+{
+}
+
+RefSiegeFortressBattleRank::RefSiegeFortressBattleRank()
+    : Service(0), RankLvl(0), ReqPKCount(0), BindedSkillID(0)
+{
+}
+
+RefSiegeStructUpgrade::RefSiegeStructUpgrade()
+    : Service(0)
+{
+}
+
+RefSiegeQuest::RefSiegeQuest()
+    : Service(0), QuestID(0), QuestType(0), RewardConditionTargetCount(0), IsAccumulation(0)
+{
+    QuestName.clear();
+}
+
 // ---------------------------------------------------------------------------------------------
 // Object, skill and magic option records
 
@@ -1197,5 +1219,166 @@ CRefDropItemAssign::CRefDropItemAssign()
 }
 
 CRefDropItemAssign::~CRefDropItemAssign()
+{
+}
+
+// ---------------------------------------------------------------------------------------------
+// Siege fortress records
+
+// 0x52bce0 ctor, 0x52bd40 dtor, 0x5200f0 / 0x520110 slots 2 / 3, 0x628540 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeFortress, CDBRecord, CDBRecord, "_REFSIEGEFORTRESS")
+
+CRefSiegeFortress::CRefSiegeFortress()
+{
+}
+
+CRefSiegeFortress::~CRefSiegeFortress()
+{
+}
+
+// 0x52bdb0 ctor, 0x52be10 dtor, 0x520120 / - slots 2 / 3, 0x6287f0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeFortressGuard, CDBRecord, CDBRecord, "_REFSIEGEFORTRESSGUARD")
+
+CRefSiegeFortressGuard::CRefSiegeFortressGuard()
+{
+    Service = 0;
+    FortressID = 0;
+    GuardRefObjID = 0;
+}
+
+CRefSiegeFortressGuard::~CRefSiegeFortressGuard()
+{
+}
+
+// 0x52be60 ctor, 0x52bed0 dtor, 0x520150 / 0x520170 slots 2 / 3, 0x628a70 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeFortressItemForge, CDBRecord, CDBRecord,
+                        "_REFSIEGEFORTRESSITEMFORGE")
+
+CRefSiegeFortressItemForge::CRefSiegeFortressItemForge()
+{
+    Service = 0;
+    FortressID = 0;
+    RefItemID = 0;
+    ReqGold = 0;
+    ReqGP = 0;
+    ForgeTimeMin = 0;
+}
+
+CRefSiegeFortressItemForge::~CRefSiegeFortressItemForge()
+{
+}
+
+// 0x52bf20 ctor, 0x52bf80 dtor, 0x520180 / 0x5201a0 slots 2 / 3, 0x628cf0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeFortressBattleRank, CDBRecord, CDBRecord,
+                        "_REFSIEGEFORTRESSBATTLERANK")
+
+CRefSiegeFortressBattleRank::CRefSiegeFortressBattleRank()
+{
+}
+
+CRefSiegeFortressBattleRank::~CRefSiegeFortressBattleRank()
+{
+}
+
+// 0x52bff0 ctor, 0x52c050 dtor, 0x5201b0 / 0x5201d0 slots 2 / 3, 0x628f90 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeStructUpgrade, CDBRecord, CDBRecord, "_REFSIEGESTRUCTUPGRADE")
+
+CRefSiegeStructUpgrade::CRefSiegeStructUpgrade()
+{
+}
+
+CRefSiegeStructUpgrade::~CRefSiegeStructUpgrade()
+{
+}
+
+// 0x52c0c0 ctor, 0x52c120 dtor, 0x5201e0 / 0x520200 slots 2 / 3, 0x629220 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeLvlSummonMonster, CDBRecord, CDBRecord,
+                        "_REFSIEGELVLSUMMONMONSTER")
+
+CRefSiegeLvlSummonMonster::CRefSiegeLvlSummonMonster()
+{
+    Service = 0;
+    RefObjID = 0;
+    RefOrgObjID = 0;
+}
+
+CRefSiegeLvlSummonMonster::~CRefSiegeLvlSummonMonster()
+{
+}
+
+// 0x52c170 ctor, 0x52c1e0 dtor, 0x520210 / 0x520230 slots 2 / 3, 0x6294a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeFortressRewards, CDBRecord, CDBRecord, "_REFSIEGEFORTRESSREWARDS")
+
+CRefSiegeFortressRewards::CRefSiegeFortressRewards()
+{
+    Service = 0;
+    FortressID = 0;
+    RewardTypeID = 0;
+    RewardValue = 0;
+    RewardCount = 0;
+}
+
+CRefSiegeFortressRewards::~CRefSiegeFortressRewards()
+{
+}
+
+// 0x52c230 ctor, 0x52c2a0 dtor, 0x520240 / 0x520260 slots 2 / 3, 0x629720 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeBlessBuff, CDBRecord, CDBRecord, "_REFSIEGEBLESSBUFF")
+
+CRefSiegeBlessBuff::CRefSiegeBlessBuff()
+{
+    Service = 0;
+    BlessID = 0;
+    FortressID = 0;
+    RefBlessBuffID = 0;
+    NeedGold = 0;
+    NeedGP = 0;
+}
+
+CRefSiegeBlessBuff::~CRefSiegeBlessBuff()
+{
+}
+
+// 0x52c2f0 ctor, 0x52c360 dtor, 0x520270 / 0x520290 slots 2 / 3, 0x6299a0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeDungeon, CDBRecord, CDBRecord, "_REFSIEGEDUNGEON")
+
+CRefSiegeDungeon::CRefSiegeDungeon()
+{
+    Service = 0;
+    FortressID = 0;
+    WorldID = 0;
+    MaxCreateCount = 0;
+    EntryGold = 0;
+    EntryGP = 0;
+}
+
+CRefSiegeDungeon::~CRefSiegeDungeon()
+{
+}
+
+// 0x52c3b0 ctor, 0x52c420 dtor, 0x5202a0 / 0x5202c0 slots 2 / 3, 0x629c20 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeQuest, CDBRecord, CDBRecord, "_REFSIEGEQUEST")
+
+CRefSiegeQuest::CRefSiegeQuest()
+{
+}
+
+CRefSiegeQuest::~CRefSiegeQuest()
+{
+}
+
+// 0x52c490 ctor, 0x52c500 dtor, 0x5202d0 / 0x5202f0 slots 2 / 3, 0x629ef0 table description.
+SR_IMPLEMENT_REF_RECORD(CRefSiegeQuestReward, CDBRecord, CDBRecord, "_REFSIEGEQUESTREWARD")
+
+CRefSiegeQuestReward::CRefSiegeQuestReward()
+{
+    Service = 0;
+    QuestID = 0;
+    RewardType = 0;
+    RewardRefID = 0;
+    RewardValue = 0;
+}
+
+CRefSiegeQuestReward::~CRefSiegeQuestReward()
 {
 }

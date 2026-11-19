@@ -243,6 +243,72 @@ struct RefGachaCode
 
 C_ASSERT(sizeof(RefGachaCode) == 32);
 
+// _RefSiegeFortress row (188 bytes): RefSiegeFortress::InitMembers 0x514f70.
+struct RefSiegeFortress
+{
+    RefSiegeFortress();
+
+    BYTE             Service;                    // +0
+    int              FortressID;                 // +4
+    std::string      CodeName128;                // +8
+    std::string      Name;                       // +24
+    std::string      NameID128;                  // +40
+    std::string      LinkedTeleportCodeName;     // +5C
+    BYTE             Scale;                      // +78
+    short            MaxAdmission;               // +7A
+    BYTE             MaxGuard;                   // +7C
+    BYTE             MaxBarricade;               // +7D
+    short            TaxTargets;                 // +7E
+    int              RequestFee;                 // +80
+    std::string      CrestPath128;               // +84
+    std::string      RequestNPCName128;          // +A0
+};
+
+C_ASSERT(sizeof(RefSiegeFortress) == 188);
+
+// _RefSiegeFortressBattleRank row (68 bytes): RefSiegeFortressBattleRank::InitMembers 0x514f00.
+struct RefSiegeFortressBattleRank
+{
+    RefSiegeFortressBattleRank();
+
+    BYTE             Service;                    // +0
+    BYTE             RankLvl;                    // +1
+    std::string      RankName;                   // +4
+    int              ReqPKCount;                 // +20
+    int              BindedSkillID;              // +24
+    std::string      CrestPath128;               // +28
+};
+
+C_ASSERT(sizeof(RefSiegeFortressBattleRank) == 68);
+
+// _RefSiegeStructUpgrade row (172 bytes): RefSiegeStructUpgrade::InitMembers 0x514e70.
+struct RefSiegeStructUpgrade
+{
+    RefSiegeStructUpgrade();
+
+    BYTE             Service;                    // +0
+    std::string      Structname;                 // +4
+    std::string      BaseStructcodename;         // +20
+    std::string      UpgradeStructname[4];       // +3C  UpgradeStructname1..UpgradeStructname4
+};
+
+C_ASSERT(sizeof(RefSiegeStructUpgrade) == 172);
+
+// _RefSiegeQuest row (40 bytes): RefSiegeQuest::InitMembers 0x514d40.
+struct RefSiegeQuest
+{
+    RefSiegeQuest();
+
+    BYTE             Service;                    // +0
+    int              QuestID;                    // +4
+    std::string      QuestName;                  // +8
+    BYTE             QuestType;                  // +24
+    BYTE             RewardConditionTargetCount; // +25
+    BYTE             IsAccumulation;             // +26
+};
+
+C_ASSERT(sizeof(RefSiegeQuest) == 40);
+
 // ---------------------------------------------------------------------------------------------
 // Object, skill and magic option records
 
@@ -1520,3 +1586,209 @@ public:
 };
 
 C_ASSERT(sizeof(CRefDropItemAssign) == 0x30);
+
+// ---------------------------------------------------------------------------------------------
+// Siege fortress records
+
+// _REFSIEGEFORTRESS
+class CRefSiegeFortress : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeFortress)
+
+public:
+    CRefSiegeFortress();
+    virtual ~CRefSiegeFortress();
+
+public:
+    RefSiegeFortress m_Data;                     // +18  the row (GetData)
+};
+
+C_ASSERT(sizeof(CRefSiegeFortress) == 0xD8);
+C_ASSERT(FIELD_OFFSET(CRefSiegeFortress, m_Data) == 24);
+
+// _REFSIEGEFORTRESSGUARD
+class CRefSiegeFortressGuard : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeFortressGuard)
+
+public:
+    CRefSiegeFortressGuard();
+    virtual ~CRefSiegeFortressGuard();
+
+public:
+    BYTE             Service;                    // +18
+    int              FortressID;                 // +1C
+    int              GuardRefObjID;              // +20
+};
+
+C_ASSERT(sizeof(CRefSiegeFortressGuard) == 0x28);
+C_ASSERT(FIELD_OFFSET(CRefSiegeFortressGuard, Service) == 24);
+
+// _REFSIEGEFORTRESSITEMFORGE
+class CRefSiegeFortressItemForge : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeFortressItemForge)
+
+public:
+    CRefSiegeFortressItemForge();
+    virtual ~CRefSiegeFortressItemForge();
+
+public:
+    BYTE             Service;                    // +18
+    int              FortressID;                 // +1C
+    int              RefItemID;                  // +20
+    int              ReqGold;                    // +24
+    int              ReqGP;                      // +28
+    int              ForgeTimeMin;               // +2C
+};
+
+C_ASSERT(sizeof(CRefSiegeFortressItemForge) == 0x30);
+C_ASSERT(FIELD_OFFSET(CRefSiegeFortressItemForge, Service) == 24);
+
+// _REFSIEGEFORTRESSBATTLERANK
+class CRefSiegeFortressBattleRank : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeFortressBattleRank)
+
+public:
+    CRefSiegeFortressBattleRank();
+    virtual ~CRefSiegeFortressBattleRank();
+
+public:
+    RefSiegeFortressBattleRank m_Data;                     // +18  the row (GetData)
+};
+
+C_ASSERT(sizeof(CRefSiegeFortressBattleRank) == 0x60);
+C_ASSERT(FIELD_OFFSET(CRefSiegeFortressBattleRank, m_Data) == 24);
+
+// _REFSIEGESTRUCTUPGRADE
+class CRefSiegeStructUpgrade : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeStructUpgrade)
+
+public:
+    CRefSiegeStructUpgrade();
+    virtual ~CRefSiegeStructUpgrade();
+
+public:
+    RefSiegeStructUpgrade m_Data;                     // +18  the row (GetData)
+};
+
+C_ASSERT(sizeof(CRefSiegeStructUpgrade) == 0xC8);
+C_ASSERT(FIELD_OFFSET(CRefSiegeStructUpgrade, m_Data) == 24);
+
+// _REFSIEGELVLSUMMONMONSTER
+class CRefSiegeLvlSummonMonster : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeLvlSummonMonster)
+
+public:
+    CRefSiegeLvlSummonMonster();
+    virtual ~CRefSiegeLvlSummonMonster();
+
+public:
+    BYTE             Service;                    // +18
+    int              RefObjID;                   // +1C
+    int              RefOrgObjID;                // +20
+};
+
+C_ASSERT(sizeof(CRefSiegeLvlSummonMonster) == 0x28);
+C_ASSERT(FIELD_OFFSET(CRefSiegeLvlSummonMonster, Service) == 24);
+
+// _REFSIEGEFORTRESSREWARDS
+class CRefSiegeFortressRewards : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeFortressRewards)
+
+public:
+    CRefSiegeFortressRewards();
+    virtual ~CRefSiegeFortressRewards();
+
+public:
+    BYTE             Service;                    // +18
+    int              FortressID;                 // +1C
+    BYTE             RewardTypeID;               // +20
+    int              RewardValue;                // +24
+    BYTE             RewardCount;                // +28
+};
+
+C_ASSERT(sizeof(CRefSiegeFortressRewards) == 0x30);
+C_ASSERT(FIELD_OFFSET(CRefSiegeFortressRewards, Service) == 24);
+
+// _REFSIEGEBLESSBUFF
+class CRefSiegeBlessBuff : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeBlessBuff)
+
+public:
+    CRefSiegeBlessBuff();
+    virtual ~CRefSiegeBlessBuff();
+
+public:
+    BYTE             Service;                    // +18
+    int              BlessID;                    // +1C
+    int              FortressID;                 // +20
+    int              RefBlessBuffID;             // +24
+    __int64          NeedGold;                   // +28
+    int              NeedGP;                     // +30
+};
+
+C_ASSERT(sizeof(CRefSiegeBlessBuff) == 0x38);
+C_ASSERT(FIELD_OFFSET(CRefSiegeBlessBuff, Service) == 24);
+
+// _REFSIEGEDUNGEON
+class CRefSiegeDungeon : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeDungeon)
+
+public:
+    CRefSiegeDungeon();
+    virtual ~CRefSiegeDungeon();
+
+public:
+    BYTE             Service;                    // +18
+    int              FortressID;                 // +1C
+    int              WorldID;                    // +20
+    BYTE             MaxCreateCount;             // +24
+    __int64          EntryGold;                  // +28
+    int              EntryGP;                    // +30
+};
+
+C_ASSERT(sizeof(CRefSiegeDungeon) == 0x38);
+C_ASSERT(FIELD_OFFSET(CRefSiegeDungeon, Service) == 24);
+
+// _REFSIEGEQUEST
+class CRefSiegeQuest : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeQuest)
+
+public:
+    CRefSiegeQuest();
+    virtual ~CRefSiegeQuest();
+
+public:
+    RefSiegeQuest    m_Data;                     // +18  the row (GetData)
+};
+
+C_ASSERT(sizeof(CRefSiegeQuest) == 0x40);
+C_ASSERT(FIELD_OFFSET(CRefSiegeQuest, m_Data) == 24);
+
+// _REFSIEGEQUESTREWARD
+class CRefSiegeQuestReward : public CDBRecord
+{
+    SR_DECLARE_REF_RECORD(CRefSiegeQuestReward)
+
+public:
+    CRefSiegeQuestReward();
+    virtual ~CRefSiegeQuestReward();
+
+public:
+    BYTE             Service;                    // +18
+    int              QuestID;                    // +1C
+    BYTE             RewardType;                 // +20
+    int              RewardRefID;                // +24
+    int              RewardValue;                // +28
+};
+
+C_ASSERT(sizeof(CRefSiegeQuestReward) == 0x30);
+C_ASSERT(FIELD_OFFSET(CRefSiegeQuestReward, Service) == 24);
