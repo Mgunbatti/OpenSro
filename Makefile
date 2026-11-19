@@ -723,9 +723,10 @@ $(BIN)\ShardRefRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_REC_OBJS) \
 	    $(SHARD_LIBS) $(SYSLIBS)
 
 $(BIN)\ShardInstanceRecordTest.exe: $(OBJ)\ServerCommon $(SHARD_INST_OBJS) \
+                                    $(SHARD_REFDATA_OBJS) \
                                     $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_LIBS)
 	link /nologo /DEBUG /out:$@ $(OBJ)\test\ShardInstanceRecordTest.obj $(SHARD_INST_OBJS) \
-	    $(SHARD_LIBS) $(SYSLIBS)
+	    $(SHARD_REFDATA_OBJS) $(SHARD_LIBS) $(SYSLIBS)
 
 $(BIN)\ShardReferenceDataTest.exe: $(OBJ)\ServerCommon $(SHARD_REFDATA_OBJS) $(SHARD_REC_OBJS) \
                                    $(OBJ)\test\ShardReferenceDataTest.obj $(SHARD_LIBS)

@@ -4,6 +4,7 @@
 // Compiled with SHARD_DEFS.
 
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/ReferenceData.h"
 
 #include <string.h>
 #include <time.h>
@@ -13,14 +14,15 @@
 #include "TestCheck.h"
 
 // The reference data of the test: one object row with known values at the offsets the records
-// read.
+// read, registered in the real reference data under one id at a time (so a lookup finds it only
+// with that id).
 static BYTE s_abRefObj[0x260];
-static int s_nLastRefObjID;
 
-RefObjCommonRow* ReferenceData_FindRefObj(int nRefObjID)
+static void SetRefObjID(int nRefObjID)
 {
-    s_nLastRefObjID = nRefObjID;
-    return (RefObjCommonRow*)s_abRefObj;
+    CReferenceData::RefObjHashMap& objects = CReferenceData::GetInstance()->m_hashRefObj;
+    objects.clear();
+    objects[nRefObjID] = (RefObjCommonRow*)s_abRefObj;
 }
 
 static const DBColumnInfo* FindColumn(const CDBTableInfo& info, const char* pszName, int* pGroup)
@@ -220,8 +222,9 @@ static void TestCopyAndStreams()
     CHECK(bThrown);
 
     CInstanceDummy dummy;
+    SetRefObjID(-1);
     dummy.ResolveRefObj();
-    CHECK(s_nLastRefObjID == -1 && dummy.m_pRefObj == (RefObjCommonRow*)s_abRefObj);
+    CHECK(dummy.m_pRefObj == (RefObjCommonRow*)s_abRefObj);
     stream.m_nWritePos = 0;
     dummy.Write(&stream, 0);
     CHECK(*(int*)abBuffer == -1);
@@ -277,8 +280,9 @@ static void TestItem()
     option.nOptValue = 5;
     item.AddBindingOption(2, &option);
     SetRefTypeID(1, 6, 1);
+    SetRefObjID(100);
     item.ResolveRefObj();
-    CHECK(s_nLastRefObjID == 100 && item.m_pRefObj == (RefObjCommonRow*)s_abRefObj);
+    CHECK(item.m_pRefObj == (RefObjCommonRow*)s_abRefObj);
 
     BYTE abBuffer[128];
     CByteStream stream;
@@ -304,12 +308,12 @@ static void TestItem()
     item.Write(&stream, 3);
     CHECK(stream.m_nWritePos == 4 + 1 + 8 + 4 + 2 + 5 + 8 + 1 + 16);
     CInstanceItem read;
-    s_nLastRefObjID = 0;
     read.m_pRefObj = NULL;
     read.Read(&stream, 3);
     CHECK(read.RefItemID == 100 && read.Variance == 0x55 && read.CreaterName == "smith");
     CHECK(read.Serial64 == 0x123456789i64 && read.MagParamNum == 2 && read.MagParam[1] == 8);
-    CHECK(s_nLastRefObjID == 100 && stream.m_nReadPos == stream.m_nWritePos);
+    CHECK(read.m_pRefObj == (RefObjCommonRow*)s_abRefObj);
+    CHECK(stream.m_nReadPos == stream.m_nWritePos);
 
     // ETC 3-3-8: durability as WORD, then the creator name
     SetRefTypeID(3, 8, 1);
