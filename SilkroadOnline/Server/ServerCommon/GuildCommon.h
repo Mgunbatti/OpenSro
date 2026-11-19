@@ -7,9 +7,11 @@
 #include <map>
 #include <vector>
 
+#include "BSLib/ChunkAllocator.h"
 #include "BSNet/Msg.h"
 #include "ServerCommon/ByteStream.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/PoolObject.h"
 
 // Guild data shared by the shard manager and the game server: the guild member, the guild with
 // its members, GP history, master candidates and hostile guilds, the alliance and the guild
@@ -57,6 +59,11 @@ public:
     // GuildMember::ReleaseRecord (0x43fb80, GuildCommonShard.cpp): clears the user and the state
     // and returns the record to the guild member table.
     void ReleaseRecord();
+    // The reset of Release / GuildMember_FreePtr before the member goes back to the pool.
+    void ResetForPool()
+    {
+        ReleaseRecord();
+    }
     // GuildMember_IsOffline (0x43fc10, misnamed): TRUE when the record's member class is 0,
     // i.e. the member is the guild master; FALSE without a record.
     BOOL IsMaster() const
@@ -81,9 +88,12 @@ public:
 
 public:
     DWORD                   m_dwState;      // +04  -1 after construction
-    BYTE                    m_bAlive;       // +08  taken from the pool
+    BYTE                    m_bInUse;       // +08  taken from the pool
     CInstanceGuildMember*   m_pRecord;      // +0C
     CUser*                  m_pUser;        // +10  set while the member is logged in
+
+    // The guild member pool (its in-use count is dword_89A404).
+    static CChunkAllocatorST<CGuildMember> s_Pool;
 };
 
 C_ASSERT(FIELD_OFFSET(CGuildMember, m_dwState) == 0x04);

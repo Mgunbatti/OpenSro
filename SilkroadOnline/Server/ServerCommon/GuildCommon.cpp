@@ -6,8 +6,7 @@
 
 const DWORD g_adwGuildMemberLimit[5] = { 15, 20, 25, 35, 50 };
 
-// The guild member pool (its in-use count is dword_89A404).
-static CChunkAllocatorST<CGuildMember> s_GuildMemberPool;
+CChunkAllocatorST<CGuildMember> CGuildMember::s_Pool;
 
 // ---------------------------------------------------------------------------------------------
 // Record serialisation
@@ -104,37 +103,17 @@ void GuildGPHistory_WriteToMsg(const CInstanceGPHistory* pRecord, CMsg* pMsg)
 
 void CGuildMember::Release()
 {
-    if (m_bAlive)
-    {
-        m_bAlive = 0;
-        ReleaseRecord();
-        s_GuildMemberPool.Free(this);
-    }
-    else
-    {
-        LogPrintf(0x2000000, "why do you about to delete already deleted !!! [%s]", "GuildMember");
-        BSAssertFail();
-    }
+    PoolObject_Release(this, "GuildMember");
 }
 
 CGuildMember* CGuildMember::Alloc()
 {
-    CGuildMember* pMember = s_GuildMemberPool.Alloc();
-    pMember->m_bAlive = 1;
-    return pMember;
+    return PoolObject_Alloc<CGuildMember>();
 }
 
 void GuildMember_FreePtr(CGuildMember*& pMember)
 {
-    if (!pMember)
-        return;
-    if (pMember->m_bAlive)
-    {
-        pMember->m_bAlive = 0;
-        pMember->ReleaseRecord();
-        s_GuildMemberPool.Free(pMember);
-    }
-    pMember = NULL;
+    PoolObject_FreePtr(pMember);
 }
 
 void CGuildMember::SetNickname(const std::string& strNickname)
