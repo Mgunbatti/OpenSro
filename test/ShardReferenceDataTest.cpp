@@ -553,6 +553,156 @@ static void TestFindRefObj(CReferenceData& data)
     CHECK(data.m_mapGachaNpcMap.size() == 1 && data.m_mapGachaNpcMap[2000]->WasteGachaID == 5);
 }
 
+// A _RefMagicOpt record.
+static CRefMagicOpt* AddMagicOpt(FakeTable<CRefMagicOpt>& table, short nID, const char* pszName,
+                                 const char* pszAttr, int nMLevel, int nCode)
+{
+    CRefMagicOpt* pRec = table.AddRecord();
+    RefMagicOpt& r = pRec->m_Data;
+    r.Service = 1;
+    r.ID = nID;
+    r.MOptName128 = pszName;
+    r.AttrType = pszAttr;
+    r.MLevel = nMLevel;
+    r.Prob = 0.5f;
+    r.Weight = 10;
+    memset(r.Param, 0, sizeof(r.Param));
+    memset(r.ExcFunc, 0, sizeof(r.ExcFunc));
+    r.Param[0] = nCode;
+    return pRec;
+}
+
+static void TestMagicOption(CReferenceData& data, RefTableVector& tables)
+{
+    // parameter codes: 1 and 'wtni' pass the check by accident
+    CHECK(RefMagicOpt_IsKnownParamCode(0x72656973) == 1);
+    CHECK(RefMagicOpt_IsKnownParamCode(0x12345678) == 0x12345678);
+    CHECK(RefMagicOpt_IsKnownParamCode(1) == 1 && RefMagicOpt_IsKnownParamCode(0x696E7477) == 1);
+
+    FakeTable<CRefMagicOpt> opt;
+    CRefMagicOpt* pStr1 = AddMagicOpt(opt, 1, "MATTR_STR", "+", 1, 0x72656973);
+    pStr1->m_Data.Param[2] = 1;
+    pStr1->m_Data.Param[3] = 5;
+    pStr1->m_Data.AvailItem[0].AvailItemGroup = "weapon";
+    pStr1->m_Data.AvailItem[1].AvailItemGroup = "xxx";
+    pStr1->m_Data.AvailItem[2].AvailItemGroup = "armor";
+    CRefMagicOpt* pStr2 = AddMagicOpt(opt, 2, "mattr_str", "+", 2, 0x72656973);
+    pStr2->m_Data.Param[2] = 3;
+    pStr2->m_Data.Param[3] = 9;
+    CRefMagicOpt* pDur = AddMagicOpt(opt, 3, "MATTR_DUR", "%", 1, 0x65766372);
+    pDur->m_Data.Param[1] = 0x00030001;
+    pDur->m_Data.Param[3] = 0x00050000;
+    pDur->m_Data.ExcFunc[0] = 0x6E726570;
+    AddMagicOpt(opt, 4, "MATTR_OFF", "", 1, 0x6E726570)->m_Data.Service = 0;
+    data.m_MagicOpt.BuildMagicOptTable(opt.entry.m_listRows);
+    CHECK(data.m_MagicOpt.m_vecMagicOptGroup.size() == 2);
+    CHECK(data.m_MagicOpt.m_mapMagicOptLevel.size() == 3);
+    RefMagicOptGroupByName* pGroup = data.m_MagicOpt.FindMagicOptByCodeName("Mattr_Str");
+    CHECK(pGroup && pGroup->vecLevel.size() == 2 && !pGroup->bNoPlus && !pGroup->bHasAt);
+    CHECK(data.m_MagicOpt.FindMagicOptById(0x65766372)->vecExcFunc.size() == 1);
+    RefMagicOptLevel* pLevel = data.m_MagicOpt.FindMagicOptLevelEntry(1);
+    CHECK(pLevel && pLevel->dwProb == 500000 && pLevel->pGroup == pGroup);
+    CHECK(pLevel->vecAvailItem.size() == 1 && pLevel->vecAvailItem[0].dwValue == 812);
+    DWORD dwMLevel = 0;
+    mfunc_desc* pDesc = data.m_MagicOpt.FindMagicOption(3, &dwMLevel);
+    CHECK(pDesc && dwMLevel == 1 && pDesc->GetMin() == 3 && pDesc->GetMax() == 5);
+    CHECK(data.m_MagicOpt.FindMagicOption(9, NULL) == NULL);
+    CHECK(MagOptEachLevel_IsValueInRange(pGroup, 9, 2));
+    CHECK(!MagOptEachLevel_IsValueInRange(pGroup, 9, 1));
+
+    // assign tables: '+' options in the first slot
+    FakeTable<CRefMagicOptAssign> assign;
+    RefMagicOptAssign& a = assign.AddRecord()->m_Data;
+    a.Service = 1;
+    a.Race = 0;
+    a.TID3 = 6;
+    a.TID4 = 2;
+    a.AvailMOpt[0] = "MATTR_STR";
+    a.AvailMOpt[1] = "MATTR_DUR";
+    a.AvailMOpt[2] = "xxx";
+    a.AvailMOpt[3] = "MATTR_OFF";
+    CHECK(data.BuildFromTable(&assign.entry, 8) == 1);
+    MagOptEachLevelSlots* pSlots =
+        MagOptEachLevelTable_Find(g_aMagOptEachLevelTable[0], 6 | (2 << 16));
+    CHECK(pSlots && pSlots->avecGroup[0].size() == 1 && pSlots->avecGroup[1].size() == 1);
+
+    static BYTE abSword[0x260];
+    static BYTE abPotion[0x260];
+    *(WORD*)(abSword + 0x80) = (WORD)((3 << 2) | (1 << 5) | (6 << 7) | (2 << 11));
+    *(WORD*)(abPotion + 0x80) = (WORD)((3 << 2) | (3 << 5));
+    RefObjCommonRow* pSword = (RefObjCommonRow*)abSword;
+    CHECK(RefData_IsMagicOptEntryAllowed(pSword, 2) && !RefData_IsMagicOptEntryAllowed(pSword, 3));
+    CHECK(RefData_IsMagicOptEntryAllowed((RefObjCommonRow*)abPotion, 0));
+    CHECK(!RefData_IsMagicOptEntryAllowed((RefObjCommonRow*)abPotion, 1));
+    CHECK(RefMagicOpt_CountApplicableParams(*pLevel, pSword));
+
+    // magic option groups by key
+    FakeTable<CRefMagicOptGroup> group;
+    for (int i = 0; i < 2; ++i)
+    {
+        CDBRecStream* pRow = group.AddRow();
+        PutByte(pRow, 1);
+        PutDword(pRow, 500);
+        PutByte(pRow, 1);
+        PutString(pRow, "GROUP", 20);
+        PutDword(pRow, 2);
+        PutByte(pRow, 2);
+        PutDword(pRow, i ? 4 : 0);
+        PutDword(pRow, 0);
+        PutString(pRow, "", 8);
+        PutDword(pRow, 0);
+        PutString(pRow, "", 8);
+    }
+    CHECK(data.BuildFromTable(&group.entry, 9) == 1);
+    CReferenceData::RefMagicOptGroupVector vecGroup;
+    CHECK(data.GetMagicOptGroup(500, vecGroup) && vecGroup.size() == 2);
+    CHECK(vecGroup[1]->CustomValue == 4 && !data.GetMagicOptGroup(1, vecGroup));
+
+    // item option levels: ability 50 of item 1234 at level 3
+    data.m_hashRefObj[1234] = pSword;
+    RefSkill* pSkill = new RefSkill;
+    pSkill->Param[0] = 1;
+    data.m_mapSkill[77] = pSkill;
+    FakeTable<CRefAbilityByItemOptLevel> ability;
+    CDBRecStream* pAbility = ability.AddRow();
+    PutByte(pAbility, 1);
+    PutDword(pAbility, 50);
+    PutDword(pAbility, 1234);
+    PutByte(pAbility, 3);
+    FakeTable<CRefMagicOptByItemOptLevel> optLevel;
+    CDBRecStream* pOptRow = optLevel.AddRow();
+    PutDword(pOptRow, 50);
+    PutWord(pOptRow, 2);
+    PutDword(pOptRow, 4);
+    FakeTable<CRefSkillByItemOptLevel> skillLevel;
+    CDBRecStream* pSkillRow = skillLevel.AddRow();
+    PutDword(pSkillRow, 50);
+    PutWord(pSkillRow, 77);
+    tables[0xF] = &optLevel.entry;
+    tables[0x10] = &skillLevel.entry;
+    tables[0x11] = &ability.entry;
+    CHECK(data.BuildFromTable(&ability.entry, 0x11) == 1);
+    CHECK(data.FindRowInTable(0x11, 50) == pAbility && data.FindRowInTable(0x11, 51) == NULL);
+    unsigned __int64 qwKey = ((unsigned __int64)1234 << 32) | 3;
+    CHECK(data.m_mapItemOptLevel134.size() == 3 && data.m_mapItemOptLevel134[qwKey].size() == 1);
+    RefMagicOptByItemOptLevel* pOpt =
+        (RefMagicOptByItemOptLevel*)data.m_mapItemOptLevel134[qwKey][0];
+    CHECK(pOpt->MagicOptID == 2 && pOpt->Value == 4 && pOpt->ID == 50 && pOpt->OptLevel == 3);
+    CHECK(data.m_mapItemOptLevel128.size() == 3 && data.m_mapItemOptLevel128[qwKey].size() == 1);
+    CHECK(data.m_mapItemOptLevel134.rbegin()->first == (unsigned __int64)-1);
+    tables[0xF] = tables[0x10] = tables[0x11] = NULL;
+    data.m_hashRefObj.erase(1234);
+
+    // gacha codes by GachaSetID
+    FakeTable<CRefGachaCode> gachaCode;
+    CRefGachaCode* pCode = gachaCode.AddRecord();
+    pCode->m_Data.CodeName128 = "GACHA_A";
+    pCode->m_Data.GachaSetID = 9;
+    gachaCode.AddRecord()->m_Data.GachaSetID = 0;
+    CHECK(data.BuildFromTable(&gachaCode.entry, 0x46) == 1);
+    CHECK(data.m_mapGachaCode.size() == 1 && data.m_mapGachaCode[9]->CodeName128 == "GACHA_A");
+}
+
 static void TestTypeHelpers()
 {
     // TID1 3, TID2 1, TID3 6 and TID4 2 / 10 / 4
@@ -670,6 +820,7 @@ int main()
     TestEventAndRewardTables(*pData);
     TestFindRefObj(*pData);
     TestTypeHelpers();
+    TestMagicOption(*pData, tables);
     TestContainers(*pData);
 
     pData->m_pTables = NULL;
