@@ -328,9 +328,32 @@ static void TestFindRefObj(CReferenceData& data)
     static BYTE abObj[0x260];
     RefObjCommonRow* pObj = (RefObjCommonRow*)abObj;
     data.m_hashRefObj[1234] = pObj;
+    CHECK(strcmp(RefData_GetObjectCodeName(1), "Unknown Object") == 0);
+    std::string* pstrCodeName = new (abObj + 0x14) std::string("ITEM_CH_SWORD_01_A");
+    CHECK(strcmp(RefData_GetObjectCodeName(1234), "ITEM_CH_SWORD_01_A") == 0);
+    pstrCodeName->~basic_string();
     CHECK(CReferenceData::GetInstance() == &data);
     CHECK(data.FindRefObj(1234) == pObj && data.FindRefObj(1) == NULL);
     data.m_hashRefObj.erase(1234);
+}
+
+static void TestTypeHelpers()
+{
+    // TID1 3, TID2 1, TID3 6 and TID4 2 / 10 / 4
+    WORD wSword = (WORD)((3 << 2) | (1 << 5) | (6 << 7) | (2 << 11));
+    WORD wStaff = (WORD)((3 << 2) | (1 << 5) | (6 << 7) | (10 << 11));
+    WORD wBow = (WORD)((3 << 2) | (1 << 5) | (6 << 7) | (4 << 11));
+    CHECK(RefItem_IsSwordWeaponType(wSword) && !RefItem_IsStaffWeaponType(wSword));
+    CHECK(RefItem_IsStaffWeaponType(wStaff) && !RefItem_IsSwordWeaponType(wStaff));
+    CHECK(!RefItem_IsSwordWeaponType(wBow) && !RefItem_IsStaffWeaponType(wBow));
+    WORD wNotItem = (WORD)(wSword | 2);
+    CHECK(!RefItem_IsSwordWeaponType(wNotItem) && RefObj_TypeIdIsClass0C(wBow));
+    CHECK(!RefObj_TypeIdIsClass0C(wNotItem));
+
+    WORD awValue[6] = { 17, 2, 3, 4, 5, 6 };
+    DWORD dw = 0xFFFFFFFF;
+    RefObj_PackTypeID(dw, awValue);
+    CHECK(dw == (1 | (2 << 6) | (3 << 10) | (4 << 15) | (5 << 20) | (6 << 26)));
 }
 
 int main()
@@ -345,6 +368,7 @@ int main()
     TestSiegeTables(*pData);
     TestGameWorldTables(*pData);
     TestFindRefObj(*pData);
+    TestTypeHelpers();
 
     pData->m_pTables = NULL;
     return TEST_RESULT("ShardReferenceDataTest");
