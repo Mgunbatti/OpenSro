@@ -688,3 +688,56 @@ RefObjCommonRow* ReferenceData_FindRefObj(int nRefObjID)
 {
     return CReferenceData::GetInstance()->FindRefObj(nRefObjID);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Object type helpers and lookups
+
+static BOOL RefItem_IsWeaponType(WORD wTypeID)
+{
+    return (wTypeID & 2) == 0 && (wTypeID & 0x1C) == 0xC && (wTypeID & 0x60) == 0x20 &&
+           (wTypeID & 0x780) == 0x300;
+}
+
+BOOL RefItem_IsStaffWeaponType(const WORD& wTypeID)
+{
+    if (!RefItem_IsWeaponType(wTypeID))
+        return FALSE;
+    WORD wTID4 = wTypeID >> 11;
+    return wTID4 == 15 || wTID4 == 11 || wTID4 == 10;
+}
+
+BOOL RefItem_IsSwordWeaponType(const WORD& wTypeID)
+{
+    if (!RefItem_IsWeaponType(wTypeID))
+        return FALSE;
+    WORD wTID4 = wTypeID >> 11;
+    return wTID4 == 2 || wTID4 == 3 || wTID4 == 7 || wTID4 == 8;
+}
+
+BOOL RefObj_TypeIdIsClass0C(const WORD& wTypeID)
+{
+    return (wTypeID & 2) == 0 && (wTypeID & 0x1C) == 0xC;
+}
+
+static void RefObj_SetBits(DWORD& dw, DWORD dwValue, int nShift, DWORD dwMask)
+{
+    dw = (dw & ~dwMask) | ((dwValue << nShift) & dwMask);
+}
+
+void RefObj_PackTypeID(DWORD& dwPacked, const WORD* pawValue)
+{
+    RefObj_SetBits(dwPacked, (DWORD)pawValue[0] - 16, 0, 0x3F);
+    RefObj_SetBits(dwPacked, pawValue[1], 6, 0x3C0);
+    RefObj_SetBits(dwPacked, pawValue[2], 10, 0x7C00);
+    RefObj_SetBits(dwPacked, pawValue[3], 15, 0xF8000);
+    RefObj_SetBits(dwPacked, pawValue[4], 20, 0x3F00000);
+    RefObj_SetBits(dwPacked, pawValue[5], 26, 0xFC000000);
+}
+
+const char* RefData_GetObjectCodeName(int nRefObjID)
+{
+    RefObjCommonRow* pObj = CReferenceData::GetInstance()->FindRefObj(nRefObjID);
+    if (!pObj)
+        return "Unknown Object";
+    return RefObj_GetCodeName(pObj).c_str();
+}

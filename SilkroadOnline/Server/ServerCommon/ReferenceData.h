@@ -310,3 +310,19 @@ C_ASSERT(sizeof(CReferenceData) == 0xC60);
 
 // dword_8a8944.
 extern CReferenceData* g_pReferenceData;
+
+// ---------------------------------------------------------------------------------------------
+// Object type helpers and lookups
+
+// TypeID of an object (WORD at RefObjCommon +0x80): bits 2-4 TID1, 5-6 TID2, 7-10 TID3, 11-15
+// TID4. Weapons are TID1 3, TID2 1, TID3 6.
+BOOL RefItem_IsStaffWeaponType(const WORD& wTypeID);         // 0x42dd90  TID4 10, 11, 15
+BOOL RefItem_IsSwordWeaponType(const WORD& wTypeID);         // 0x42dde0  TID4 2, 3, 7, 8
+BOOL RefObj_TypeIdIsClass0C(const WORD& wTypeID);            // 0x42e260  TID1 3
+// RefObj_PackTypeID (0x42e1f0): six WORDs into the bit fields of one DWORD (bits 0-5: the
+// first - 16, then 6-9, 10-14, 15-19, 20-25 and 26-31).
+void RefObj_PackTypeID(DWORD& dwPacked, const WORD* pawValue);
+
+// RefData_GetObjectCodeName (0x486550): CodeName128 of an object, "Unknown Object" for an
+// unknown id.
+const char* RefData_GetObjectCodeName(int nRefObjID);
