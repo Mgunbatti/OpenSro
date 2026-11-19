@@ -347,7 +347,7 @@ TESTS =$(BIN)\MsgTest.exe $(BIN)\SynchTest.exe $(BIN)\DebugTest.exe $(BIN)\PoolT
 
 # SR_ShardManager game worlds (SilkroadOnline\Server\ShardManager): the climate, the game worlds
 # and their layers. Compiled with SHARD_DEFS and SHARD_APP_INC.
-SHARD_WORLD_OBJS = $(OBJ)\ShardManager\Climate.obj \n	$(OBJ)\ShardManager\GameWorld.obj
+SHARD_WORLD_OBJS = $(OBJ)\ShardManager\Climate.obj \n	$(OBJ)\ShardManager\GameWorld.obj \n	$(OBJ)\ShardManager\ShardScheduleJob.obj
 TESTS = $(TESTS) $(BIN)\ShardClimateTest.exe
 
 $(OBJ)\ShardManager:
