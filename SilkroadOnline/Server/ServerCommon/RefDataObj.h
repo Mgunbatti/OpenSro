@@ -336,8 +336,9 @@ public:
     // slot 0x56 _RefMonster_AssignedItemDrop, RefMonsterAssignedItemRndDropEntry,
     // RefCustomizingReservedItemDropEntry).
     std::vector<RefObjCharUnk30> m_vecAssignedItemDrop;          // +288  TODO(type)
-    std::vector<RefObjCharUnk30> m_vecAssignedItemRndDrop;       // +298  TODO(type)
-    std::vector<DWORD> m_avecCustomizingReservedItemDrop[16];    // +2A8  TODO(type)
+    RefObjRndDropVector m_vecAssignedItemRndDrop;                // +298  slot 0x36
+    // +2A8  slot 0x57, by group
+    RefObjCustomizingDropVector m_avecCustomizingReservedItemDrop[REF_CUSTOMIZING_DROP_GROUP_COUNT];
     RefObjCharExcept Except[10];                 // +3A8
     float            DecreaseHGPPerSec;          // +3F8
     int              m_n3FC;                     // +3FC  the last column

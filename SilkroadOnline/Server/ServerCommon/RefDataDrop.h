@@ -99,7 +99,7 @@ struct RefDropItemGroupRow
 C_ASSERT(sizeof(RefDropItemGroupRow) == 0x2C);
 
 // The part of a _RefMonster_AssignedItemRndDrop row a monster keeps (48 bytes,
-// RefMonsterAssignedItemRndDropEntry::Init 0x5149c0; the monster's vector at RefObjCommon
+// RefMonsterAssignedItemRndDropEntry::Init 0x5149c0; the monster's vector at RefObjChar
 // +0x298). Column names are not known.
 struct RefMonsterAssignedItemRndDropEntry
 {
@@ -135,7 +135,7 @@ struct RefMonsterAssignedItemRndDropRow
 C_ASSERT(sizeof(RefMonsterAssignedItemRndDropRow) == 0x34);
 
 // The part of a _RefCustomizingReservedItemDropForMonster row a monster keeps (32 bytes; the
-// monster's vectors by group at RefObjCommon +0x2A8). Column names are not known.
+// monster's vectors by group at RefObjChar +0x2A8). Column names are not known.
 struct RefCustomizingReservedItemDropEntry
 {
     BYTE             b00;                        // +0   below 9
@@ -158,23 +158,12 @@ C_ASSERT(sizeof(RefCustomizingReservedItemDropRow) == 0x24);
 
 enum
 {
-    REF_CUSTOMIZING_DROP_GROUP_COUNT = 17,
+    REF_CUSTOMIZING_DROP_GROUP_COUNT = 16,      // the vectors of RefObjChar; the rows allow 0..16
 };
 
-// The drop vectors of a monster in its _RefObjCommon row.
-typedef std::vector<RefMonsterAssignedItemRndDropEntry> RefObjRndDropVector;      // +0x298
-typedef std::vector<RefCustomizingReservedItemDropEntry> RefObjCustomizingDropVector; // +0x2A8
-
-inline RefObjRndDropVector& RefObj_GetRndDrop(RefObjCommonRow* pRefObj)
-{
-    return *(RefObjRndDropVector*)((BYTE*)pRefObj + 0x298);
-}
-
-inline RefObjCustomizingDropVector& RefObj_GetCustomizingDrop(RefObjCommonRow* pRefObj,
-                                                              BYTE bGroup)
-{
-    return ((RefObjCustomizingDropVector*)((BYTE*)pRefObj + 0x2A8))[bGroup];
-}
+// The drop vectors of a monster (RefObjChar +0x298 / +0x2A8).
+typedef std::vector<RefMonsterAssignedItemRndDropEntry> RefObjRndDropVector;
+typedef std::vector<RefCustomizingReservedItemDropEntry> RefObjCustomizingDropVector;
 
 // ---------------------------------------------------------------------------------------------
 // Builders (entries of the BuildFromTable switch, see ReferenceData.cpp)

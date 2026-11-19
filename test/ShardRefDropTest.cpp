@@ -2,6 +2,7 @@
 // the builders of slots 0x28..0x36 and 0x57 over small fake row sets. Compiled with SHARD_DEFS.
 
 #include "ServerCommon/ReferenceData.h"
+#include "ServerCommon/RefDataObj.h"
 
 #include <string.h>
 
@@ -72,7 +73,7 @@ struct FakeObj
 {
     union
     {
-        BYTE    ab[0x400];
+        BYTE    ab[sizeof(RefObjChar)];
         double  dAlign;
     };
 
@@ -84,18 +85,23 @@ struct FakeObj
         ab[0x88] = bCountry;
         ab[0x89] = bRarity;
         ab[0x1A8] = bClass;
-        new (ab + 0x298) RefObjRndDropVector;
+        new (&Char()->m_vecAssignedItemRndDrop) RefObjRndDropVector;
         for (int i = 0; i < REF_CUSTOMIZING_DROP_GROUP_COUNT; ++i)
-            new (ab + 0x2A8 + 16 * i) RefObjCustomizingDropVector;
+            new (&Char()->m_avecCustomizingReservedItemDrop[i]) RefObjCustomizingDropVector;
         CReferenceData::GetInstance()->m_hashRefObj[nID] = Row();
     }
 
     ~FakeObj()
     {
         CReferenceData::GetInstance()->m_hashRefObj.erase(*(int*)(ab + 0x8));
-        RefObj_GetRndDrop(Row()).~RefObjRndDropVector();
-        for (BYTE i = 0; i < REF_CUSTOMIZING_DROP_GROUP_COUNT; ++i)
-            RefObj_GetCustomizingDrop(Row(), i).~RefObjCustomizingDropVector();
+        Char()->m_vecAssignedItemRndDrop.~RefObjRndDropVector();
+        for (int i = 0; i < REF_CUSTOMIZING_DROP_GROUP_COUNT; ++i)
+            Char()->m_avecCustomizingReservedItemDrop[i].~RefObjCustomizingDropVector();
+    }
+
+    RefObjChar* Char()
+    {
+        return (RefObjChar*)ab;
     }
 
     RefObjCommonRow* Row()
@@ -311,7 +317,7 @@ static void TestMonsterDropTables(CReferenceData& data)
     FakeTable<CRefMonster_AssignedItemRndDrop> rnd;
     PutRndDrop(rnd.AddRow(), 1, 202, 7);
     CHECK(data.BuildFromTable(&rnd.entry, 0x36) == 1);
-    RefObjRndDropVector& vecRnd = RefObj_GetRndDrop(monster.Row());
+    RefObjRndDropVector& vecRnd = monster.Char()->m_vecAssignedItemRndDrop;
     CHECK(vecRnd.size() == 1 && data.m_vecMonsterAssignedItemRndDrop.size() == 1);
     if (vecRnd.size() == 1)
     {
@@ -325,20 +331,29 @@ static void TestMonsterDropTables(CReferenceData& data)
     CHECK(data.BuildFromTable(&rndOff.entry, 0x36) == 0 && vecRnd.size() == 1);
 
     FakeTable<CRefCustomizingReservedItemDropForMonster> custom;
-    PutCustomizing(custom.AddRow(), 202, 8, 4, 16);
+    PutCustomizing(custom.AddRow(), 202, 8, 4, 15);
     CHECK(data.BuildFromTable(&custom.entry, 0x57) == 1);
-    RefObjCustomizingDropVector& vecCustom = RefObj_GetCustomizingDrop(monster.Row(), 16);
+    RefObjCustomizingDropVector& vecCustom = monster.Char()->m_avecCustomizingReservedItemDrop[15];
     CHECK(vecCustom.size() == 1);
     if (vecCustom.size() == 1)
     {
-        CHECK(vecCustom[0].b00 == 8 && vecCustom[0].dw04 == 4 && vecCustom[0].GroupID == 16);
+        CHECK(vecCustom[0].b00 == 8 && vecCustom[0].dw04 == 4 && vecCustom[0].GroupID == 15);
         CHECK(vecCustom[0].adw0C[0] == 10 && vecCustom[0].adw0C[4] == 14);
     }
+    // group 16 lands on Except[0..1] of the monster (SM-033)
+    FakeTable<CRefCustomizingReservedItemDropForMonster> custom16;
+    PutCustomizing(custom16.AddRow(), 202, 8, 4, 16);
+    CHECK(data.BuildFromTable(&custom16.entry, 0x57) == 1);
+    RefObjCustomizingDropVector* pvec16 =
+        (RefObjCustomizingDropVector*)&monster.Char()->Except[0];
+    CHECK(pvec16->size() == 1 && monster.Char()->Except[0].m_dw04 != 0);
+    pvec16->~RefObjCustomizingDropVector();
+    memset(monster.Char()->Except, 0, 2 * sizeof(RefObjCharExcept));
     // a value out of range fails the build
     FakeTable<CRefCustomizingReservedItemDropForMonster> customBad;
     PutCustomizing(customBad.AddRow(), 202, 9, 0, 1);
     CHECK(data.BuildFromTable(&customBad.entry, 0x57) == 0);
-    CHECK(RefObj_GetCustomizingDrop(monster.Row(), 1).empty());
+    CHECK(monster.Char()->m_avecCustomizingReservedItemDrop[1].empty());
 
     for (size_t i = 0; i < data.m_vecMonsterAssignedItemRndDrop.size(); ++i)
         delete data.m_vecMonsterAssignedItemRndDrop[i];

@@ -4,30 +4,8 @@
 
 #include "BSLib/BSDebug.h"
 #include "ServerCommon/InstanceRecords.h"
+#include "ServerCommon/RefDataObj.h"
 #include "ServerFramework/ServerDataExtern.h"
-
-// ---------------------------------------------------------------------------------------------
-// Object fields used here
-
-static int RefObj_GetID(const RefObjCommonRow* pRefObj)                           // +0x8
-{
-    return *(const int*)((const BYTE*)pRefObj + 0x8);
-}
-
-static BYTE RefObj_GetCountry(const RefObjCommonRow* pRefObj)                     // +0x88
-{
-    return *((const BYTE*)pRefObj + 0x88);
-}
-
-static BYTE RefObj_GetRarity(const RefObjCommonRow* pRefObj)                      // +0x89
-{
-    return *((const BYTE*)pRefObj + 0x89);
-}
-
-static BYTE RefObj_GetDropClassIndex(const RefObjCommonRow* pRefObj)              // +0x1A8
-{
-    return *((const BYTE*)pRefObj + 0x1A8);
-}
 
 // TID1 3 (item), not a cash item (bit 1).
 static BOOL RefDrop_IsItem(WORD wTypeID)
@@ -247,7 +225,7 @@ static int RefDropItemAssign_Read(CRefRow& row, RefDropItemAssign& r, int& nClas
     }
     row >> r.Weight >> r.dw08 >> nClass;
     if (nClass < 0)
-        nClass = RefObj_GetDropClassIndex(r.pItem);
+        nClass = static_cast<const RefObjItem*>(r.pItem)->ItemClass;
     if (nClass <= 0)
         BSAssertFail();
     --nClass;
@@ -283,9 +261,9 @@ static void RefDropClassEntry_AddItem(RefDropClassEntry& entry, const RefDropIte
 static void RefDropClassSlot_AddItem(RefDropClassSlot& slot, unsigned int nClass,
                                      const RefDropItemAssign& assign)
 {
-    if (RefObj_GetCountry(assign.pItem) > 3)
+    if (assign.pItem->Country > 3)
         BSAssertFail();
-    BYTE bCountry = RefObj_GetCountry(assign.pItem);
+    BYTE bCountry = assign.pItem->Country;
     if (bCountry == 3)
     {
         for (int i = 0; i < 3; ++i)
@@ -301,7 +279,7 @@ static int RefDrop_GetDropClass(const RefObjCommonRow* pItem)
 {
     WORD wTypeID = RefObj_GetTypeID(pItem);
     if (RefDrop_IsEquip(wTypeID))
-        return RefObj_GetRarity(pItem) == 2 ? 1 : 0;
+        return pItem->Rarity == 2 ? 1 : 0;
     if (RefDrop_IsExpendable(wTypeID, 0x80))
         return 2;
     if (RefDrop_IsExpendable(wTypeID, 0x100))
@@ -373,13 +351,13 @@ int RefData_BuildDropClassTables(CReferenceData* pData, RefTableEntry* pTable, u
                 break;
             }
             LogPrintf(0x2000000, "unknown item of drop assign table!!! [RefID: %d]",
-                      RefObj_GetID(assign.pItem));
+                      assign.pItem->ID);
             BSAssertFail();
         }
         if (nGroup == REF_DROP_GROUP_COUNT)
         {
             LogPrintf(0x2000000, "can't find bound item drop group!!! [RefID: %d]",
-                      RefObj_GetID(assign.pItem));
+                      assign.pItem->ID);
             BSAssertFail();
         }
     }
@@ -516,7 +494,7 @@ static int RefDrop_LoadMonsterAssignedItemRndDrop(CReferenceData* pData, CRefRow
         BSAssertFail();
         return 0;
     }
-    RefObj_GetRndDrop(pMonster).push_back(pRow->Entry);
+    static_cast<RefObjChar*>(pMonster)->m_vecAssignedItemRndDrop.push_back(pRow->Entry);
     pData->m_vecMonsterAssignedItemRndDrop.push_back(pRow);
     return 1;
 }
@@ -559,7 +537,10 @@ static int RefDrop_LoadCustomizingReservedItemDrop(CReferenceData*, CRefRow& row
     const RefCustomizingReservedItemDropEntry& e = pRow->Entry;
     if (pRefObj && e.b00 < 9 && (int)e.dw04 <= 4 && e.GroupID <= 16 && e.GroupID != 0xFF)
     {
-        RefObj_GetCustomizingDrop(pRefObj, e.GroupID).push_back(e);
+        // BUG(SM-033): group 16 is one past the 16 vectors of the monster; its entries go into
+        // the memory of Except[0..1].
+        RefObjChar* pChar = static_cast<RefObjChar*>(pRefObj);
+        pChar->m_avecCustomizingReservedItemDrop[e.GroupID].push_back(e);
         delete pRow;
         return 1;
     }
