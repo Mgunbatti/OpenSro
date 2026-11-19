@@ -454,6 +454,20 @@ static void TestFindRefObj(CReferenceData& data)
     CHECK(CReferenceData::GetInstance() == &data);
     CHECK(data.FindRefObj(1234) == pObj && data.FindRefObj(1) == NULL);
     data.m_hashRefObj.erase(1234);
+
+    static BYTE abRegion[0x60];
+    std::string* pstrRegion = new (abRegion + 0x34) std::string("CHINA_JANGAN");
+    data.m_mapRegion[25000] = (RefRegionRow*)abRegion;
+    CHECK(strcmp(RefData_GetRegionName(25000), "CHINA_JANGAN") == 0);
+    CHECK(strcmp(RefData_GetRegionName(1), "Unknown Region") == 0);
+    data.m_mapRegion.clear();
+    pstrRegion->~basic_string();
+
+    RefGameWorld world;
+    data.m_hashGameWorldByCodeName["INS_TEMPLE_SETH"] = &world;
+    CHECK(data.FindGameWorldByCodeName("INS_TEMPLE_SETH") == &world);
+    CHECK(data.FindGameWorldByCodeName("INS_NONE") == NULL && data.FindSkill(1) == NULL);
+    data.m_hashGameWorldByCodeName.clear();
 }
 
 static void TestTypeHelpers()
