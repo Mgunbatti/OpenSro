@@ -1303,3 +1303,410 @@ void CBattleArenaMgr::ConfirmGroupUsers(CMsg* pMsg, BYTE byKind, BYTE byMatch,
             itGroup->second.erase(itMember);
     }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The team building (StartGame)
+
+// Kick reasons of the team building (0x34D2 {0xFF, JID, reason}).
+enum
+{
+    BATTLEARENA_KICK_LEVEL      = 5,    // no level bracket
+    BATTLEARENA_KICK_NO_PARTNER = 6,    // left over (odd count, too few players)
+    BATTLEARENA_KICK_NO_LAYER   = 7     // the arena layer could not be opened
+};
+
+// The rest of 0x34D2.
+enum
+{
+    BATTLEARENA_MEMBER_ENTERED  = 1,    // JID, world, layer, side
+    BATTLEARENA_LAYER_OPENED    = 6,    // world, layer, kind, match
+    BATTLEARENA_TEAM_READY      = 16    // world, layer, level bracket
+};
+
+namespace
+{
+
+// SortPred_ByteAt4Less (0x669bf0): the higher level first.
+bool SortPred_LevelGreater(const sArenaLevelEntry& a, const sArenaLevelEntry& b)
+{
+    return (BYTE)b.dwLevel < (BYTE)a.dwLevel;
+}
+
+// Online players with a level bracket go into the list, the others without one are kicked.
+void CollectLevelEntries(CBattleArenaMgr::ByteMap& mapReg, CBattleArenaMgr::LevelList& listEntry,
+                         CBattleArenaMgr::DwordMap& mapKick)
+{
+    for (CBattleArenaMgr::ByteMap::iterator it = mapReg.begin(); it != mapReg.end(); ++it)
+    {
+        DWORD dwJID = it->first;
+        BYTE byLevel = it->second;
+        if (!ClientManager_FindUserByJID(dwJID))
+            continue;
+        if (Arena_GetLevelBracket(byLevel))
+        {
+            sArenaLevelEntry entry;
+            entry.dwID = dwJID;
+            entry.dwLevel = byLevel;
+            listEntry.push_back(entry);
+        }
+        else
+        {
+            mapKick[dwJID] = BATTLEARENA_KICK_LEVEL;
+        }
+    }
+}
+
+BOOL IsTeamLayerOpen(sBattleArenaTeam& team)
+{
+    CGameWorld* pWorld = CGameWorldMgr::GetInstance()->FindWorld(team.m_wWorldID);
+    return pWorld && pWorld->LayerAt(team.m_wLayerID);
+}
+
+BYTE GetTeamBracket(const sBattleArenaTeam& team)
+{
+    return Arena_GetLevelBracket((BYTE)(team.m_dwLevelSum / (DWORD)team.m_listMember.size()));
+}
+
+void RemoveFromParty(CUser* pUser)
+{
+    if (User_GetParty(pUser))
+        PartyManager_RemoveMember(User_GetParty(pUser), User_GetPartyMemberKey(pUser), 2);
+}
+
+void SendLayerOpened(const sBattleArenaTeam& team, BYTE byKind, BYTE byMatch)
+{
+    CMsg* pMsg = AllocNotice();
+    BYTE byType = BATTLEARENA_LAYER_OPENED;
+    pMsg->WriteBytes(&byType, 1);
+    pMsg->WriteBytes(&team.m_wWorldID, 2);
+    pMsg->WriteBytes(&team.m_wLayerID, 2);
+    pMsg->WriteBytes(&byKind, 1);
+    pMsg->WriteBytes(&byMatch, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+void SendMemberEntered(DWORD dwJID, const sBattleArenaTeam& team, BYTE bySide)
+{
+    CMsg* pMsg = AllocNotice();
+    BYTE byType = BATTLEARENA_MEMBER_ENTERED;
+    pMsg->WriteBytes(&byType, 1);
+    pMsg->WriteBytes(&dwJID, 4);
+    pMsg->WriteBytes(&team.m_wWorldID, 2);
+    pMsg->WriteBytes(&team.m_wLayerID, 2);
+    pMsg->WriteBytes(&bySide, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+void SendTeamReady(const sBattleArenaTeam& team)
+{
+    CMsg* pMsg = AllocNotice();
+    BYTE byType = BATTLEARENA_TEAM_READY;
+    pMsg->WriteBytes(&byType, 1);
+    pMsg->WriteBytes(&team.m_wWorldID, 2);
+    pMsg->WriteBytes(&team.m_wLayerID, 2);
+    pMsg->WriteBytes(&team.m_byBracket, 1);
+    BroadcastToGameServers(pMsg);
+}
+
+// Online members with a selected character join the team on the given side.
+void AddMemberIfOnline(sBattleArenaTeam& team, DWORD dwJID, BYTE byLevel, BYTE bySide,
+                       BOOL bLeaveParty)
+{
+    CUser* pUser = ClientManager_FindUserByJID(dwJID);
+    if (!pUser || !User_GetCharID(pUser))
+        return;
+    team.m_dwLevelSum += byLevel;
+    team.AddMember(dwJID);
+    if (bLeaveParty)
+        RemoveFromParty(pUser);
+    SendMemberEntered(dwJID, team, bySide);
+}
+
+template <class TMap>
+void SendKicks(const TMap& mapKick)
+{
+    for (typename TMap::const_iterator it = mapKick.begin(); it != mapKick.end(); ++it)
+        CBattleArenaMgr::SendKickUser(it->first, (BYTE)it->second);
+}
+
+}
+
+// Teams of up to 16 players by level; a team starts with at least 4 (level brackets 1 and 2) or
+// 8 players, and the members are put on the sides A B B A A B B ... from a random start.
+void CBattleArenaMgr::StartGameRandom(BYTE byMatch)
+{
+    DwordMap mapKick;
+    LevelList listEntry;
+    CollectLevelEntries(m_amapRandom[byMatch], listEntry, mapKick);
+    listEntry.sort(SortPred_LevelGreater);
+
+    TeamVector& vecTeam = m_avecTeam[0][byMatch];
+    sBattleArenaTeam team;
+    for (LevelList::iterator it = listEntry.begin(); it != listEntry.end(); ++it)
+    {
+        DWORD dwJID = it->dwID;
+        BYTE byLevel = (BYTE)it->dwLevel;
+        if (team.m_byCount == 16)
+        {
+            team.m_byBracket = GetTeamBracket(team);
+            vecTeam.push_back(team);
+            team = sBattleArenaTeam();
+        }
+        if (!IsTeamLayerOpen(team))
+        {
+            if (!OpenArenaLayer(&team, byMatch, 1))
+            {
+                mapKick[dwJID] = BATTLEARENA_KICK_NO_LAYER;
+                continue;
+            }
+            team.m_byLevel = byLevel;
+            SendLayerOpened(team, 0, byMatch);
+        }
+        CUser* pUser = ClientManager_FindUserByJID(dwJID);
+        if (pUser && User_GetCharID(pUser))
+        {
+            team.m_dwLevelSum += byLevel;
+            team.AddMember(dwJID);
+        }
+    }
+    if (team.m_listMember.size())
+    {
+        if (team.m_listMember.size() & 1)
+        {
+            // BUG(SM-164): the level of the removed member stays in the level sum.
+            DWORD dwJID = team.PopMember();
+            mapKick[dwJID] = BATTLEARENA_KICK_NO_PARTNER;
+        }
+        if (team.m_listMember.size())
+            team.m_byBracket = GetTeamBracket(team);
+        vecTeam.push_back(team);
+    }
+
+    for (TeamVector::iterator itTeam = vecTeam.begin(); itTeam != vecTeam.end(); ++itTeam)
+    {
+        BOOL bStart = TRUE;
+        BYTE bySide = (BYTE)(rand() % 2);
+        BYTE byPrevSide = bySide;
+        DWORD dwMin = itTeam->m_byBracket <= 2 ? 4 : 8;
+        if (itTeam->m_listMember.size() >= dwMin)
+            SendTeamReady(*itTeam);
+        else
+            bStart = FALSE;
+
+        for (std::list<DWORD>::iterator itJID = itTeam->m_listMember.begin();
+             itJID != itTeam->m_listMember.end(); ++itJID)
+        {
+            DWORD dwJID = *itJID;
+            if (!bStart)
+            {
+                mapKick[dwJID] = BATTLEARENA_KICK_NO_PARTNER;
+                continue;
+            }
+            CUser* pUser = ClientManager_FindUserByJID(dwJID);
+            if (!pUser)
+                continue;
+            RemoveFromParty(pUser);
+            SendMemberEntered(dwJID, *itTeam, bySide);
+            if (bySide == byPrevSide)
+                bySide = (bySide == 0);
+            else
+                byPrevSide = bySide;
+        }
+    }
+    SendKicks(mapKick);
+}
+
+// Two parties / guilds of neighbouring level make one team, one per side. The party version
+// opens the layer before it looks up the members; the guild version looks them up first, picks
+// the 32 player layer for more than 16 members and takes the members out of their parties.
+template <class TKickMap>
+void CBattleArenaMgr::StartGameGroup(BYTE byKind, BYTE byMatch)
+{
+    const BOOL bGuild = (byKind == 2);
+    ByteMap& mapGroupLevel = bGuild ? m_amapGuildLevel[byMatch] : m_amapPartyLevel[byMatch];
+    LevelList& listGroup = bGuild ? m_alistGuild[byMatch] : m_alistParty[byMatch];
+    GroupMap& mapGroupMember = bGuild ? m_amapGuildMember[byMatch] : m_amapPartyMember[byMatch];
+
+    TKickMap mapKick;
+    // BUG(SM-165): the list is not cleared first; a second start of the same match type takes
+    // the groups of the first one again.
+    for (ByteMap::iterator it = mapGroupLevel.begin(); it != mapGroupLevel.end(); ++it)
+    {
+        sArenaLevelEntry entry;
+        entry.dwID = it->first;
+        entry.dwLevel = it->second;
+        listGroup.push_back(entry);
+    }
+    listGroup.sort(SortPred_LevelGreater);
+
+    sBattleArenaTeam team;
+    LevelList::iterator itA = listGroup.begin();
+    while (itA != listGroup.end())
+    {
+        LevelList::iterator itB = itA;
+        ++itB;
+        if (itB == listGroup.end())
+        {
+            mapKick[itA->dwID] = BATTLEARENA_KICK_NO_PARTNER;
+            break;
+        }
+        DWORD dwGroupA = itA->dwID;
+        DWORD dwGroupB = itB->dwID;
+        BYTE byLevelA = (BYTE)itA->dwLevel;
+        itA = itB;
+        ++itA;
+
+        GroupMap::iterator itMemberA = mapGroupMember.end();
+        GroupMap::iterator itMemberB = mapGroupMember.end();
+        BYTE byArenaSize = 1;
+        if (bGuild)
+        {
+            itMemberA = mapGroupMember.find(dwGroupA);
+            itMemberB = mapGroupMember.find(dwGroupB);
+            if (itMemberA == mapGroupMember.end() || itMemberB == mapGroupMember.end())
+                continue;
+            if (itMemberA->second.size() + itMemberB->second.size() > 16)
+                byArenaSize = 2;
+        }
+        if (!OpenArenaLayer(&team, byMatch, byArenaSize))
+        {
+            mapKick[dwGroupA] = BATTLEARENA_KICK_NO_LAYER;
+            mapKick[dwGroupB] = BATTLEARENA_KICK_NO_LAYER;
+            continue;
+        }
+        team.m_byLevel = byLevelA;
+        SendLayerOpened(team, byKind, byMatch);
+        if (!bGuild)
+        {
+            itMemberA = mapGroupMember.find(dwGroupA);
+            itMemberB = mapGroupMember.find(dwGroupB);
+            // BUG(SM-163): the layer is open and announced already; it is left behind.
+            if (itMemberA == mapGroupMember.end() || itMemberB == mapGroupMember.end())
+                continue;
+        }
+
+        BYTE bySide = (BYTE)(rand() % 2);
+        ByteMap::iterator itMember;
+        for (itMember = itMemberA->second.begin(); itMember != itMemberA->second.end();
+             ++itMember)
+            AddMemberIfOnline(team, itMember->first, itMember->second, bySide, bGuild);
+        for (itMember = itMemberB->second.begin(); itMember != itMemberB->second.end();
+             ++itMember)
+            AddMemberIfOnline(team, itMember->first, itMember->second, bySide == 0, bGuild);
+
+        if (team.m_listMember.size())
+            team.m_byBracket = GetTeamBracket(team);
+        m_avecTeam[byKind][byMatch].push_back(team);
+        SendTeamReady(team);
+        team = sBattleArenaTeam();
+    }
+
+    // The members of the kicked groups are kicked; the party version also drops the members.
+    for (typename TKickMap::iterator itKick = mapKick.begin(); itKick != mapKick.end(); ++itKick)
+    {
+        BYTE byReason = (BYTE)itKick->second;
+        GroupMap::iterator itGroup = mapGroupMember.find(itKick->first);
+        if (itGroup == mapGroupMember.end())
+            continue;
+        for (ByteMap::iterator itMember = itGroup->second.begin();
+             itMember != itGroup->second.end(); ++itMember)
+            SendKickUser(itMember->first, byReason);
+        if (!bGuild)
+        {
+            itGroup->second.clear();
+            mapGroupMember.erase(itGroup);
+        }
+    }
+}
+
+void CBattleArenaMgr::StartGameParty(BYTE byMatch)
+{
+    StartGameGroup<DwordMap>(1, byMatch);
+}
+
+void CBattleArenaMgr::StartGameGuild(BYTE byMatch)
+{
+    StartGameGroup<ByteMap>(2, byMatch);
+}
+
+// The two job lists (jobs 1 and 3 against jobs 0 and 2) are paired by level into teams of 32,
+// 16, 8, 4 and 2 pairs while both lists have enough players left. Pairs of 2 are not made when
+// the best player left of the first list is above level 50. The rest is kicked.
+void CBattleArenaMgr::StartGameJob(BYTE byMatch)
+{
+    LevelList listB;
+    LevelList listA;
+    DwordMap mapKick;
+    CollectLevelEntries(m_amapJobB[byMatch], listB, mapKick);
+    CollectLevelEntries(m_amapJobA[byMatch], listA, mapKick);
+    listB.sort(SortPred_LevelGreater);
+    listA.sort(SortPred_LevelGreater);
+
+    DWORD dwRemainB = (DWORD)listB.size();
+    DWORD dwRemainA = (DWORD)listA.size();
+    LevelList::iterator itB = listB.begin();
+    LevelList::iterator itA = listA.begin();
+    TeamVector& vecTeam = m_avecTeam[3][byMatch];
+    for (BYTE bySize = 32; bySize >= 2; bySize >>= 1)
+    {
+        if (bySize == 2 && dwRemainB && (BYTE)itB->dwLevel > 50)
+            break;
+        DWORD dwSize = bySize;
+        while (dwRemainB >= dwSize && dwRemainA >= dwSize)
+        {
+            BYTE byKick = 0;
+            BYTE bySide = (BYTE)(rand() % 2);
+            sBattleArenaTeam team;
+            BYTE byArenaSize = bySize >= 32 ? 3 : (bySize < 16 ? 1 : 2);
+            if (OpenArenaLayer(&team, byMatch, byArenaSize))
+                SendLayerOpened(team, 3, byMatch);
+            else
+                byKick = BATTLEARENA_KICK_NO_LAYER;
+
+            for (DWORD i = 0; i < dwSize; ++i, ++itB, ++itA)
+            {
+                DWORD dwJIDB = itB->dwID;
+                DWORD dwJIDA = itA->dwID;
+                BYTE byLevelB = (BYTE)itB->dwLevel;
+                BYTE byLevelA = (BYTE)itA->dwLevel;
+                if (byKick)
+                {
+                    mapKick[dwJIDB] = byKick;
+                    mapKick[dwJIDA] = byKick;
+                    continue;
+                }
+                if (i == 0)
+                    team.m_byLevel = byLevelB > byLevelA ? byLevelB : byLevelA;
+                CUser* pUserB = ClientManager_FindUserByJID(dwJIDB);
+                CUser* pUserA = ClientManager_FindUserByJID(dwJIDA);
+                if (pUserB && User_GetCharID(pUserB))
+                {
+                    team.m_dwLevelSum += byLevelB;
+                    team.AddMember(dwJIDB);
+                    RemoveFromParty(pUserB);
+                    SendMemberEntered(dwJIDB, team, bySide);
+                }
+                if (pUserA && User_GetCharID(pUserA))
+                {
+                    team.m_dwLevelSum += byLevelA;
+                    team.AddMember(dwJIDA);
+                    RemoveFromParty(pUserA);
+                    SendMemberEntered(dwJIDA, team, bySide == 0);
+                }
+            }
+
+            // BUG(SM-166): no member (layer not opened, everybody offline) divides by zero.
+            team.m_byBracket = GetTeamBracket(team);
+            vecTeam.push_back(team);
+            SendTeamReady(team);
+            dwRemainB -= dwSize;
+            dwRemainA -= dwSize;
+        }
+    }
+
+    for (; dwRemainB; --dwRemainB, ++itB)
+        mapKick[itB->dwID] = BATTLEARENA_KICK_NO_PARTNER;
+    for (; dwRemainA; --dwRemainA, ++itA)
+        mapKick[itA->dwID] = BATTLEARENA_KICK_NO_PARTNER;
+    SendKicks(mapKick);
+}
